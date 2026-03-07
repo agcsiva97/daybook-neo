@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <div class='row'>
+    <div class="col">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-shop"></i> Shops</h5>
+        {% if is_super_admin %}
+        <a href="{% url 'entries:add_shop' %}" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-plus"></i> Add Shop
+        </a>
+        {% endif %}
+      </div>
+      <div class="ledger-cards">
+          {% for item in shop_balances %}
+          <div class="ledger-card" onclick="window.location.href='{% url 'entries:shop_info' item.shop.pk %}'" style="cursor: pointer; position: relative;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="ledger-card-ledgername hanuman-600">
+                {{ item.shop.name }}
+              </div>
+              {% if is_admin %}
+                  <div class="dropdown" onclick="event.stopPropagation();">
+                    <button class="btn btn-sm btn-link text-dark p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li><a class="dropdown-item" href="{% url 'entries:edit_shop' item.shop.pk %}"><i class="fa-solid fa-pencil"></i> Edit</a></li>
+                      {% if is_super_admin %}
+                      <li><a class="dropdown-item text-danger" href="{% url 'entries:delete_shop' item.shop.pk %}"><i class="fa-solid fa-trash"></i> Delete</a></li>
+                      {% endif %}
+                    </ul>
+                  </div>
+              {% endif %}
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <div class="ledger-card-balance-title">
+                <small class="text-muted">Opening Balance:</small>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.opening_balance }}</div>
+              </div>
+              <div class="ledger-card-balance-title text-end">
+                <small class="text-muted">Closing Balance:</small>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.closing_balance }}</div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <p class="text-muted">No shops found.</p>
+          {% endfor %}
+        </div>
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="col">
+      <h5>Today's Transactions</h5>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th scope="col">Shop</th>
+            <th scope="col">Name</th>
+            <th scope="col">Remarks</th>
+            <th scope="col" class="text-end">DEBIT</th>
+            <th scope="col" class="text-end">CREDIT</th>
+            <th scope="col">Created At</th>
+            <th scope="col">Updated At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transaction in transactions %}
+          <tr>
+              <td>{{transaction.shop.short_name}}</td>
+              <td>{{ transaction.name|default:"-" }}</td>
+              <td>{{ transaction.remarks|default:"-" }}</td>
+            {% if transaction.tr_type == 'DEBIT' %}
+              <td class="text-end">{{transaction.amount}}</td>
+              <td class="text-end"></td>
+            {% else %}
+              <td class="text-end"></td>
+              <td class="text-end">{{transaction.amount}}</td>
+          {% endif %}
+              <td>{{ transaction.created_at|time:"H:i:s" }}</td>
+              <td>{{ transaction.updated_at|time:"H:i:s" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

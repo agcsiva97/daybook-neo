@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+@media print {
+  /* Hide elements that shouldn't be printed */
+  .btn, .pagination, form, .modal, nav, footer {
+    display: none !important;
+  }
+  
+  /* Hide paginated table for print */
+  .screen-only {
+    display: none !important;
+  }
+  
+  /* Show print-only table */
+  .print-only {
+    display: table !important;
+  }
+  
+  /* Adjust layout for printing */
+  .container {
+    max-width: 100%;
+  }
+  
+  .card {
+    border: none;
+    box-shadow: none;
+  }
+  
+  .card-header {
+    background-color: white !important;
+    border-bottom: 2px solid #000;
+  }
+  
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  /* Show transaction count in print */
+  .text-muted {
+    color: #000 !important;
+    font-weight: bold;
+  }
+  
+  /* Show filter information in print */
+  .print-filters {
+    display: block !important;
+    padding: 10px;
+    border-bottom: 1px solid #000;
+  }
+  
+  .print-filters h6 {
+    font-weight: bold;
+  }
+}
+</style>
+
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header">
+      <h4 class="mb-0"><i class="fa-solid fa-money-bill-transfer"></i> Loan Transactions</h4>
+    </div>
+    
+    <!-- Filter Information for Print -->
+    <div class="print-filters" style="display: none;">
+      <h6>Applied Filters:</h6>
+      {% if from_date or to_date or ledger_filter or type_filter or search_query %}
+        <div style="margin: 0; padding-left: 20px;">
+          {% if from_date %}
+          <strong>From Date:</strong> {{ from_date }} |
+          {% endif %}
+          {% if to_date %}
+          <strong>To Date:</strong> {{ to_date }} |
+          {% endif %}
+          {% if ledger_filter %}
+          <strong>Ledger:</strong> 
+            {% for ledger in all_ledgers %}
+              {% if ledger.id|stringformat:"s" == ledger_filter %}
+                {{ ledger.name }} |
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if type_filter %}
+          <strong>Type:</strong> {{ type_filter }} |
+          {% endif %}
+          {% if search_query %}
+          <strong>Pawn No:</strong> {{ search_query }} |
+          {% endif %}
+        </div>
+      {% else %}
+        <p style="margin: 0;">No filters applied - showing all loan transactions</p>
+      {% endif %}
+    </div>
+    
+    <div class="card-body">
+      <!-- Filters -->
+      <form method="get" class="row g-3 mb-4">
+        <div class="col-md-2">
+          <label for="from_date" class="form-label">From Date</label>
+          <input type="date" class="form-control" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="col-md-2">
+          <label for="to_date" class="form-label">To Date</label>
+          <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <div class="col-md-2">
+          <label for="ledger" class="form-label">Ledger</label>
+          <select class="form-select" id="ledger" name="ledger">
+            <option value="">All Ledgers</option>
+            {% for ledger in all_ledgers %}
+            <option value="{{ ledger.id }}" {% if ledger_filter == ledger.id|stringformat:"s" %}selected{% endif %}>
+              {{ ledger.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="type" class="form-label">Type</label>
+          <select class="form-select" id="type" name="type">
+            <option value="">All Types</option>
+            <option value="LOAN" {% if type_filter == 'LOAN' %}selected{% endif %}>Loan</option>
+            <option value="RELEASE" {% if type_filter == 'RELEASE' %}selected{% endif %}>Release</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="search" class="form-label">Search Pawn No</label>
+          <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search pawn no...">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filter</button>
+        </div>
+      </form>
+
+      {% if from_date or to_date or ledger_filter or type_filter or search_query %}
+      <div class="mb-3">
+        <a href="{% url 'entries:loans' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fa-solid fa-times"></i> Clear Filters
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- Summary Section -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6 class="card-title">Loan Summary</h6>
+              <p class="mb-1"><strong>Principal:</strong> {{ loan_totals.total_principal|default:"0.00" }}</p>
+              <p class="mb-0"><strong>Interest:</strong> {{ loan_totals.total_interest|default:"0.00" }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6 class="card-title">Release Summary</h6>
+              <p class="mb-1"><strong>Principal:</strong> {{ release_totals.total_principal|default:"0.00" }}</p>
+              <p class="mb-0"><strong>Interest:</strong> {{ release_totals.total_interest|default:"0.00" }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Print and Count Actions -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0">
+          Showing {{ page_obj.paginator.count }} loan transaction{{ page_obj.paginator.count|pluralize }}
+        </p>
+        <div class="btn-group" role="group">
+          <button onclick="window.print()" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-print"></i> Print
+          </button>
+        </div>
+      </div>
+
+      <!-- Loans Table -->
+      <div class="table-responsive">
+        <!-- Screen version with pagination -->
+        <table class="table table-hover screen-only">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Time</th>
+              <th scope="col">Pawn No</th>
+              <th scope="col">Ledger</th>
+              <th scope="col">Type</th>
+              <th scope="col" class="text-end">Principal</th>
+              <th scope="col" class="text-end">Interest</th>
+              <th scope="col">Created By</th>
+              <th scope="col">Updated By</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in page_obj %}
+            <tr>
+              <td>{{ loan.created_at|date:"Y-m-d" }}</td>
+              <td>{{ loan.created_at|time:"H:i:s" }}</td>
+              <td>{{ loan.pawn_no }}</td>
+              <td>{{ loan.ledger.name }}</td>
+              <td>
+                {% if loan.type == 'LOAN' %}
+                  <span class="badge bg-danger">{{ loan.type }}</span>
+                {% else %}
+                  <span class="badge bg-success">{{ loan.type }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ loan.principal }}</td>
+              <td class="text-end">{{ loan.interest }}</td>
+              <td>{{ loan.created_by.username|default:"-" }}</td>
+              <td>{{ loan.updated_by.username|default:"-" }}</td>
+              <td>
+                <a href="{% url 'entries:edit_loan' loan.pk %}" class="btn btn-sm btn-outline-primary">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </a>
+                {% if is_admin_user %}
+                <a href="{% url 'entries:loan_history' loan.pk %}" class="btn btn-sm btn-outline-secondary" title="History">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ loan.pk }}">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+                {% endif %}
+                
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteModal{{ loan.pk }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ loan.pk }}" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel{{ loan.pk }}">Confirm Delete</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <p>Are you sure you want to delete this loan transaction?</p>
+                        <div class="card">
+                          <div class="card-body">
+                            <p class="mb-1"><strong>Pawn No:</strong> {{ loan.pawn_no }}</p>
+                            <p class="mb-1"><strong>Ledger:</strong> {{ loan.ledger.name }}</p>
+                            <p class="mb-1"><strong>Type:</strong> {{ loan.type }}</p>
+                            <p class="mb-1"><strong>Principal:</strong> {{ loan.principal }}</p>
+                            <p class="mb-0"><strong>Interest:</strong> {{ loan.interest }}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="post" action="{% url 'entries:delete_loan' loan.pk %}" class="d-inline">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="10" class="text-center text-muted">No loan transactions found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        
+        <!-- Print version showing all records -->
+        <table class="table table-sm print-only" style="display: none;">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Time</th>
+              <th scope="col">Pawn No</th>
+              <th scope="col">Ledger</th>
+              <th scope="col">Type</th>
+              <th scope="col" class="text-end">Principal</th>
+              <th scope="col" class="text-end">Interest</th>
+              <th scope="col">Created By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in all_loans %}
+            <tr>
+              <td>{{ loan.created_at|date:"Y-m-d" }}</td>
+              <td>{{ loan.created_at|time:"H:i:s" }}</td>
+              <td>{{ loan.pawn_no }}</td>
+              <td>{{ loan.ledger.name }}</td>
+              <td>{{ loan.type }}</td>
+              <td class="text-end">{{ loan.principal }}</td>
+              <td class="text-end">{{ loan.interest }}</td>
+              <td>{{ loan.created_by.username|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+      <nav aria-label="Loan transactions pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">&laquo; First</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+          </li>
+          {% endif %}
+
+          <li class="page-item active">
+            <span class="page-link">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+          </li>
+
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last &raquo;</a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

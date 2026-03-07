@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">{% if is_edit_mode %}Edit Denomination{% elif is_view_mode %}View Denomination{% else %}Add Denomination{% endif %}</h4>
+          {% if not is_edit_mode and not is_view_mode %}
+          <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#searchDenominationModal">
+            <i class="fas fa-search me-1"></i> Search/Edit
+          </button>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if is_edit_mode or is_view_mode %}
+          <div class="alert alert-info mb-3">
+            <strong>Key:</strong> {{ key }}<br>
+            <strong>Created by:</strong> {{ created_by.username }}<br>
+            <strong>Created at:</strong> {{ created_at|date:"d-m-Y H:i" }}<br>
+            <strong>Updated at:</strong> {{ updated_at|date:"d-m-Y H:i" }}
+          </div>
+          {% endif %}
+          <form method="post">
+            {% csrf_token %}
+            
+            <!-- Shop -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-3">
+                <label class="form-label mb-0" for="{{ form.shop.id_for_label }}">{{ form.shop.label }}</label>
+              </div>
+              <div class="col-md-4">
+                {% if is_edit_mode or is_view_mode %}
+                  <input type="text" class="form-control" value="{{ shop.name|default:'—' }}" disabled>
+                  {% if is_edit_mode %}
+                  <input type="hidden" name="shop" value="{{ shop.id }}">
+                  {% endif %}
+                {% else %}
+                  {{ form.shop }}
+                {% endif %}
+                {% if form.shop.errors %}
+                  <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Time Period -->
+            <div class="row mb-4 align-items-center">
+              <div class="col-md-3">
+                <label class="form-label mb-0" for="{{ form.time_period.id_for_label }}">{{ form.time_period.label }}</label>
+              </div>
+              <div class="col-md-4">
+                {% if is_edit_mode or is_view_mode %}
+                  <input type="text" class="form-control" value="{{ time_period|title }}" disabled>
+                  {% if is_edit_mode %}
+                  <input type="hidden" name="time_period" value="{{ time_period }}">
+                  {% endif %}
+                {% else %}
+                  {{ form.time_period }}
+                {% endif %}
+                {% if form.time_period.errors %}
+                  <div class="text-danger small">{{ form.time_period.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <hr class="my-4">
+            
+            <!-- 2000 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_2000.id_for_label }}">{{ form.note_2000.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_2000 }}
+                {% if form.note_2000.errors %}
+                  <div class="text-danger small">{{ form.note_2000.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_2000" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 500 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_500.id_for_label }}">{{ form.note_500.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_500 }}
+                {% if form.note_500.errors %}
+                  <div class="text-danger small">{{ form.note_500.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 200 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_200.id_for_label }}">{{ form.note_200.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_200 }}
+                {% if form.note_200.errors %}
+                  <div class="text-danger small">{{ form.note_200.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 100 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_100.id_for_label }}">{{ form.note_100.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_100 }}
+                {% if form.note_100.errors %}
+                  <div class="text-danger small">{{ form.note_100.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 50 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_50.id_for_label }}">{{ form.note_50.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_50 }}
+                {% if form.note_50.errors %}
+                  <div class="text-danger small">{{ form.note_50.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 20 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_20 }}
+                {% if form.note_20.errors %}
+                  <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 10 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.note_10.id_for_label }}">{{ form.note_10.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.note_10 }}
+                {% if form.note_10.errors %}
+                  <div class="text-danger small">{{ form.note_10.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- Coins -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.coins.id_for_label }}">{{ form.coins.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.coins }}
+                {% if form.coins.errors %}
+                  <div class="text-danger small">{{ form.coins.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_coins" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- Damage -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.damage.id_for_label }}">{{ form.damage.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.damage }}
+                {% if form.damage.errors %}
+                  <div class="text-danger small">{{ form.damage.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_damage" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="row mb-3 align-items-center border-top pt-3">
+              <div class="col-md-2">
+                <label class="form-label mb-0 fw-bold">Total</label>
+              </div>
+              <div class="col-md-2">
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_total" class="fw-bold text-primary" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+              {% if is_view_mode %}
+                <a href="{% url 'entries:denominations' %}" class="btn btn-outline-secondary">Back</a>
+              {% else %}
+                <button type="submit" class="btn btn-primary">{% if is_edit_mode %}Update Denomination{% else %}Add Denomination{% endif %}</button>
+                <a href="{% if is_edit_mode %} {% url 'entries:denominations' %} {% else %} {% url 'entries:denominations' %} {% endif %}" class="btn btn-outline-secondary">Cancel</a>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Search Denomination Modal -->
+<div class="modal fade" id="searchDenominationModal" tabindex="-1" aria-labelledby="searchDenominationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="searchDenominationModalLabel">Search Denomination</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="searchDate" class="form-label">Date *</label>
+          <input type="date" class="form-control" id="searchDate" required>
+        </div>
+        <div class="mb-3">
+          <label for="searchTimePeriod" class="form-label">Time Period *</label>
+          <select class="form-select" id="searchTimePeriod" required>
+            <option value="">Select Time Period</option>
+            <option value="MORNING">Morning</option>
+            <option value="AFTERNOON">Afternoon</option>
+            <option value="EVENING">Evening</option>
+            <option value="NIGHT">Night</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="searchUser" class="form-label">User *</label>
+          <select class="form-select" id="searchUser" required>
+            <option value="">Select User</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-info" onclick="searchDenominationView()"><i class="fas fa-eye me-1"></i> View</button>
+        <button type="button" class="btn btn-primary" onclick="searchDenominationEdit()"><i class="fas fa-edit me-1"></i> Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Disable all form fields in view mode
+  {% if is_view_mode %}
+  const formElements = document.querySelectorAll('input, textarea, select, button[type="submit"]');
+  formElements.forEach(element => {
+    element.disabled = true;
+  });
+  {% endif %}
+  
+  // Function to extract numeric value from text with INR symbol
+  function getNumericValue(text) {
+    return parseFloat(text.replace('₹', '').trim()) || 0;
+  }
+  
+  // Function to calculate total
+  function updateTotal() {
+    const calc2000 = getNumericValue(document.getElementById('calc_2000').textContent);
+    const calc500 = getNumericValue(document.getElementById('calc_500').textContent);
+    const calc200 = getNumericValue(document.getElementById('calc_200').textContent);
+    const calc100 = getNumericValue(document.getElementById('calc_100').textContent);
+    const calc50 = getNumericValue(document.getElementById('calc_50').textContent);
+    const calc20 = getNumericValue(document.getElementById('calc_20').textContent);
+    const calc10 = getNumericValue(document.getElementById('calc_10').textContent);
+    const calcCoins = getNumericValue(document.getElementById('calc_coins').textContent);
+    const calcDamage = getNumericValue(document.getElementById('calc_damage').textContent);
+    
+    const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10 + calcCoins + calcDamage;
+    document.getElementById('calc_total').textContent = '₹ ' + total.toFixed(2);
+  }
+  
+  // Function to calculate and display denomination values
+  function calculateDenomination(inputId, denomination, displayId) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(displayId);
+    
+    if (input && display) {
+      const updateValue = function() {
+        const value = parseFloat(input.value) || 0;
+        const result = value * denomination;
+        display.textContent = '₹ ' + result.toFixed(2);
+        updateTotal();
+      };
+      
+      input.addEventListener('keyup', updateValue);
+      input.addEventListener('input', updateValue);
+      input.addEventListener('change', updateValue);
+    }
+  }
+  
+  // Function to display same value for coins and damage
+  function displaySameValue(inputId, displayId) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(displayId);
+    
+    if (input && display) {
+      const updateValue = function() {
+        const value = parseFloat(input.value) || 0;
+        display.textContent = '₹ ' + value.toFixed(2);
+        updateTotal();
+      };
+      
+      input.addEventListener('keyup', updateValue);
+      input.addEventListener('input', updateValue);
+      input.addEventListener('change', updateValue);
+    }
+  }
+  
+  // Setup calculations for note denominations
+  calculateDenomination('id_note_2000', 2000, 'calc_2000');
+  calculateDenomination('id_note_500', 500, 'calc_500');
+  calculateDenomination('id_note_200', 200, 'calc_200');
+  calculateDenomination('id_note_100', 100, 'calc_100');
+  calculateDenomination('id_note_50', 50, 'calc_50');
+  calculateDenomination('id_note_20', 20, 'calc_20');
+  calculateDenomination('id_note_10', 10, 'calc_10');
+  
+  // Setup display for coins and damage
+  displaySameValue('id_coins', 'calc_coins');
+  displaySameValue('id_damage', 'calc_damage');
+  
+  // Trigger initial calculations if form has values (edit or view mode)
+  {% if is_edit_mode or is_view_mode %}
+  const triggerCalculations = function() {
+    const fields = ['id_note_2000', 'id_note_500', 'id_note_200', 'id_note_100', 'id_note_50', 'id_note_20', 'id_note_10', 'id_coins', 'id_damage'];
+    fields.forEach(fieldId => {
+      const field = document.getElementById(fieldId);
+      if (field && field.value) {
+        field.dispatchEvent(new Event('input'));
+      }
+    });
+  };
+  setTimeout(triggerCalculations, 100);
+  {% endif %}
+  
+  // Load users when modal is opened
+  const searchModal = document.getElementById('searchDenominationModal');
+  if (searchModal) {
+    searchModal.addEventListener('show.bs.modal', function() {
+      fetch('{% url "entries:get_users_for_denomination" %}')
+        .then(response => response.json())
+        .then(data => {
+          const userSelect = document.getElementById('searchUser');
+          userSelect.innerHTML = '<option value="">Select User</option>';
+          data.users.forEach(user => {
+            userSelect.innerHTML += `<option value="${user.username}">${user.username}</option>`;
+          });
+        })
+        .catch(error => console.error('Error loading users:', error));
+    });
+  }
+  
+  // Set today's date as default
+  const searchDateInput = document.getElementById('searchDate');
+  if (searchDateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    searchDateInput.value = today;
+  }
+});
+
+// Function to generate key from form values
+function generateDenominationKey() {
+  const date = document.getElementById('searchDate').value;
+  const timePeriod = document.getElementById('searchTimePeriod').value;
+  const username = document.getElementById('searchUser').value;
+  
+  if (!date || !timePeriod || !username) {
+    alert('Please fill in all fields');
+    return null;
+  }
+  
+  // Format date to DDMMYYYY
+  const dateObj = new Date(date);
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const year = dateObj.getFullYear();
+  const formattedDate = day + month + year;
+  
+  // Map time period to code
+  const timePeriodMap = {
+    'MORNING': '01',
+    'AFTERNOON': '02',
+    'EVENING': '03',
+    'NIGHT': '04'
+  };
+  const timePeriodCode = timePeriodMap[timePeriod] || '00';
+  
+  // Generate key
+  return `${formattedDate}-${timePeriodCode}-${username}`;
+}
+
+// Function to view denomination (read-only)
+function searchDenominationView() {
+  const key = generateDenominationKey();
+  if (key) {
+    window.location.href = `{% url 'entries:denomination' %}view/${key}/`;
+  }
+}
+
+// Function to edit denomination
+function searchDenominationEdit() {
+  const key = generateDenominationKey();
+  if (key) {
+    window.location.href = `{% url 'entries:denomination' %}edit/${key}/`;
+  }
+}
+</script>
+
+{% endblock %}

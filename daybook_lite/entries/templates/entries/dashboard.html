@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-3">
+
+  <!-- Title row: Dashboard + Filter button -->
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <h5 class="mb-0">Dashboard</h5>
+    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+      <i class="fa-solid fa-filter me-1"></i>Filters
+    </button>
+  </div>
+
+  <!-- Applied filter badge row -->
+  <div class="mb-3">
+    <span class="text-muted small" id="applied-filters">
+      <span id="applied-range"></span>
+      <span id="applied-shop"></span>
+    </span>
+    <div id="chart-spinner" class="spinner-border spinner-border-sm text-secondary ms-2 d-none" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Filter Modal -->
+  <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title" id="filterModalLabel"><i class="fa-solid fa-filter me-2"></i>Dashboard Filters</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="filter-from" class="form-label small fw-semibold">From Date</label>
+            <input type="date" id="filter-from" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label for="filter-to" class="form-label small fw-semibold">To Date</label>
+            <input type="date" id="filter-to" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3">
+            <label for="filter-shop" class="form-label small fw-semibold">Shop</label>
+            <select id="filter-shop" class="form-select form-select-sm">
+              <option value="">All Shops</option>
+              {% for s in shops %}
+              <option value="{{ s.pk }}">{{ s.short_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-reset">Reset</button>
+          <button type="button" class="btn btn-sm btn-primary" id="btn-apply">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total Debit</div>
+          <div class="fs-5 fw-bold text-danger" id="stat-total-debit">&mdash;</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total Credit</div>
+          <div class="fs-5 fw-bold text-success" id="stat-total-credit">&mdash;</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total Loans</div>
+          <div class="fs-5 fw-bold text-info" id="stat-loans-week">&mdash;</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total Releases</div>
+          <div class="fs-5 fw-bold text-warning" id="stat-releases-week">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area Chart -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-3 pb-2">
+      <h6 class="mb-0"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Loan Activity</h6>
+    </div>
+    <div class="card-body">
+      <div id="loanChart"></div>
+    </div>
+  </div>
+
+  <!-- Pie Charts -->
+  <div class="row g-3 mt-2">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-3 pb-2">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2 text-danger"></i>Debit by Name</h6>
+        </div>
+        <div class="card-body">
+          <div id="debitPieChart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-3 pb-2">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2 text-success"></i>Credit by Name</h6>
+        </div>
+        <div class="card-body">
+          <div id="creditPieChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script>
+  const CHART_DATA_URL = '{% url "api:dashboard_chart_data" %}';
+  const PIE_DATA_URL   = '{% url "api:transaction_pie_data" %}';
+
+  // Helper function to get local date string in YYYY-MM-DD format
+  function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Defaults
+  const todayStr    = getLocalDateString(new Date());
+  const defaultFrom = getLocalDateString(new Date(Date.now() - 6 * 86400000));
+
+  const elFrom = document.getElementById('filter-from');
+  const elTo   = document.getElementById('filter-to');
+  const elShop = document.getElementById('filter-shop');
+
+  elFrom.value = defaultFrom;
+  elTo.value   = todayStr;
+
+  // ── Area chart config ──
+  const chartOptions = {
+    chart: {
+      type: 'area',
+      height: 350,
+      toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
+      zoom: { enabled: true, type: 'x', autoScaleYaxis: true },
+    },
+    series: [],
+    xaxis: {
+      type: 'datetime',
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: {
+        datetimeUTC: false,
+        datetimeFormatter: { year: 'yyyy', month: "MMM 'yy", day: 'dd MMM', hour: 'HH:mm' },
+      },
+      tooltip: { enabled: true },
+    },
+    yaxis: {
+      min: 0,
+      forceNiceScale: true,
+      labels: { formatter: (val) => Math.floor(val) },
+    },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2.5 },
+    markers: { size: 0, hover: { size: 6 } },
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 100] },
+    },
+    colors: ['#0d6efd', '#198754'],
+    legend: { position: 'top', horizontalAlign: 'left' },
+    tooltip: { shared: true, intersect: false, x: { format: 'dd MMM yyyy' } },
+    grid: { borderColor: 'rgba(0,0,0,0.05)', xaxis: { lines: { show: false } } },
+    noData: { text: 'Loading chart data\u2026' },
+  };
+
+  const chart = new ApexCharts(document.getElementById('loanChart'), chartOptions);
+  chart.render();
+
+  // ── Pie chart config ──
+  function pieOptions(noDataText) {
+    return {
+      chart: { 
+        type: 'pie', 
+        height: 350,
+        toolbar: { show: true, tools: { download: true } },
+     },
+      series: [],
+      labels: [],
+      legend: { position: 'bottom', fontSize: '13px' },
+      dataLabels: {
+        enabled: true,
+        formatter: (val, opts) => {
+          const name = opts.w.globals.labels[opts.seriesIndex];
+          return name.length > 15 ? name.slice(0, 14) + '\u2026' : name;
+        },
+        style: { fontSize: '11px', fontWeight: 500 },
+        dropShadow: { enabled: false },
+      },
+      tooltip: {
+        y: { formatter: (val) => '\u20B9' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+      },
+      noData: { text: noDataText },
+    };
+  }
+
+  const debitPie  = new ApexCharts(document.getElementById('debitPieChart'),  pieOptions('No debit data'));
+  const creditPie = new ApexCharts(document.getElementById('creditPieChart'), pieOptions('No credit data'));
+  debitPie.render();
+  creditPie.render();
+
+  // ── Helpers ──
+  function formatDate(iso) {
+    const [y, m, d] = iso.split('-');
+    return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function toTimestamp(iso) {
+    const [y, m, d] = iso.split('-');
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).getTime();
+  }
+
+  function updateAppliedBadge(fromDate, toDate, shopId) {
+    const rangeLabel = `${formatDate(fromDate)} \u2013 ${formatDate(toDate)}`;
+    document.getElementById('applied-range').innerHTML =
+      `<i class="fa-regular fa-calendar me-1"></i>${rangeLabel}`;
+
+    const shopEl = document.getElementById('applied-shop');
+    if (shopId) {
+      const name = elShop.options[elShop.selectedIndex].text;
+      shopEl.innerHTML = `<span class="ms-3"><i class="fa-solid fa-shop me-1"></i>${name}</span>`;
+    } else {
+      shopEl.innerHTML = '';
+    }
+  }
+
+  // ── Load all charts ──
+  function loadCharts(fromDate, toDate, shopId) {
+    const spinner = document.getElementById('chart-spinner');
+    spinner.classList.remove('d-none');
+
+    updateAppliedBadge(fromDate, toDate, shopId);
+
+    let qs = `from_date=${fromDate}&to_date=${toDate}`;
+    if (shopId) qs += `&shop=${shopId}`;
+
+    // Area chart
+    fetch(`${CHART_DATA_URL}?${qs}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+      .then((r) => { if (!r.ok) throw new Error('Network error'); return r.json(); })
+      .then((data) => {
+        const fmt = (v) => '\u20B9' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        document.getElementById('stat-total-debit').textContent  = fmt(data.summary.total_debit);
+        document.getElementById('stat-total-credit').textContent = fmt(data.summary.total_credit);
+        document.getElementById('stat-loans-week').textContent     = data.summary.loans_week;
+        document.getElementById('stat-loans-week').textContent     = data.summary.loans_week;
+        document.getElementById('stat-releases-week').textContent  = data.summary.releases_week;
+
+        const loanSeries    = data.labels.map((iso, i) => [toTimestamp(iso), data.loan_data[i]]);
+        const releaseSeries = data.labels.map((iso, i) => [toTimestamp(iso), data.release_data[i]]);
+
+        chart.updateSeries([
+          { name: 'Loans',    data: loanSeries },
+          { name: 'Releases', data: releaseSeries },
+        ]);
+        spinner.classList.add('d-none');
+      })
+      .catch((err) => { console.error('Chart error:', err); spinner.classList.add('d-none'); });
+
+    // Pie charts
+    fetch(`${PIE_DATA_URL}?${qs}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((pie) => {
+        debitPie.updateOptions({ labels: pie.debit.labels });
+        debitPie.updateSeries(pie.debit.values);
+        creditPie.updateOptions({ labels: pie.credit.labels });
+        creditPie.updateSeries(pie.credit.values);
+      })
+      .catch((err) => console.error('Pie error:', err));
+  }
+
+  // ── Initial load ──
+  loadCharts(defaultFrom, todayStr, '');
+
+  // ── Modal buttons ──
+  document.getElementById('btn-apply').addEventListener('click', () => {
+    const from = elFrom.value;
+    const to   = elTo.value;
+    if (!from || !to) { alert('Please select both dates.'); return; }
+    if (from > to)    { alert('From date must be before To date.'); return; }
+
+    loadCharts(from, to, elShop.value);
+
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    elFrom.value = defaultFrom;
+    elTo.value   = todayStr;
+    elShop.value = '';
+
+    loadCharts(defaultFrom, todayStr, '');
+
+    bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
+  });
+</script>
+{% endblock %}

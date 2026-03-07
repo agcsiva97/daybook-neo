@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">User Information</h4>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-at"></i> Username:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.username }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-address-card"></i> Full Name:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.first_name|default:"" }}
+              {{ selected_user.last_name|default:"" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-envelope"></i> Email:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.email|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-mobile"></i> Mobile Number:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.mobile_number|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-phone"></i> Alternate Number:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.alternate_number|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-calendar"></i> Date Joined:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ selected_user.date_joined|date:"F d, Y" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-user-check"></i> Status:</label>
+            <div class="col-sm-9">
+              {% if selected_user.is_active %}
+                <p class="form-control-plaintext"><span class="badge bg-success">Active</span></p>
+              {% else %}
+                <p class="form-control-plaintext"><span class="badge bg-danger">Inactive</span></p>
+              {% endif %}
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-users"></i> Groups:</label>
+            <div class="col-sm-9">
+                {% for group in selected_user.groups.all %}
+                  <p class="form-control-plaintext">{{ group.name }}</p>
+                {% empty %}
+                  <p class="form-control-plaintext">No group</p>
+                {% endfor %}
+            </div>
+            </div>
+        </div>
+        <div class="card-footer">
+          <button onclick="window.location.href='{% url 'accounts:users_list' %}'" class="btn btn-secondary">Back to Users</button>
+          {% if can_edit %}
+            <button onclick="window.location.href='{% url 'accounts:edit_user' selected_user.username %}'" class="btn btn-primary"><i class="fa-solid fa-edit"></i> Edit User</button>
+          {% endif %}
+          {% if is_staff_member %}
+            <form method="POST" action="{% url 'accounts:promote_to_admin' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to promote {{ selected_user.username }} to Admin group?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary">Promote to Admin</button>
+            </form>
+          {% endif %}
+          {% if can_make_inactive %}
+            <form method="POST" action="{% url 'accounts:deactivate_staff_user' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to mark {{ selected_user.username }} as inactive?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger">Make Inactive</button>
+            </form>
+          {% endif %}
+          {% if can_make_active %}
+            <form method="POST" action="{% url 'accounts:activate_staff_user' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to mark {{ selected_user.username }} as active?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-success">Make Active</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

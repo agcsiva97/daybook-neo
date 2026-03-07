@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Users</h4>
+      <a href="{% url 'accounts:create_user' %}" class="btn btn-primary">+ Create User</a>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th scope="col">Username</th>
+              <th scope="col">First Name</th>
+              <th scope="col">Last Name</th>
+              <th scope="col">Mobile Number</th>
+              <th scope="col">Group</th>
+              <th scope="col">Date Joined</th>
+              <th scope="col">Last Login</th>
+              <th scope="col">Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr onclick="window.location.href='/accounts/users/{{ user.username }}'" style="cursor:pointer;">
+              <td>{{ user.username }}</td>
+              <td>{{ user.first_name|default:"-" }}</td>
+              <td>{{ user.last_name|default:"-" }}</td>
+              <td>{{ user.mobile_number|default:"-" }}</td>
+              <td>
+                {% for group in user.groups.all %}
+                  <span class="badge bg-primary">{{ group.name }}</span>
+                {% empty %}
+                  <span class="text-muted">No group</span>
+                {% endfor %}
+              </td>
+              <td>{{ user.date_joined|date:"M d, Y" }}</td>
+              <td>
+                {% if user.last_login %}
+                  {{ user.last_login|date:"M d, Y H:i" }}
+                {% else %}
+                  <span class="text-muted">Never</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if user.is_active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-danger">Inactive</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No users found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer">
+      <a href="{% url 'entries:home' %}" class="btn btn-secondary">Back to Home</a>
+    </div>
+</div>
+<br>
+</div>
+{% endblock %}

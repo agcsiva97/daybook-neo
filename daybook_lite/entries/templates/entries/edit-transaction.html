@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Edit Transaction</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
+              {{ form.date }}
+              {% if form.date.errors %}
+                <div class="text-danger small">{{ form.date.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
+              {{ form.time }}
+              {% if form.time.errors %}
+                <div class="text-danger small">{{ form.time.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
+              {{ form.amount }}
+              {% if form.amount.errors %}
+                <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
+              {{ form.shop }}
+              {% if form.shop.errors %}
+                <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+              {{ form.name }}
+              {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label d-block">Transaction Type</label>
+              <div class="d-flex gap-3">
+                {% for radio in form.tr_type %}
+                  <div class="form-check form-check-inline">
+                    {{ radio.tag }}
+                    <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if form.tr_type.errors %}
+                <div class="text-danger small">{{ form.tr_type.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.remarks.id_for_label }}">Remarks</label>
+              {{ form.remarks }}
+              {% if form.remarks.errors %}
+                <div class="text-danger small">{{ form.remarks.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-sm btn-primary">Update Transaction</button>
+              <a href="{% url 'entries:transactions' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <div class="card mt-3">
+        <div class="card-header">
+          <h6 class="mb-0">Transaction Details</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <th width="150">Created At:</th>
+                <td>{{ transaction.created_at|date:"M d, Y H:i:s" }}</td>
+              </tr>
+              <tr>
+                <th>Updated At:</th>
+                <td>{{ transaction.updated_at|date:"M d, Y H:i:s" }}</td>
+              </tr>
+              {% if transaction.created_by %}
+              <tr>
+                <th>Created By:</th>
+                <td>{{ transaction.created_by }}</td>
+              </tr>
+              {% endif %}
+              {% if transaction.updated_by %}
+              <tr>
+                <th>Updated By:</th>
+                <td>{{ transaction.updated_by }}</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

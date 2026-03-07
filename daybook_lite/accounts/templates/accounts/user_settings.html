@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">User Settings</h4>
+          <a href="{% url 'accounts:edit_profile' %}" class="btn btn-sm btn-primary"><i class="fa-solid fa-user-pen"></i> Edit Profile</a>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-at"></i> Username:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.username }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-address-card"></i> Full Name:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.first_name|default:"" }}
+              {{ user.last_name|default:"" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-envelope"></i> Email:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.email|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-mobile"></i> Mobile Number:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.mobile_number|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-phone"></i> Alternate Number:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.alternate_number|default:"Not set" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-calendar"></i> Date Joined:</label>
+            <div class="col-sm-9">
+              <p class="form-control-plaintext">{{ user.date_joined|date:"F d, Y" }}</p>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-3 col-form-label fw-bold"><i class="fa-solid fa-users"></i> Groups:</label>
+            <div class="col-sm-9">
+                {% for group in user.groups.all %}
+                  <p class="form-control-plaintext">{{ group.name }}</p>
+                {% empty %}
+                  <p class="form-control-plaintext">No group</p>
+                {% endfor %}
+            </div>
+            </div>
+          <hr>
+          <div class="mb-0">
+            <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-warning">Change Password</a>
+          </div>
+        </div>
+        <div class="card-footer">
+          <a href="{% url 'entries:home' %}" class="btn btn-secondary">Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Edit User: {{ selected_user.username }}</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label"><i class="fa-solid fa-at"></i> Username</label>
+              <input type="text" class="form-control" value="{{ selected_user.username }}" disabled>
+              <small class="text-muted">Username cannot be changed</small>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="{{ form.first_name.id_for_label }}"><i class="fa-solid fa-address-card"></i> Full Name</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                  <div class="text-danger small">{{ form.first_name.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label" for="{{ form.last_name.id_for_label }}"><br></label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                  <div class="text-danger small">{{ form.last_name.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.email.id_for_label }}"><i class="fa-solid fa-envelope"></i> Email</label>
+              {{ form.email }}
+              {% if form.email.errors %}
+                <div class="text-danger small">{{ form.email.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.mobile_number.id_for_label }}"><i class="fa-solid fa-mobile"></i> Mobile Number</label>
+              {{ form.mobile_number }}
+              {% if form.mobile_number.errors %}
+                <div class="text-danger small">{{ form.mobile_number.errors|striptags }}</div>
+              {% endif %}
+              <small class="text-muted">10 digit mobile number</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.alternate_number.id_for_label }}"><i class="fa-solid fa-phone"></i> Alternate Number</label>
+              {{ form.alternate_number }}
+              {% if form.alternate_number.errors %}
+                <div class="text-danger small">{{ form.alternate_number.errors|striptags }}</div>
+              {% endif %}
+              <small class="text-muted">10 digit alternate number</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.group.id_for_label }}"><i class="fa-solid fa-users"></i> User Group</label>
+              {{ form.group }}
+              {% if form.group.errors %}
+                <div class="text-danger small">{{ form.group.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <a href="{% url 'accounts:user_info' selected_user.username %}" class="btn btn-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

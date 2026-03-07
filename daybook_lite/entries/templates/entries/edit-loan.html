@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Edit Loan Transaction</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
+              {{ form.date }}
+              {% if form.date.errors %}
+                <div class="text-danger small">{{ form.date.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
+              {{ form.time }}
+              {% if form.time.errors %}
+                <div class="text-danger small">{{ form.time.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.pawn_no.id_for_label }}">Pawn No</label>
+              {{ form.pawn_no }}
+              {% if form.pawn_no.errors %}
+                <div class="text-danger small">{{ form.pawn_no.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
+              {{ form.shop }}
+              {% if form.shop.errors %}
+                <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.ledger.id_for_label }}">Ledger</label>
+              {{ form.ledger }}
+              {% if form.ledger.errors %}
+                <div class="text-danger small">{{ form.ledger.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label d-block">Transaction Type</label>
+              <div class="d-flex gap-3">
+                {% for radio in form.type %}
+                  <div class="form-check form-check-inline">
+                    {{ radio.tag }}
+                    <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if form.type.errors %}
+                <div class="text-danger small">{{ form.type.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.principal.id_for_label }}">Principal</label>
+              {{ form.principal }}
+              {% if form.principal.errors %}
+                <div class="text-danger small">{{ form.principal.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.interest.id_for_label }}">Interest</label>
+              {{ form.interest }}
+              {% if form.interest.errors %}
+                <div class="text-danger small">{{ form.interest.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-sm btn-primary">Update Loan Transaction</button>
+              <a href="{% url 'entries:loans' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <div class="card mt-3">
+        <div class="card-header">
+          <h6 class="mb-0">Loan Transaction Details</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <th width="150">Created At:</th>
+                <td>{{ loan.created_at|date:"M d, Y H:i:s" }}</td>
+              </tr>
+              <tr>
+                <th>Updated At:</th>
+                <td>{{ loan.updated_at|date:"M d, Y H:i:s" }}</td>
+              </tr>
+              <tr>
+                <th>Created By:</th>
+                <td>{{ loan.created_by.username|default:"N/A" }}</td>
+              </tr>
+              <tr>
+                <th>Updated By:</th>
+                <td>{{ loan.updated_by.username|default:"N/A" }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editLoanShop = document.getElementById('edit_loan_shop');
+    const editLoanLedger = document.getElementById('edit_loan_ledger');
+    
+    if (!editLoanShop || !editLoanLedger) return;
+    
+    // Store the current ledger value to restore it after loading
+    const currentLedgerId = editLoanLedger.value;
+    
+    editLoanShop.addEventListener('change', function() {
+        const shopId = this.value;
+        
+        // Clear existing ledger options
+        editLoanLedger.innerHTML = '<option value="">Loading...</option>';
+        editLoanLedger.disabled = true;
+        
+        if (!shopId) {
+            editLoanLedger.innerHTML = '<option value="">First select a shop</option>';
+            editLoanLedger.disabled = true;
+            return;
+        }
+        
+        // Fetch ledgers for selected shop
+        fetch(`/api/shops/${shopId}/ledgers/`)
+            .then(response => response.json())
+            .then(data => {
+                editLoanLedger.innerHTML = '';
+                editLoanLedger.disabled = false;
+                
+                if (data.length === 0) {
+                    editLoanLedger.innerHTML = '<option value="">No ledgers available for this shop</option>';
+                    editLoanLedger.disabled = true;
+                } else {
+                    data.forEach(ledger => {
+                        const option = new Option(ledger.name, ledger.id);
+                        editLoanLedger.add(option);
+                    });
+                    
+                    // Try to restore the previously selected ledger if it's in the new list
+                    if (currentLedgerId && document.querySelector(`#edit_loan_ledger option[value="${currentLedgerId}"]`)) {
+                        editLoanLedger.value = currentLedgerId;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ledgers:', error);
+                editLoanLedger.innerHTML = '<option value="">Error loading ledgers</option>';
+                editLoanLedger.disabled = true;
+            });
+    });
+});
+</script>
+
+{% endblock %}

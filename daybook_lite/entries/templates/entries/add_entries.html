@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-6">
+      <h5>Add Transaction</h5>
+      <form method="post" class="card card-body">
+        {% csrf_token %}
+        <div class="mb-3">
+          <div class="row">
+            <div class="col">
+              <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
+              {{ form.date }}
+              {% if form.date.errors %}
+                <div class="text-danger small">{{ form.date.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="col">
+              <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
+              {{ form.time }}
+              {% if form.time.errors %}
+                <div class="text-danger small">{{ form.time.errors|striptags }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
+          {{ form.shop }}
+          {% if form.shop.errors %}
+            <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
+          {{ form.amount }}
+          {% if form.amount.errors %}
+            <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <div class="text-danger small">{{ form.name.errors|striptags }}</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.remarks.id_for_label }}">Remarks</label>
+          {{ form.remarks }}
+          {% if form.remarks.errors %}
+            <div class="text-danger small">{{ form.remarks.errors|striptags }}</div>
+          {% endif %}
+        </div>
+        {% if form.non_field_errors %}
+          <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+        {% endif %}
+        <div class="row">
+          <div class="col">
+            {% comment %} பற்று {% endcomment %}
+            <button type="button" class="cust-button" onclick="submitTransaction('DEBIT')">DEBIT</button>
+          </div>
+          <div class="col">
+            {% comment %} வரவு {% endcomment %}
+            <button type="button" class="cust-button" onclick="submitTransaction('CREDIT')">CREDIT</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="col-md-6">
+      <h5>Loan Management</h5>
+      <div class="card card-body">
+        <div class="row">
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.date.id_for_label }}">{{ loan_form.date.label }}</label>
+                {{ loan_form.date }}
+                {% if loan_form.date.errors %}
+                  <div class="text-danger small">{{ loan_form.date.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.time.id_for_label }}">{{ loan_form.time.label }} <span class="text-muted small">(optional)</span></label>
+                {{ loan_form.time }}
+                {% if loan_form.time.errors %}
+                  <div class="text-danger small">{{ loan_form.time.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">{{ loan_form.shop.label }}</label>
+                {{ loan_form.shop }}
+                {% if loan_form.shop.errors %}
+                  <div class="text-danger small">{{ loan_form.shop.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">{{ loan_form.ledger.label }}</label>
+                {{ loan_form.ledger }}
+                {% if loan_form.ledger.errors %}
+                  <div class="text-danger small">{{ loan_form.ledger.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">{{ loan_form.pawn_no.label }}</label>
+            {{ loan_form.pawn_no }}
+            {% if loan_form.pawn_no.errors %}
+              <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ loan_form.principal.id_for_label }}">{{ loan_form.principal.label }}</label>
+            {{ loan_form.principal }}
+            {% if loan_form.principal.errors %}
+              <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ loan_form.interest.id_for_label }}">{{ loan_form.interest.label }}</label>
+            {{ loan_form.interest }}
+            {% if loan_form.interest.errors %}
+              <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% if loan_form.non_field_errors %}
+          <div class="text-danger small mb-2">{{ loan_form.non_field_errors|striptags }}</div>
+        {% endif %}
+        <div class="row">
+          <div class="col">
+            <button type="button" class="cust-button" onclick="submitLoan('LOAN')">Loan</button>
+          </div>
+          <div class="col">
+            <button type="button" class="cust-button" onclick="submitLoan('RELEASE')">Release</button>
+          </div>
+        </div>
+      </div> 
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fromLedger = document.getElementById('id_from_ledger');
+    const toLedger = document.getElementById('id_to_ledger');
+    
+    if (!fromLedger || !toLedger) return;
+    
+    // Store all original options
+    const fromOptions = Array.from(fromLedger.options).map(opt => ({
+        value: opt.value,
+        text: opt.text
+    }));
+    
+    const toOptions = Array.from(toLedger.options).map(opt => ({
+        value: opt.value,
+        text: opt.text
+    }));
+    
+    // Function to filter options
+    function filterOptions(selectElement, allOptions, excludeValue) {
+        const currentValue = selectElement.value;
+        
+        // Clear current options
+        selectElement.innerHTML = '';
+        
+        // Add filtered options
+        allOptions.forEach(opt => {
+            if (opt.value !== excludeValue) {
+                const option = new Option(opt.text, opt.value);
+                selectElement.add(option);
+            }
+        });
+        
+        // Restore previous selection if still valid
+        if (currentValue && currentValue !== excludeValue) {
+            selectElement.value = currentValue;
+        }
+    }
+    
+    // Event listeners
+    fromLedger.addEventListener('change', function() {
+        filterOptions(toLedger, toOptions, this.value);
+    });
+    
+    toLedger.addEventListener('change', function() {
+        filterOptions(fromLedger, fromOptions, this.value);
+    });
+});
+
+// Loan form - dynamically load ledgers based on shop selection
+document.addEventListener('DOMContentLoaded', function() {
+    const loanShop = document.getElementById('loan_shop');
+    const loanLedger = document.getElementById('loan_ledger');
+    
+    if (!loanShop || !loanLedger) return;
+    
+    loanShop.addEventListener('change', function() {
+        const shopId = this.value;
+        
+        // Clear existing ledger options
+        loanLedger.innerHTML = '<option value="">Loading...</option>';
+        loanLedger.disabled = true;
+        
+        if (!shopId) {
+            loanLedger.innerHTML = '<option value="">First select a shop</option>';
+            loanLedger.disabled = true;
+            return;
+        }
+        
+        // Fetch ledgers for selected shop
+        fetch(`/api/shops/${shopId}/ledgers/`)
+            .then(response => response.json())
+            .then(data => {
+                loanLedger.innerHTML = '';
+                loanLedger.disabled = false;
+                
+                if (data.length === 0) {
+                    loanLedger.innerHTML = '<option value="">No ledgers available for this shop</option>';
+                    loanLedger.disabled = true;
+                } else {
+                    data.forEach(ledger => {
+                        const option = new Option(ledger.name, ledger.id);
+                        loanLedger.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ledgers:', error);
+                loanLedger.innerHTML = '<option value="">Error loading ledgers</option>';
+                loanLedger.disabled = true;
+            });
+    });
+});
+
+// Transaction form submission
+function submitTransaction(transactionType) {
+    const amount = document.getElementById('id_amount').value.trim();
+    const shop = document.getElementById('id_shop').value;
+    const name = document.getElementById('id_name').value.trim();
+    const remarks = document.getElementById('id_remarks').value.trim();
+    const date = document.getElementById('id_date').value;
+    const time = document.getElementById('id_time').value;
+    
+    // Validate fields
+    if (!date) {
+        alert('Please select a Date');
+        document.getElementById('id_date').focus();
+        return;
+    }
+    if (!amount) {
+        alert('Please enter Amount');
+        document.getElementById('id_amount').focus();
+        return;
+    }
+    if (!shop) {
+        alert('Please select a Shop');
+        document.getElementById('id_shop').focus();
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "entries:add_entries" %}';
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.innerHTML = `
+        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+        <input type="hidden" name="amount" value="${amount}">
+        <input type="hidden" name="shop" value="${shop}">
+        <input type="hidden" name="tr_type" value="${transactionType}">
+        <input type="hidden" name="name" value="${name}">
+        <input type="hidden" name="remarks" value="${remarks}">
+        <input type="hidden" name="date" value="${date}">
+        <input type="hidden" name="time" value="${time}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Loan form submission
+function submitLoan(loanType) {
+    const pawnNo = document.getElementById('loan_pawn_no').value.trim();
+    const principal = document.getElementById('loan_principal').value.trim();
+    const interest = document.getElementById('loan_interest').value.trim();
+    const shop = document.getElementById('loan_shop').value;
+    const ledger = document.getElementById('loan_ledger').value;
+    const loanDate = document.getElementById('loan_date').value;
+    const loanTime = document.getElementById('loan_time').value;
+    
+    // Validate fields
+    if (!loanDate) {
+        alert('Please select a Date');
+        document.getElementById('loan_date').focus();
+        return;
+    }
+    if (!shop) {
+        alert('Please select a Shop');
+        document.getElementById('loan_shop').focus();
+        return;
+    }
+    if (!ledger) {
+        alert('Please select a Ledger');
+        document.getElementById('loan_ledger').focus();
+        return;
+    }
+    if (!pawnNo) {
+        alert('Please enter Pawn No');
+        document.getElementById('loan_pawn_no').focus();
+        return;
+    }
+    if (!principal) {
+        alert('Please enter Principal amount');
+        document.getElementById('loan_principal').focus();
+        return;
+    }
+    if (!interest) {
+        alert('Please enter Interest amount');
+        document.getElementById('loan_interest').focus();
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "entries:loan" %}';
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.innerHTML = `
+        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+        <input type="hidden" name="pawn_no" value="${pawnNo}">
+        <input type="hidden" name="principal" value="${principal}">
+        <input type="hidden" name="interest" value="${interest}">
+        <input type="hidden" name="shop" value="${shop}">
+        <input type="hidden" name="ledger" value="${ledger}">
+        <input type="hidden" name="loan_type" value="${loanType}">
+        <input type="hidden" name="date" value="${loanDate}">
+        <input type="hidden" name="time" value="${loanTime}">
+    `;
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+
+{% endblock %}

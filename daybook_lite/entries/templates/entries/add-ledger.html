@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Add New Ledger</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.name.id_for_label }}">Ledger Name</label>
+              {{ form.name }}
+              {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.license_number.id_for_label }}">License Number</label>
+              {{ form.license_number }}
+              {% if form.license_number.errors %}
+                <div class="text-danger small">{{ form.license_number.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.balance.id_for_label }}">Opening Balance</label>
+              {{ form.balance }}
+              <div class="form-text">{{ form.balance.help_text }}</div>
+              {% if form.balance.errors %}
+                <div class="text-danger small">{{ form.balance.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Add Ledger</button>
+              <a href="{% url 'entries:home' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

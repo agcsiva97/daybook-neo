@@ -1,0 +1,7 @@
+10-02-2026:
+Loan Edit/Delete Transactions
+Loan Filter in Loan view page
+
+11-02-2026:
+Add multiple Loans
+Delete Loans

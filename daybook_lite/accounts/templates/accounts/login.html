@@ -1,0 +1,39 @@
+{% extends "base-login.html" %}
+{% load static %}
+{% block content %}
+<div class="container d-flex align-items-center" style="min-height: 100vh;">
+  <div class="row justify-content-center align-items-center w-100">
+    <div class="col d-flex justify-content-center">
+      <img src="{% static 'img/Finance-app-bro.svg' %}" width="500px" class="img-fluid">
+    </div>
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0 text-center"><i class="fa-solid fa-book"></i>
+    <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span> </h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="{{ form.username.id_for_label }}" class="form-label"><i class="fa-solid fa-at"></i> Username</label>
+              <input type="text" name="username" class="form-control" id="{{ form.username.id_for_label }}" placeholder="Enter your username" required autofocus>
+            </div>
+            <div class="mb-3">
+              <label for="{{ form.password.id_for_label }}" class="form-label"><i class="fa-solid fa-key"></i> Password</label>
+              <input type="password" name="password" class="form-control" id="{{ form.password.id_for_label }}" placeholder="Enter your password" required>
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">Login</button>
+            </div>
+            <input type="hidden" name="next" value="{{ next }}">
+          </form>
+        </div>
+        <div class="card-footer text-center">
+          <small class="text-muted">Don't have an account? Contact admin.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

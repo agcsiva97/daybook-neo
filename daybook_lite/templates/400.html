@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>400 - Bad Request | Daybook Lite</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@100;300;400;700;900&display=swap');
+        
+        :root {
+            --daybook-primary: #4A7766;
+            --warning-color: #fd7e14;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Hanuman', Arial, sans-serif;
+            background-color: #FAFAFA;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .error-container {
+            text-align: center;
+            max-width: 600px;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .error-code {
+            font-size: 6rem;
+            font-weight: 900;
+            color: var(--warning-color);
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        p {
+            font-size: 1.125rem;
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-family: 'Hanuman', Arial, sans-serif;
+        }
+        
+        .btn-primary {
+            background-color: var(--daybook-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #3a5f52;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .footer-text {
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: #999;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">400</div>
+        <h1>Bad Request</h1>
+        <p>
+            The request could not be understood or was missing required parameters.
+        </p>
+        
+        <div class="btn-group">
+            <a href="/" class="btn btn-primary">
+                🏠 Go to Home
+            </a>
+            <button onclick="window.location.reload()" class="btn btn-secondary">
+                🔄 Try Again
+            </button>
+        </div>
+        
+        <p class="footer-text">
+            This might be caused by an expired session. Please try logging in again.
+        </p>
+    </div>
+</body>
+</html>

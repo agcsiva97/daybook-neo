@@ -1,0 +1,80 @@
+<div class="container-fluid">
+  <a class="navbar-brand" href="{% url 'entries:home' %}">
+    <i class="fa-solid fa-book"></i>
+    <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+    <span class="badge text-bg-light text-dark ms-1" style="font-size: 0.6rem; vertical-align: super;">BETA</span>
+    </a>
+  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <li class="nav-item {% if nav_title == 'Home' %} active-nav {% endif %}">
+        <a class="nav-link" aria-current="page" href="{% url 'entries:home' %}"><i class="fa-solid fa-house"></i> Home</a>
+      </li>
+      {% if user and user.is_authenticated %}
+        {% if user.is_superuser %}
+          <li class="nav-item {% if nav_title == 'Dashboard' %} active-nav {% endif %}">
+            <a class="nav-link" href="{% url 'entries:dashboard' %}"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+          </li>
+        {% else %}
+          {% for group in user.groups.all %}
+            {% if group.name == 'Admin' %}
+              <li class="nav-item {% if nav_title == 'Dashboard' %} active-nav {% endif %}">
+                <a class="nav-link" href="{% url 'entries:dashboard' %}"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+      <li class="nav-item {% if nav_title == 'Add Entries' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:add_entries' %}"><i class="fa-solid fa-file-circle-plus"></i> Add Entries</a>
+      </li>
+      <li class="nav-item {% if nav_title == 'Loan Transactions' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:loans' %}"><i class="fa-solid fa-money-bill-transfer"></i> Loan Transactions</a>
+      </li>
+      <li class="nav-item {% if nav_title == 'Other Transactions' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:transactions' %}"><i class="fa-solid fa-list-ul"></i> Other Transactions</a>
+      </li>
+      <li class="nav-item {% if nav_title == 'Report' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:report' %}"><i class="fa-solid fa-chart-area"></i> Report</a>
+      </li>
+      <li class="nav-item {% if nav_title == 'Denomination' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:denominations' %}"><i class="fa-solid fa-coins"></i> Denomination</a>
+      </li>
+      {% if user and user.is_authenticated %}
+        {% if user.is_superuser %}
+          <li class="nav-item {% if nav_title == 'Users' or nav_title == 'users' %} active-nav {% endif %}">
+            <a class="nav-link" href="{% url 'accounts:users_list' %}"><i class="fa-solid fa-users"></i> Users</a>
+          </li>
+        {% else %}
+        {% for group in user.groups.all %}
+          {% if group.name == 'Admin' %}
+            <li class="nav-item {% if nav_title == 'Users' or nav_title == 'users' %} active-nav {% endif %}">
+              <a class="nav-link" href="{% url 'accounts:users_list' %}"><i class="fa-solid fa-users"></i> Users</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+      {% endif %}
+    </ul>
+    <ul class="navbar-nav ms-auto">
+      {% if user and user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+           <i class="fa-solid fa-user"></i> {{ user.first_name }} {{ user.last_name }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+            <li><a class="dropdown-item" href="{% url 'accounts:user_settings' %}"><i class="fa-solid fa-gear"></i> User Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+          </ul>
+        </li>
+      {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'accounts:login' %}">Login</a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+</div>

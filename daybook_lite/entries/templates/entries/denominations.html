@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="fa-solid fa-coins me-2"></i>Denominations</h4>
+    <a href="{% url 'entries:denomination' %}" class="btn btn-primary">
+      <i class="fa-solid fa-plus me-1"></i>Add Denomination
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="px-3">Date</th>
+              <th>Period</th>
+              <th>User</th>
+              <th>Shop</th>
+              <th class="text-end">Total</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in denomination_groups %}
+              <tr>
+                <td class="px-3">{{ item.date|date:"d-m-Y" }}</td>
+                <td>{{ item.time_period|title }}</td>
+                <td>
+                  {% if item.created_by__first_name or item.created_by__last_name %}
+                    {{ item.created_by__first_name }} {{ item.created_by__last_name }}
+                  {% else %}
+                    {{ item.created_by__username }}
+                  {% endif %}
+                </td>
+                <td>{{ item.shop__name|default:"—" }}</td>
+                <td class="text-end fw-semibold">₹ {{ item.total|floatformat:2 }}</td>
+                <td class="text-center">
+                  <a href="{% url 'entries:view_denomination' item.key %}" class="btn btn-sm btn-outline-info me-1" title="View">
+                    <i class="fa-solid fa-eye"></i>
+                  </a>
+                  {% if item.created_by_id == user.id %}
+                    <a href="{% url 'entries:edit_denomination' item.key %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                  {% endif %}
+                  {% if is_admin_group_user or is_super_admin %}
+                    <form method="post" action="{% url 'entries:delete_denomination' item.key %}" class="d-inline" onsubmit="return confirm('Delete this denomination record?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">No denomination records found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
