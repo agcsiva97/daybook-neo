@@ -1,0 +1,101 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manager | {{ nav_title }} </title>
+    <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
+        <!-- PNG format (modern browsers) -->
+    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
+
+    <!-- For desktop shortcut / PWA on mobile -->
+    <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
+    <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,200&icon_names=apps" />
+    <style>
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 40
+}
+    .app-launcher:hover {
+      border-radius: 0rem;
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    .app-launcher {
+      {% comment %} border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */ {% endcomment %}
+      border-radius: 0rem;  /* same as hamburger border-radius */
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    margin-left: -12px;
+    align-self: stretch;
+    font-size: 1.75rem;
+    transition: background-color 0.2s ease;
+    
+    /* Add these to cover top and bottom gaps */
+    margin-top: -14px;
+    margin-bottom: -14px;
+    padding-top: 8px;
+    padding-bottom: 3px;
+  }
+    .app-launcher-box {
+        {% comment %} display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5em;           /* same as Bootstrap's navbar-toggler-icon size */
+        height: 1.5em;
+        border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */
+        border-radius: 0rem;  /* same as hamburger border-radius */
+        padding: 3px; {% endcomment %}
+    }
+</style>
+  </head>
+  <body>
+    <nav  class="navbar navbar-expand-lg bg-body-tertiary">
+        {% include 'manager/top-navbar.html' %}
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 9999">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header text-bg-{{ message.tags }}">
+              <i class="fa-solid fa-book me-2"></i>
+              <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+              <small class="ms-auto text-body-dark">just now</small>
+              <button type="button" class="btn btn-link p-0 ms-2 text-white" data-bs-dismiss="toast" aria-label="Close" style="text-decoration: none; font-size: 1.2em;">
+                <i class="fa-solid fa-circle-xmark"></i>
+              </button>
+            </div>
+            <div class="toast-body text-bg-{{ message.tags }}">
+              {{ message }}
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <script>
+      // Auto-show toasts on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+        var toastList = toastElList.map(function(toastEl) {
+          var toast = new bootstrap.Toast(toastEl);
+          toast.show();
+          return toast;
+        });
+      });
+    </script>
+  </body>
+</html>

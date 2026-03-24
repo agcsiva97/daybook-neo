@@ -19,15 +19,24 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from . import views as app_views
+
+from accounts import views
+
 # Custom error handlers
 handler404 = 'entries.views.custom_404_view'
 handler403 = 'entries.views.custom_403_view'
 
 urlpatterns = [
-    path('', include('entries.urls')),
+    path('', app_views.home, name='daybookhome'), 
+    path('daybook/', include('entries.urls')),
     path('api/', include('api.urls')),
     path('admin/', admin.site.urls),
-    path('accounts/', include('accounts.urls')),
+    path('manager/', include('accounts.urls')),path('usersettings/', views.user_settings, name='user_settings'),
+    path('usersettings/', views.user_settings, name='user_settings'),
+    path('usersettings/edit/', views.edit_profile, name='edit_profile'),
+    path('usersettings/password/', views.change_password, name='change_password'),
+    path('manager/', include('manager.urls')), 
 ]
 
 # Static files are now served by WhiteNoise middleware

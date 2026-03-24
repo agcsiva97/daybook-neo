@@ -1,14 +1,15 @@
-from datetime import datetime, time as dt_time
+from datetime import datetime, timedelta
 from decimal import Decimal
 import csv
 import logging
+import time
 import openpyxl
 from functools import wraps
 from openpyxl.styles import Font, Alignment, PatternFill
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction as db_transaction
@@ -19,9 +20,11 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import LedgerForm, ShopForm, ShopEditForm, TransactionForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
-from .models import Transactions, Ledger, Denomination, Loan, Shop
+from .forms import TransactionForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
+from .models import Transactions, Denomination, Loan
+from manager.models import Shop, Ledger, Configuration
 from .helpers import transactions as transaction_helper
+from manager.helper.manager_helper import log_activity
 
 logger = logging.getLogger(__name__)
 
@@ -66,159 +69,11 @@ def admin_or_staff_required(view_func):
 
 
 @login_required
-@admin_required
-def dashboard(request):
-    from entries.models import Shop
-    shops = Shop.objects.all().order_by('short_name')
-    return render(request, 'entries/dashboard.html', {'nav_title': 'Dashboard', 'shops': shops})
-
-
-@login_required
-@super_admin_required
-def add_shop(request):
-    if request.method == 'POST':
-        form = ShopForm(request.POST)
-        if form.is_valid():
-            try:
-                shop = form.save()
-                logger.info(f"Shop created by {request.user.username}: {shop.id}")
-                messages.success(request, f'Shop "{shop.name}" created successfully!')
-                return redirect('entries:home')
-            except Exception as e:
-                logger.error(f"Error creating shop by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while creating shop.')
-    else:
-        form = ShopForm()
-    return render(request, 'entries/add_shop.html', {'nav_title': 'Shops', 'form': form})
-
-
-@login_required
-@admin_required
-def shop_info(request, pk):
-    shop = get_object_or_404(Shop, pk=pk)
-    ledgers = Ledger.objects.filter(shop=shop).order_by('name')
-    
-    # Get all transactions for this shop
-    transactions_list = Transactions.objects.filter(shop=shop).order_by('-created_at')
-    
-    # Pagination
-    paginator = Paginator(transactions_list, 25)  # Show 25 transactions per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    return render(request, 'entries/shop_info.html', {
-        'nav_title': 'Shops',
-        'shop': shop,
-        'ledgers': ledgers,
-        'page_obj': page_obj,
-        'is_super_admin': request.user.is_superuser,
-        'is_admin': is_admin(request.user),
-    })
-
-
-@login_required
-@admin_required
-def edit_shop(request, pk):
-    shop = get_object_or_404(Shop, pk=pk)
-    if request.method == 'POST':
-        form = ShopEditForm(request.POST, instance=shop)
-        if form.is_valid():
-            try:
-                form.save()
-                logger.info(f"Shop edited by {request.user.username}: {pk}")
-                messages.success(request, f'Shop "{shop.name}" updated successfully!')
-                return redirect('entries:shop_info', pk=shop.pk)
-            except Exception as e:
-                logger.error(f"Error editing shop {pk} by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while updating shop.')
-    else:
-        form = ShopEditForm(instance=shop)
-    return render(request, 'entries/edit_shop.html', {'nav_title': 'Shops', 'form': form, 'shop': shop})
-
-
-@login_required
-@super_admin_required
-def delete_shop(request, pk):
-    shop = get_object_or_404(Shop, pk=pk)
-    if request.method == 'POST':
-        has_ledgers = Ledger.objects.filter(shop=shop).exists()
-        has_transactions = Transactions.objects.filter(shop=shop).exists()
-        has_loans = Loan.objects.filter(shop=shop).exists()
-        if has_ledgers or has_transactions or has_loans:
-            messages.error(request, f'Cannot delete shop "{shop.name}" because it has linked ledgers, transactions, or loans.')
-            logger.warning(f"Shop deletion blocked by {request.user.username}: {shop.name} has associations")
-            return redirect('entries:shop_info', pk=shop.pk)
-        shop_name = shop.name
-        try:
-            shop.delete()
-            logger.warning(f"Shop deleted by {request.user.username}: {shop_name}")
-            messages.success(request, f'Shop "{shop_name}" deleted successfully!')
-        except Exception as e:
-            logger.error(f"Error deleting shop {shop_name} by {request.user.username}: {str(e)}", exc_info=True)
-            messages.error(request, 'An error occurred while deleting shop.')
-            return redirect('entries:shop_info', pk=pk)
-        return redirect('entries:home')
-    return render(request, 'entries/delete_shop.html', {'nav_title': 'Shops', 'shop': shop})
-
-
-@login_required
-@admin_required
-def add_shop_ledger(request, shop_pk):
-    shop = get_object_or_404(Shop, pk=shop_pk)
-    if request.method == 'POST':
-        form = LedgerForm(request.POST)
-        if form.is_valid():
-            try:
-                with db_transaction.atomic():
-                    ledger = form.save(commit=False)
-                    ledger.shop = shop
-                    ledger.save()
-
-                    # Note: Opening balance feature removed - ledger balance field removed from model
-                    # Shop balance is now managed independently through transactions
-                    if False:  # Disabled opening balance logic
-                        # Lock the shop for balance update
-                        shop = Shop.objects.select_for_update().get(pk=shop_pk)
-                        old_shop_balance = shop.balance
-                        new_shop_balance = old_shop_balance + opening_balance
-                        Transactions.objects.create(
-                            amount=opening_balance,
-                            shop=shop,
-                            tr_type='CREDIT',
-                            remarks='Account Opening Deposit',
-                            old_balance=old_shop_balance,
-                            new_balance=new_shop_balance,
-                            created_by=request.user,
-                            updated_by=request.user
-                        )
-                        shop.balance = new_shop_balance
-                        shop.save()
-
-                        logger.info(f"Ledger created by {request.user.username}: name={ledger.name}, shop={shop.name}, opening balance={opening_balance}")
-                    else:
-                        logger.info(f"Ledger created by {request.user.username}: name={ledger.name}, shop={shop.name}, balance=0")
-
-                messages.success(request, f'Ledger "{ledger.name}" created for shop "{shop.name}"!')
-                return redirect('entries:shop_info', pk=shop.pk)
-            except Exception as e:
-                logger.error(f"Error creating ledger for shop {shop.name} by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while creating ledger.')
-    else:
-        form = LedgerForm()
-
-    return render(request, 'entries/add_shop_ledger.html', {
-        'nav_title': 'Shops',
-        'form': form,
-        'shop': shop,
-    })
-
-
-@login_required
 def home(request):
     today = timezone.localdate()
-    transactions = Transactions.objects.filter(created_at__date=today).order_by('-created_at')[:10]
+    transactions = Transactions.objects.filter(transaction_dt__date=today).order_by('-transaction_dt')[:10]
     daily_totals = (
-        Transactions.objects.filter(created_at__date=today)
+        Transactions.objects.filter(transaction_dt__date=today)
         .values('shop_id')
         .annotate(
             debit_total=Coalesce(
@@ -251,24 +106,12 @@ def home(request):
     # Calculate opening and closing balance for each shop
     shop_balances = []
     for shop in shops:
-        # Get first transaction of today for this shop to get opening balance
-        first_transaction_today = Transactions.objects.filter(
-            shop=shop,
-            created_at__date=today
-        ).order_by('created_at').first()
-        
-        if first_transaction_today and first_transaction_today.old_balance is not None:
-            opening_balance = first_transaction_today.old_balance
-        else:
-            # No transactions today, opening balance is current balance
-            opening_balance = shop.balance
-        
-        closing_balance = shop.balance
+        data = transaction_helper.get_opening_balance(shop, today)  # This will calculate and cache opening balance for the shop
         
         shop_balances.append({
             'shop': shop,
-            'opening_balance': opening_balance,
-            'closing_balance': closing_balance,
+            'opening_balance': data['opening_balance'],
+            'closing_balance': data['closing_balance'],
         })
     
     context = {
@@ -284,129 +127,79 @@ def home(request):
 
 @login_required
 def add_entries(request):
-    form = TransactionForm()
+    """Add a new transaction entry"""
+    form          = TransactionForm()
     transfer_form = TransferForm()
-    loan_form = LoanForm()
-    
+    loan_form     = LoanForm()
+
     if request.method == 'POST':
         form = TransactionForm(request.POST)
+
         if form.is_valid():
             transaction = form.save(commit=False)
-            
+
             if request.user.is_authenticated:
                 transaction.created_by = request.user
                 transaction.updated_by = request.user
-            
-            # Apply chosen date+time to created_at
+
+            # ── Resolve transaction date + time ──────────────────────
             chosen_date = form.cleaned_data.get('date')
-            if chosen_date:
-                chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
-                transaction.created_at = timezone.make_aware(
-                    datetime.combine(chosen_date, chosen_time)
-                )
+            chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
+            transaction.transaction_dt = timezone.make_aware(
+                datetime.combine(chosen_date, chosen_time)
+            )
+
+            logger.info("============ Transaction Creation Started ============")
+            logger.info(f"Transaction -> type=[{transaction.tr_type}] | amount=[{transaction.amount}] | date=[{transaction.transaction_dt}]")
 
             try:
                 with db_transaction.atomic():
-                    # Lock the shop row to prevent race conditions
                     shop = Shop.objects.select_for_update().get(pk=transaction.shop_id)
-                    
-                    # Get the previous transaction to chain balances
-                    latest_previous_transaction = (
-                        Transactions.objects.filter(
-                            shop_id=transaction.shop_id,
-                            created_at__lt=transaction.created_at,
-                        )
-                        .order_by('-created_at')
-                        .first()
-                    )
-                    
-                    # Get old_balance from previous transaction's new_balance
-                    if latest_previous_transaction and latest_previous_transaction.new_balance is not None:
-                        old_balance = latest_previous_transaction.new_balance
-                    else:
-                        # No previous transaction, try to get the first transaction after this one
-                        earliest_next_transaction = (
-                            Transactions.objects.filter(
-                                shop_id=transaction.shop_id,
-                                created_at__gt=transaction.created_at,
-                            )
-                            .order_by('created_at')
-                            .first()
-                        )
-                        
-                        if earliest_next_transaction and earliest_next_transaction.old_balance is not None:
-                            # Calculate old_balance based on next transaction's old_balance
-                            # Our new_balance will cascade to become next transaction's old_balance
-                            # For DEBIT: old_balance - amount = next.old_balance => old_balance = next.old_balance + amount
-                            # For CREDIT: old_balance + amount = next.old_balance => old_balance = next.old_balance - amount
-                            # if transaction.tr_type == 'DEBIT':
-                            #     old_balance = earliest_next_transaction.old_balance + transaction.amount
-                            # else:
-                            #     old_balance = earliest_next_transaction.old_balance - transaction.amount
-                            old_balance = earliest_next_transaction.old_balance
-                        else:
-                            # No previous or next transaction, use shop's current balance
-                            old_balance = shop.balance
-                    
-                    # Calculate new balance
+                    logger.info(f"Shop -> name=[{shop.short_name}]")
+
+                    # ── Balance check for DEBIT ───────────────────────
                     if transaction.tr_type == 'DEBIT':
-                        new_balance = old_balance - transaction.amount
-                        # Check if DEBIT transaction amount exceeds available balance
-                        if transaction.amount > old_balance:
-                            form.add_error(None, f'Insufficient balance. Available balance: {old_balance}')
-                            context = {
-                                'nav_title':'Add Entries',
+                        available = transaction_helper.get_balance(shop, chosen_date)
+                        logger.info(f"Balance check -> available=[{available}] | required=[{transaction.amount}]")
+                        if transaction.amount > available:
+                            form.add_error(None, f'Insufficient balance in {shop.short_name}. Available: {available}')
+                            return render(request, 'entries/add_entries.html', {
+                                'nav_title': 'Add Entries',
                                 'form': form,
                                 'transfer_form': TransferForm(),
                                 'loan_form': LoanForm(),
-                            }
-                            return render(request, 'entries/add_entries.html', context)
-                    else:
-                        new_balance = old_balance + transaction.amount
-                    
-                    # Store old and new balance
-                    transaction.old_balance = old_balance
-                    transaction.new_balance = new_balance
-                    
-                    # Update shop balance (calculate the difference from previous state)
-                    if transaction.tr_type == 'DEBIT':
-                        shop.balance = shop.balance - transaction.amount
-                    else:
-                        shop.balance = shop.balance + transaction.amount
-                    
-                    # Save transaction first
+                            })
+
+                    # ── Save transaction ──────────────────────────────
                     transaction.save()
-                    
-                    # Update all subsequent transactions
-                    transaction_helper.update_latest_transactions(request, transaction, new_balance)
-                    
-                    # Save shop balance
-                    shop.save()
-                    
-                # Refresh to get shop name
-                transaction.refresh_from_db()
-                logger.info(f"Transaction created by {request.user.username}: {transaction.tr_type} {transaction.amount} on {transaction.shop.name}")
+                    logger.info(f"Transaction [{transaction.id}] created -> type=[{transaction.tr_type}] | amount=[{transaction.amount}] | shop=[{shop.short_name}]")
+                log_activity(request, 'CREATE', 'Transaction', transaction.id, f'Transaction created: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {shop.short_name}')
+                logger.info("============ Transaction Creation Completed ============")
                 messages.success(request, 'Transaction added successfully!')
+
             except Exception as e:
-                logger.error(f"Error creating transaction by {request.user.username}: {str(e)}", exc_info=True)
+                logger.error(f"Error creating transaction by [{request.user.username}]: {str(e)}", exc_info=True)
                 messages.error(request, 'An error occurred while creating transaction.')
-                context = {
-                    'nav_title':'Add Entries',
+                return render(request, 'entries/add_entries.html', {
+                    'nav_title': 'Add Entries',
                     'form': form,
                     'transfer_form': TransferForm(),
                     'loan_form': LoanForm(),
-                }
-                return render(request, 'entries/add_entries.html', context)
+                })
+
             return redirect('entries:add_entries')
-    
-    context = {
-        'nav_title':'Add Entries',
+
+        else:
+            logger.warning(f"Transaction form invalid -> errors=[{form.errors}]")
+
+    return render(request, 'entries/add_entries.html', {
+        'nav_title': 'Add Entries',
         'form': form,
         'transfer_form': transfer_form,
         'loan_form': loan_form,
-    }
-    
-    return render(request, 'entries/add_entries.html', context)
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
 
 @login_required
 def transfer(request):
@@ -433,7 +226,7 @@ def transfer(request):
                     
                     # Check if from_shop has sufficient balance
                     if amount > from_shop.balance:
-                        messages.error(request, f'Insufficient balance in {from_shop.name}. Current balance: {from_shop.balance}')
+                        messages.error(request, f'Insufficient balance in {from_shop.short_name}. Current balance: {from_shop.balance}')
                         return redirect('entries:add_entries')
                     
                     # Create DEBIT transaction for from_ledger
@@ -492,6 +285,7 @@ def transfer(request):
     return redirect('entries:add_entries')
 
 @login_required
+@ensure_csrf_cookie
 def transactions(request):
     # Get filter parameters
     from_date = request.GET.get('from_date')
@@ -502,20 +296,20 @@ def transactions(request):
     name_search_query = request.GET.get('name_search', '')
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-created_at','-updated_at')
+    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-transaction_dt','-updated_at')
     
     # Apply filters
     if from_date:
         try:
             from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
-            transactions_list = transactions_list.filter(created_at__date__gte=from_date_obj)
+            transactions_list = transactions_list.filter(transaction_dt__date__gte=from_date_obj)
         except ValueError:
             pass
     
     if to_date:
         try:
             to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-            transactions_list = transactions_list.filter(created_at__date__lte=to_date_obj)
+            transactions_list = transactions_list.filter(transaction_dt__date__lte=to_date_obj)
         except ValueError:
             pass
     
@@ -532,7 +326,7 @@ def transactions(request):
         transactions_list = transactions_list.filter(remarks__icontains=search_query)
     
     # Pagination
-    paginator = Paginator(transactions_list, 25)  # Show 25 transactions per page
+    paginator = Paginator(transactions_list, 15)  # Show 15 transactions per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -565,6 +359,14 @@ def transactions(request):
     # Get all shops for filter dropdown
     all_shops = Shop.objects.all().order_by('name')
     
+    if request.headers.get('HX-Request'):
+        return render(request, 'entries/partials/transaction_rows.html', {
+            'page_obj': page_obj,
+            'is_super_admin': request.user.is_superuser,
+            'is_admin': is_admin(request.user),
+            'is_admin_user': is_admin(request.user) or request.user.is_superuser,
+        })
+
     context = {
         'nav_title': 'Other Transactions',
         'page_obj': page_obj,
@@ -578,7 +380,9 @@ def transactions(request):
         'name_search_query': name_search_query,
         'debit_total': totals['debit_total'],
         'credit_total': totals['credit_total'],
-        'is_admin_user': is_admin(request.user),
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+        'is_admin_user': is_admin(request.user) or request.user.is_superuser,
     }
     return render(request, 'entries/transactions.html', context)
 
@@ -592,20 +396,20 @@ def _get_filtered_transactions(request):
     name_search_query = request.GET.get('name_search', '')
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-created_at','-updated_at')
+    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-transaction_dt','-updated_at')
     
     # Apply filters
     if from_date:
         try:
             from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
-            transactions_list = transactions_list.filter(created_at__date__gte=from_date_obj)
+            transactions_list = transactions_list.filter(transaction_dt__date__gte=from_date_obj)
         except ValueError:
             pass
     
     if to_date:
         try:
             to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-            transactions_list = transactions_list.filter(created_at__date__lte=to_date_obj)
+            transactions_list = transactions_list.filter(transaction_dt__date__lte=to_date_obj)
         except ValueError:
             pass
     
@@ -674,8 +478,8 @@ def export_transactions_csv(request):
     
     for transaction in transactions:
         writer.writerow([
-            transaction.created_at.strftime('%Y-%m-%d'),
-            transaction.created_at.strftime('%H:%M:%S'),
+            transaction.transaction_dt.strftime('%Y-%m-%d'),
+            transaction.transaction_dt.strftime('%H:%M:%S'),
             transaction.shop.name,
             transaction.name or '-',
             transaction.tr_type,
@@ -823,8 +627,8 @@ def export_transactions_excel(request):
     
     # Transaction Data
     for transaction in transactions:
-        ws.cell(row=current_row, column=1, value=transaction.created_at.strftime('%Y-%m-%d'))
-        ws.cell(row=current_row, column=2, value=transaction.created_at.strftime('%H:%M:%S'))
+        ws.cell(row=current_row, column=1, value=transaction.transaction_dt.strftime('%Y-%m-%d'))
+        ws.cell(row=current_row, column=2, value=transaction.transaction_dt.strftime('%H:%M:%S'))
         ws.cell(row=current_row, column=3, value=transaction.shop.name)
         ws.cell(row=current_row, column=4, value=transaction.name or '-')
         
@@ -910,266 +714,148 @@ def export_transactions_excel(request):
 @login_required
 @admin_or_staff_required
 def edit_transaction(request, pk):
+    """Edit an existing transaction"""
     transaction = get_object_or_404(Transactions, pk=pk)
-    old_shop_id = transaction.shop_id
-    old_trans_old_bal = transaction.old_balance
-    old_trans_new_bal = transaction.new_balance
-    old_created_at = transaction.created_at
-    old_amount = transaction.amount
-    old_type = transaction.tr_type
-    old_shop = transaction.shop
-    
+
+    # ── Snapshot old values ──────────────────────────────────────────
+    old_amount  = transaction.amount
+    old_type    = transaction.tr_type
+    old_shop    = transaction.shop
+    old_date    = timezone.localtime(transaction.transaction_dt).date()
+
     if request.method == 'POST':
         form = TransactionForm(request.POST, instance=transaction)
+
         if form.is_valid():
             updated_transaction = form.save(commit=False)
+
             if request.user.is_authenticated:
                 updated_transaction.updated_by = request.user
-            
-            # Apply chosen date+time to created_at BEFORE balance calculations
+
+            # ── Resolve new transaction date + time ──────────────────
             chosen_date = form.cleaned_data.get('date')
-            if chosen_date:
-                chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
-                updated_transaction.created_at = timezone.make_aware(
-                    datetime.combine(chosen_date, chosen_time)
-                )
-            
+            chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
+            updated_transaction.transaction_dt = timezone.make_aware(
+                datetime.combine(chosen_date, chosen_time)
+            )
+            new_date = chosen_date
+            new_shop = updated_transaction.shop
+            new_type = updated_transaction.tr_type
+            new_amount = updated_transaction.amount
+
+            logger.info("============ Transaction Update Started ============")
+            logger.info(f"Old -> amount=[{old_amount}] | type=[{old_type}] | shop=[{old_shop}] | date=[{old_date}]")
+            logger.info(f"New -> amount=[{new_amount}] | type=[{new_type}] | shop=[{new_shop}] | date=[{new_date}]")
+
             try:
                 with db_transaction.atomic():
-                    # Lock shop(s) to prevent race conditions
-                    if old_shop_id == updated_transaction.shop_id:
-                        
-                        # Same shop - lock it
-                        shop = Shop.objects.select_for_update().get(pk=updated_transaction.shop_id)
-                        
-                        # Reverse old transaction effect
-                        if old_type == 'DEBIT':
-                            shop.balance += old_amount
-                        else:
-                            shop.balance -= old_amount
-                        
-                        # Get the previous transaction to chain balances
-                        latest_previous_transaction = (
-                            Transactions.objects.filter(
-                                shop_id=updated_transaction.shop_id,
-                                created_at__lt=updated_transaction.created_at,
-                            )
-                            .exclude(pk=transaction.pk)
-                            .order_by('-created_at')
-                            .first()
-                        )
-                        
-                        # Get old_balance from previous transaction's new_balance
-                        if latest_previous_transaction and latest_previous_transaction.new_balance is not None:
-                            old_balance = latest_previous_transaction.new_balance
-                        else:
-                            # No previous transaction, try to get the first transaction after this one
-                            earliest_next_transaction = (
-                                Transactions.objects.filter(
-                                    shop_id=updated_transaction.shop_id,
-                                    created_at__gt=updated_transaction.created_at,
-                                )
-                                .exclude(pk=transaction.pk)
-                                .order_by('created_at')
-                                .first()
-                            )
-                            
-                            if earliest_next_transaction.created_at >= old_created_at:
-                                old_balance = old_trans_old_bal
-                            else:
-                                # No previous or next transaction, use shop's balance (after reversing old effect)
-                                old_balance = earliest_next_transaction.old_balance
-                        
-                        # Calculate new balance
-                        if updated_transaction.tr_type == 'DEBIT':
-                            # Check if DEBIT transaction amount exceeds available balance
-                            if updated_transaction.amount > old_balance:
-                                # Rollback will happen automatically due to transaction.atomic
-                                form.add_error(None, f'Insufficient balance. Available balance: {old_balance}')
-                                context = {
-                                    'nav_title': 'Other Transactions',
-                                    'form': form,
-                                    'transaction': transaction,
-                                }
-                                return render(request, 'entries/edit-transaction.html', context)
-                            new_balance = old_balance - updated_transaction.amount
-                            shop.balance = shop.balance - updated_transaction.amount
-                        else:
-                            new_balance = old_balance + updated_transaction.amount
-                            shop.balance = shop.balance + updated_transaction.amount
-                        
-                        # Update subsequent transactions
-                        transaction_helper.update_latest_transactions(request, updated_transaction, new_balance)
-                        shop.save()
-                    else:
-                        # Different shops - lock both
-                        shop_ids = list(set([old_shop_id, updated_transaction.shop_id]))
-                        shops = {s.pk: s for s in Shop.objects.select_for_update().filter(pk__in=shop_ids)}
-                        old_shop_obj = shops[old_shop_id]
-                        new_shop = shops[updated_transaction.shop_id]
-                        
-                        # Reverse old transaction effect on old shop
-                        if old_type == 'DEBIT':
-                            old_shop_obj.balance += old_amount
-                            old_trans_new_bal = old_trans_new_bal + old_amount
-                        else:
-                            old_shop_obj.balance -= old_amount
-                            old_trans_new_bal = old_trans_new_bal - old_amount
-                        transaction_helper.update_latest_transactions(request,updated_transaction,old_trans_new_bal,old_shop_id)
-                        latest_previous_transaction = (
-                            Transactions.objects.filter(
-                                shop_id=updated_transaction.shop_id,
-                                created_at__lt=updated_transaction.created_at,
-                            )
-                            .exclude(pk=transaction.pk)
-                            .order_by('-created_at')
-                            .first()
-                        )
-                        
-                        # Get old_balance from previous transaction's new_balance
-                        if latest_previous_transaction and latest_previous_transaction.new_balance is not None:
-                            old_balance = latest_previous_transaction.new_balance
-                        else:
-                            # No previous transaction, try to get the first transaction after this one
-                            earliest_next_transaction = (
-                                Transactions.objects.filter(
-                                    shop_id=updated_transaction.shop_id,
-                                    created_at__gt=updated_transaction.created_at,
-                                )
-                                .exclude(pk=transaction.pk)
-                                .order_by('created_at')
-                                .first()
-                            )
-                            
-                            old_balance = earliest_next_transaction.old_balance
-                        
-                        # Check if DEBIT transaction amount exceeds available balance
-                        if updated_transaction.tr_type == 'DEBIT':
-                            if updated_transaction.amount > old_balance:
-                                form.add_error(None, f'Insufficient balance in {new_shop.name}. Available balance: {old_balance}')
-                                context = {
-                                    'nav_title': 'Other Transactions',
-                                    'form': form,
-                                    'transaction': transaction,
-                                }
-                                return render(request, 'entries/edit-transaction.html', context)
-                        
-                        # Apply new transaction effect on new shop
-                        if updated_transaction.tr_type == 'DEBIT':
-                            new_balance = old_balance - updated_transaction.amount
-                            new_shop.balance = new_shop.balance - updated_transaction.amount
-                        else:
-                            new_balance = old_balance + updated_transaction.amount
-                            new_shop.balance = new_shop.balance + updated_transaction.amount
-                        old_shop_obj.save()
-                        if old_shop_obj.pk != new_shop.pk:
-                            new_shop.save()
-                    
-                    # Update old and new balance fields
-                    updated_transaction.old_balance = old_balance
-                    updated_transaction.new_balance = new_balance
+
+                    # ── Balance check for DEBIT ───────────────────────
+                    if new_type == 'DEBIT':
+                        available = transaction_helper.get_balance(new_shop, new_date)
+                        # Add back old amount if same shop to avoid double counting
+                        if old_shop.id == new_shop.id and old_type == 'DEBIT':
+                            available += old_amount
+                        logger.info(f"Balance check -> shop=[{new_shop.short_name}] | available=[{available}] | required=[{new_amount}]")
+                        if new_amount > available:
+                            form.add_error(None, f'Insufficient balance in {new_shop.short_name} on {new_date}. Available: {available}')
+                            return render(request, 'entries/edit-transaction.html', {
+                                'nav_title': 'Other Transactions',
+                                'form': form,
+                                'transaction': transaction,
+                            })
+
+                    # ── Save updated transaction ──────────────────────
                     updated_transaction.save()
-                    transaction_helper.update_latest_transactions(request,updated_transaction,new_balance)
-                
-                # Build change summary
+                    logger.info(f"Transaction [{pk}] updated successfully")
+
+                # ── Build change summary ──────────────────────────────
                 changes = []
-                if old_amount != updated_transaction.amount:
-                    changes.append(f"amount: {old_amount} -> {updated_transaction.amount}")
-                if old_type != updated_transaction.tr_type:
-                    changes.append(f"type: {old_type} -> {updated_transaction.tr_type}")
-                if old_shop_id != updated_transaction.shop_id:
-                    changes.append(f"shop: {old_shop.name} -> {updated_transaction.shop.name}")
-                change_summary = ', '.join(changes) if changes else 'no changes'
-                logger.info(f"Transaction edited by {request.user.username}: ID {pk}, changes: {change_summary}")
+                if old_amount != new_amount:
+                    changes.append(f"amount: [{old_amount}] -> [{new_amount}]")
+                if old_type != new_type:
+                    changes.append(f"type: [{old_type}] -> [{new_type}]")
+                if old_shop.id != new_shop.id:
+                    changes.append(f"shop: [{old_shop.short_name}] -> [{new_shop.short_name}]")
+                if old_date != new_date:
+                    changes.append(f"date: [{old_date}] -> [{new_date}]")
+                logger.info(f"Transaction [{pk}] changes -> {', '.join(changes) if changes else 'no changes'}")
+                logger.info("============ Transaction Update Completed ============")
+                messages.success(request, 'Transaction updated successfully!')
+
             except Exception as e:
-                logger.error(f"Error editing transaction {pk} by {request.user.username}: {str(e)}", exc_info=True)
+                logger.error(f"Error editing transaction [{pk}] by [{request.user.username}]: {str(e)}", exc_info=True)
                 messages.error(request, 'An error occurred while editing transaction.')
-                context = {
+                return render(request, 'entries/edit-transaction.html', {
                     'nav_title': 'Other Transactions',
                     'form': form,
                     'transaction': transaction,
-                }
-                return render(request, 'entries/edit-transaction.html', context)
-            
+                })
+            log_activity(request, 'UPDATE', 'Transaction', transaction.id, f'Transaction updated: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}')
             return redirect('entries:transactions')
+
+        else:
+            logger.warning(f"Transaction form invalid -> errors=[{form.errors}]")
+
     else:
         form = TransactionForm(
             instance=transaction,
-            initial={'date': timezone.localtime(transaction.created_at).date(), 'time': timezone.localtime(transaction.created_at).time().replace(second=0, microsecond=0)},
+            initial={
+                'date': timezone.localtime(transaction.transaction_dt).date(),
+                'time': timezone.localtime(transaction.transaction_dt).time().replace(second=0, microsecond=0),
+            }
         )
-    
-    context = {
+
+    return render(request, 'entries/edit-transaction.html', {
         'nav_title': 'Other Transactions',
         'form': form,
         'transaction': transaction,
-    }
-    return render(request, 'entries/edit-transaction.html', context)
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
 
 @login_required
+@csrf_protect
 @admin_required
 def delete_transaction(request, pk):
+    """Delete a transaction (admin only)"""
     transaction = get_object_or_404(Transactions, pk=pk)
-    
+
     if request.method == 'POST':
-        transaction_id = transaction.id
+        transaction_id   = transaction.id
         transaction_amount = transaction.amount
         transaction_type = transaction.tr_type
-        shop_name = transaction.shop.name
-        
+        shop_name        = transaction.shop.short_name
+        transaction_date = timezone.localtime(transaction.transaction_dt).date()
+
+        logger.info("============ Transaction Deletion Started ============")
+        logger.info(f"Transaction -> id=[{transaction_id}] | type=[{transaction_type}] | amount=[{transaction_amount}] | shop=[{shop_name}] | date=[{transaction_date}]")
+
         try:
+            # Option 1 — warn user if transaction is loan-linked
+            LOAN_REMARKS = ['Loan Principal', 'Loan Interest', 'Release Principal', 'Release Interest']
             with db_transaction.atomic():
-                # Lock the shop to prevent race conditions
-                shop = Shop.objects.select_for_update().get(pk=transaction.shop_id)
-                
-                # Reverse transaction effect on shop balance
-                if transaction.tr_type == 'DEBIT':
-                    shop.balance += transaction.amount
-                else:
-                    shop.balance -= transaction.amount
-                
-                shop.save()
-                transaction_helper.update_latest_transactions(request,transaction,transaction.old_balance)
+                if transaction.remarks in LOAN_REMARKS:
+                    messages.error(request, 'This transaction is linked to a loan entry. Please delete it from Loan Transactions page instead.')
+                    return redirect('entries:transactions')
+                log_activity(request, 'DELETE', 'Transaction', transaction.id, f'Transaction deleted: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}')
                 transaction.delete()
-            
-            logger.warning(f"Transaction deleted by {request.user.username}: ID {transaction_id}, {transaction_type} {transaction_amount} on {shop_name}")
+                logger.warning(f"Transaction deleted by [{request.user.username}] -> id=[{transaction_id}] | type=[{transaction_type}] | amount=[{transaction_amount}] | shop=[{shop_name}]")
+            messages.success(request, 'Transaction deleted successfully!')
+            logger.info("============ Transaction Deletion Completed ============")
+
         except Exception as e:
-            logger.error(f"Error deleting transaction {transaction_id} by {request.user.username}: {str(e)}", exc_info=True)
+            logger.error(f"Error deleting transaction [{transaction_id}] by [{request.user.username}]: {str(e)}", exc_info=True)
             messages.error(request, 'An error occurred while deleting transaction.')
-            return redirect('entries:transactions')
-        
+
         return redirect('entries:transactions')
-    
-    context = {
+
+    return render(request, 'entries/delete-transaction.html', {
         'nav_title': 'Other Transactions',
         'transaction': transaction,
-    }
-    return render(request, 'entries/delete-transaction.html', context)
-
-@login_required
-@admin_required
-def add_ledger(request):
-    if request.method == 'POST':
-        form = LedgerForm(request.POST)
-        if form.is_valid():
-            try:
-                with db_transaction.atomic():
-                    # Create ledger
-                    ledger = form.save(commit=False)
-                    ledger.save()
-                    logger.info(f"Ledger created by {request.user.username}: name={ledger.name}, balance=0")
-                    
-                return redirect('entries:home')
-            except Exception as e:
-                logger.error(f"Error creating ledger by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while creating ledger.')
-    else:
-        form = LedgerForm()
-    
-    context = {
-        'nav_title': 'Home',
-        'form': form,
-    }
-    return render(request, 'entries/add-ledger.html', context)
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
 
 
 @login_required
@@ -1177,6 +863,7 @@ def report(request):
     # Get filter parameters
     report_date = request.GET.get('date')
     shop_id = request.GET.get('shop')
+    all_configs = Configuration.objects.all()
     
     # Use today's date if no date specified
     if not report_date:
@@ -1188,20 +875,23 @@ def report(request):
         except ValueError:
             report_date = timezone.localdate()
     
+    next_day = report_date + timedelta(days=1)
+    prev_day = report_date - timedelta(days=1)
+    
     # Log report generation
     filter_info = f"shop_id={shop_id}" if shop_id else "all shops"
     logger.info(f"Report generated by {request.user.username}: date={report_date}, filter={filter_info}")
     
     # Base queryset - filter by date
     transactions = Transactions.objects.filter(
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).select_related('shop', 'created_by', 'updated_by')
     
     # Apply shop filter if specified
     if shop_id:
         transactions = transactions.filter(shop_id=shop_id)
     
-    transactions = transactions.order_by('created_at')
+    transactions = transactions.order_by('transaction_dt')
     
     # Calculate totals for the day
     totals = transactions.aggregate(
@@ -1234,81 +924,14 @@ def report(request):
     shops_to_process = Shop.objects.filter(id=shop_id) if shop_id else Shop.objects.all()
     
     for shop in shops_to_process.order_by('name'):
-        # Get first transaction of the day for this shop to fetch opening balance
-        first_transaction = Transactions.objects.filter(
-            shop=shop,
-            created_at__date=report_date
-        ).order_by('created_at').first()
-        
-        if first_transaction and first_transaction.old_balance is not None:
-            opening_balance = first_transaction.old_balance
-        else:
-            # No transactions on this date, get last transaction before this date
-            last_transaction = Transactions.objects.filter(
-                shop=shop,
-                created_at__date__lt=report_date
-            ).order_by('-created_at').first()
-            
-            if last_transaction and last_transaction.new_balance is not None:
-                opening_balance = last_transaction.new_balance
-            else:
-                # No transactions before this date, opening balance = 0
-                opening_balance = '0.00'
-        
-        # Get transactions for this shop on this date for totals
-        shop_day_transactions = Transactions.objects.filter(
-            shop=shop,
-            created_at__date=report_date
-        ).aggregate(
-            debit_total=Coalesce(
-                Sum(
-                    Case(
-                        When(tr_type='DEBIT', then=F('amount')),
-                        default=Value(0),
-                        output_field=DecimalField(max_digits=12, decimal_places=2),
-                    )
-                ),
-                Value(0),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            ),
-            credit_total=Coalesce(
-                Sum(
-                    Case(
-                        When(tr_type='CREDIT', then=F('amount')),
-                        default=Value(0),
-                        output_field=DecimalField(max_digits=12, decimal_places=2),
-                    )
-                ),
-                Value(0),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
-        )
-        
-        debit_total = shop_day_transactions['debit_total']
-        credit_total = shop_day_transactions['credit_total']
-        
-        if first_transaction:
-            # Closing balance is current shop balance
-            closing_balance = shop.balance
-        else:
-            last_transaction = Transactions.objects.filter(
-                shop=shop,
-                created_at__date__lt=report_date
-            ).order_by('-created_at').first()
-            
-            if last_transaction and last_transaction.new_balance is not None:
-                closing_balance = last_transaction.new_balance
-            else:
-                # No transactions before this date, opening balance = 0
-                closing_balance = '0.00'
-        
+        data = transaction_helper.get_opening_balance(shop, report_date)
         
         shop_summaries.append({
             'shop': shop,
-            'opening_balance': opening_balance,
-            'closing_balance': closing_balance,
-            'debit_total': debit_total,
-            'credit_total': credit_total,
+            'opening_balance': data['opening_balance'],
+            'closing_balance': data['closing_balance'],
+            'debit_total': data['day_total_debit'],
+            'credit_total': data['day_total_credit'],
         })
     
     all_shops = Shop.objects.all().order_by('name')
@@ -1316,18 +939,18 @@ def report(request):
     # Get loan and release summaries for the report date
     loan_entries = Loan.objects.filter(
         type='LOAN',
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).values('pawn_no', 'principal', 'interest')
     
     release_entries = Loan.objects.filter(
         type='RELEASE',
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).values('pawn_no', 'principal', 'interest')
     
     # Calculate totals for loans
     loan_totals = Loan.objects.filter(
         type='LOAN',
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).aggregate(
         total_principal=Coalesce(Sum('principal'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2)),
         total_interest=Coalesce(Sum('interest'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2))
@@ -1336,7 +959,7 @@ def report(request):
     # Calculate totals for releases
     release_totals = Loan.objects.filter(
         type='RELEASE',
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).aggregate(
         total_principal=Coalesce(Sum('principal'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2)),
         total_interest=Coalesce(Sum('interest'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2))
@@ -1344,47 +967,70 @@ def report(request):
     
     # Fetch denominations for the current user on the report date, grouped by time period
     TIME_PERIOD_ORDER = {'MORNING': 1, 'AFTERNOON': 2, 'EVENING': 3, 'NIGHT': 4}
-    denom_filter = {'created_by': request.user, 'created_at__date': report_date}
+    if is_admin(request.user) or is_super_admin(request.user):
+        denom_filter = {'created_at__date': report_date}
+    else:
+        denom_filter = {'created_by': request.user, 'created_at__date': report_date}
+    
     if shop_id:
         denom_filter['shop_id'] = shop_id
     denomination_entries_qs = (
         Denomination.objects
         .filter(**denom_filter)
-        .values('time_period', 'denomination', 'count', 'amount', 'shop__name')
+        .values('time_period', 'denomination', 'count', 'amount', 'shop__name','created_by__first_name','created_by__last_name')
         .order_by('time_period', 'denomination')
     )
     # Group denominations by time_period
     denomination_by_period = {}
     for entry in denomination_entries_qs:
-        period = entry['time_period']
-        if period not in denomination_by_period:
-            denomination_by_period[period] = {
-                'rows': [],
-                'total': Decimal('0.00'),
-                'shop_name': entry.get('shop__name') or '',
+        period    = entry['time_period']
+        user_name = f"{entry.get('created_by__first_name') or ''} {entry.get('created_by__last_name') or ''}".strip()
+        shop_name = entry.get('shop__name') or ''
+
+        # Use (period, user, shop) as key to avoid mixing different users' same period
+        group_key = (period, user_name, shop_name)
+
+        if group_key not in denomination_by_period:
+            denomination_by_period[group_key] = {
+                'period':    period,
+                'rows':      [],
+                'total':     Decimal('0.00'),
+                'shop_name': shop_name,
+                'user':      user_name,
             }
-        denomination_by_period[period]['rows'].append(entry)
-        denomination_by_period[period]['total'] += entry['amount']
+        denomination_by_period[group_key]['rows'].append(entry)
+        denomination_by_period[group_key]['total'] += entry['amount']
     # Sort periods by natural order
     denomination_periods = sorted(
         denomination_by_period.items(),
         key=lambda x: TIME_PERIOD_ORDER.get(x[0], 99)
     )
+    
+    configs={}
+    for config in all_configs:
+        if 'D_REP' in config.key:
+            configs[config.key] = config.value
+            print(f"Config: {config.key} = {config.value}")
 
     context = {
         'nav_title': 'Report',
         'transactions': transactions,
         'all_shops': all_shops,
+        'configs': configs,
         'report_date': report_date,
         'selected_shop': shop_id,
-        'debit_total': totals['debit_total'],
-        'credit_total': totals['credit_total'],
+        'debit_total': round(totals['debit_total'], 2),
+        'credit_total': round(totals['credit_total'], 2),
         'shop_summaries': shop_summaries,
         'loan_entries': loan_entries,
         'release_entries': release_entries,
         'loan_totals': loan_totals,
         'release_totals': release_totals,
         'denomination_periods': denomination_periods,
+        'next_day': next_day,
+        'prev_day': prev_day,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/report.html', context)
 
@@ -1405,13 +1051,13 @@ def export_report_csv(request):
     
     # Get transactions
     transactions = Transactions.objects.filter(
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).select_related('shop', 'created_by', 'updated_by')
     
     if shop_id:
         transactions = transactions.filter(shop_id=shop_id)
     
-    transactions = transactions.order_by('created_at')
+    transactions = transactions.order_by('transaction_dt')
     
     # Create CSV response
     response = HttpResponse(content_type='text/csv')
@@ -1424,8 +1070,8 @@ def export_report_csv(request):
         debit = transaction.amount if transaction.tr_type == 'DEBIT' else ''
         credit = transaction.amount if transaction.tr_type == 'CREDIT' else ''
         writer.writerow([
-            transaction.created_at.strftime('%Y-%m-%d'),
-            transaction.created_at.strftime('%H:%M:%S'),
+            transaction.transaction_dt.strftime('%Y-%m-%d'),
+            transaction.transaction_dt.strftime('%H:%M:%S'),
             transaction.shop.name,
             transaction.name or '-',
             transaction.remarks or '-',
@@ -1486,13 +1132,13 @@ def export_report_excel(request):
     
     # Get transactions
     transactions = Transactions.objects.filter(
-        created_at__date=report_date
+        transaction_dt__date=report_date
     ).select_related('shop', 'created_by', 'updated_by')
     
     if shop_id:
         transactions = transactions.filter(shop_id=shop_id)
     
-    transactions = transactions.order_by('created_at')
+    transactions = transactions.order_by('transaction_dt')
     
     # Calculate shop balances
     shop_summaries = []
@@ -1502,8 +1148,8 @@ def export_report_excel(request):
         # Get first transaction of the day for this shop to fetch opening balance
         first_transaction = Transactions.objects.filter(
             shop=shop,
-            created_at__date=report_date
-        ).order_by('created_at').first()
+            transaction_dt__date=report_date
+        ).order_by('transaction_dt').first()
         
         if first_transaction and first_transaction.old_balance is not None:
             opening_balance = first_transaction.old_balance
@@ -1511,8 +1157,8 @@ def export_report_excel(request):
             # No transactions on this date, get last transaction before this date
             last_transaction = Transactions.objects.filter(
                 shop=shop,
-                created_at__date__lt=report_date
-            ).order_by('-created_at').first()
+                transaction_dt__date__lt=report_date
+            ).order_by('-transaction_dt').first()
             
             if last_transaction and last_transaction.new_balance is not None:
                 opening_balance = last_transaction.new_balance
@@ -1522,7 +1168,7 @@ def export_report_excel(request):
         
         shop_day_transactions = Transactions.objects.filter(
             shop=shop,
-            created_at__date=report_date
+            transaction_dt__date=report_date
         ).aggregate(
             debit_total=Coalesce(
                 Sum(
@@ -1642,8 +1288,8 @@ def export_report_excel(request):
     
     # Transaction Data
     for transaction in transactions:
-        ws.cell(row=current_row, column=1, value=transaction.created_at.strftime('%Y-%m-%d'))
-        ws.cell(row=current_row, column=2, value=transaction.created_at.strftime('%H:%M:%S'))
+        ws.cell(row=current_row, column=1, value=transaction.transaction_dt.strftime('%Y-%m-%d'))
+        ws.cell(row=current_row, column=2, value=transaction.transaction_dt.strftime('%H:%M:%S'))
         ws.cell(row=current_row, column=3, value=transaction.shop.name)
         ws.cell(row=current_row, column=4, value=transaction.name or '-')
         ws.cell(row=current_row, column=5, value=transaction.remarks or '-')
@@ -1722,96 +1368,6 @@ def export_report_excel(request):
 
 
 @login_required
-@admin_required
-def ledger_info(request, pk):
-    ledger = get_object_or_404(Ledger, pk=pk)
-    
-    # Get all loan transactions for this ledger
-    loans_list = Loan.objects.filter(ledger=ledger).order_by('-created_at')
-    
-    # Pagination
-    paginator = Paginator(loans_list, 25)  # Show 25 loans per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    # Calculate counts for loans and releases
-    loan_count = Loan.objects.filter(ledger=ledger, type='LOAN').count()
-    release_count = Loan.objects.filter(ledger=ledger, type='RELEASE').count()
-    
-    context = {
-        'nav_title': 'Home',
-        'ledger': ledger,
-        'page_obj': page_obj,
-        'loan_count': loan_count,
-        'release_count': release_count,
-        'is_super_admin': request.user.is_superuser,
-        'is_admin': is_admin(request.user),
-    }
-    return render(request, 'entries/ledger_info.html', context)
-
-
-@login_required
-@admin_required
-def edit_ledger(request, pk):
-    ledger = get_object_or_404(Ledger, pk=pk)
-    old_name = ledger.name
-    
-    if request.method == 'POST':
-        form = LedgerForm(request.POST, instance=ledger)
-        if form.is_valid():
-            try:
-                updated_ledger = form.save()
-                changes = []
-                if old_name != updated_ledger.name:
-                    changes.append(f"name: {old_name} -> {updated_ledger.name}")
-                change_summary = ', '.join(changes) if changes else 'no changes'
-                logger.info(f"Ledger edited by {request.user.username}: ID {pk}, changes: {change_summary}")
-                messages.success(request, f'Ledger "{ledger.name}" updated successfully!')
-                return redirect('entries:ledger_info', pk=ledger.pk)
-            except Exception as e:
-                logger.error(f"Error editing ledger {pk} by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while updating ledger.')
-    else:
-        form = LedgerForm(instance=ledger)
-    
-    context = {
-        'nav_title': 'Home',
-        'form': form,
-        'ledger': ledger,
-    }
-    return render(request, 'entries/edit_ledger.html', context)
-
-
-@login_required
-@admin_required
-def delete_ledger(request, pk):
-    ledger = get_object_or_404(Ledger, pk=pk)
-    
-    if request.method == 'POST':
-        # Check if ledger has transactions (via shop)
-        if Transactions.objects.filter(shop=ledger.shop).exists():
-            messages.error(request, f'Cannot delete ledger "{ledger.name}" because its shop has associated transactions.')
-            logger.warning(f"Ledger deletion blocked by {request.user.username}: {ledger.name} shop has associated transactions")
-            return redirect('entries:ledger_info', pk=ledger.pk)
-        
-        ledger_name = ledger.name
-        try:
-            ledger.delete()
-            logger.warning(f"Ledger deleted by {request.user.username}: {ledger_name}")
-            messages.success(request, f'Ledger "{ledger_name}" deleted successfully!')
-        except Exception as e:
-            logger.error(f"Error deleting ledger {ledger_name} by {request.user.username}: {str(e)}", exc_info=True)
-            messages.error(request, 'An error occurred while deleting ledger.')
-            return redirect('entries:ledger_info', pk=ledger.pk)
-        return redirect('entries:home')
-    
-    context = {
-        'nav_title': 'Home',
-        'ledger': ledger,
-    }
-    return render(request, 'entries/delete_ledger.html', context)
-
-@login_required
 def denomination(request):
     if request.method == 'POST':
         form = DenominationForm(request.POST)
@@ -1821,6 +1377,8 @@ def denomination(request):
             
             # Generate key: DDMMYYYY-XX-Username
             from datetime import datetime
+            shop = form.cleaned_data.get('shop')
+            print(shop)
             current_date = datetime.now().strftime('%d%m%Y')
             time_period_code = {
                 'MORNING': '01',
@@ -1828,14 +1386,14 @@ def denomination(request):
                 'EVENING': '03',
                 'NIGHT': '04'
             }.get(time_period, '00')
-            key = f"{current_date}-{time_period_code}-{request.user.username}"
+            key = f"{shop.short_name}-{current_date}-{time_period_code}-{request.user.username}"
             
             # Check if key already exists
             if Denomination.objects.filter(key=key).exists():
                 messages.error(request, f'Denomination for {time_period.title()} on {datetime.now().strftime("%d-%m-%Y")} already exists!')
                 return render(request, 'entries/denomination.html', {'form': form})
             
-            shop = form.cleaned_data.get('shop')
+            
             note_2000 = form.cleaned_data.get('note_2000') or 0
             note_500 = form.cleaned_data.get('note_500') or 0
             note_200 = form.cleaned_data.get('note_200') or 0
@@ -1875,6 +1433,7 @@ def denomination(request):
                 
                 logger.info(f"Denomination added by {request.user.username}")
                 messages.success(request, 'Denomination added successfully!')
+                transaction_helper.purge_old_denominations()
                 return redirect('entries:denominations')
             except Exception as e:
                 logger.error(f"Error adding denomination by {request.user.username}: {str(e)}", exc_info=True)
@@ -1887,6 +1446,8 @@ def denomination(request):
     context = {
         'nav_title': 'Denomination',
         'form': form,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/denomination.html', context)
 
@@ -1929,6 +1490,7 @@ def denominations(request):
         'nav_title': 'Denomination',
         'denomination_groups': denomination_groups,
         'is_super_admin': is_super_admin,
+        'is_admin': is_admin(request.user),
         'is_admin_group_user': is_admin_group_user,
         'is_staff_group_user': is_staff_group_user,
     }
@@ -2099,6 +1661,8 @@ def edit_denomination(request, key):
         'updated_at': updated_at,
         'total': total,
         'is_edit_mode': True,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/denomination.html', context)
 
@@ -2163,185 +1727,154 @@ def view_denomination(request, key):
         'time_period': time_period,
         'shop': first_denom.shop,
         'total': total,
+        'created_by': created_by,
+        'created_at': created_at,
+        'updated_at': updated_at,
         'is_view_mode': True,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin,
     }
     return render(request, 'entries/denomination.html', context)
 
 
 @login_required
 def loan(request):
-    if request.method == 'POST':
-        pawn_no = request.POST.get('pawn_no')
-        principal = request.POST.get('principal')
-        interest = request.POST.get('interest')
-        ledger_id = request.POST.get('ledger')
-        loan_type = request.POST.get('loan_type')
-        date_str = request.POST.get('date')
-        time_str = request.POST.get('time')
-        
-        try:
-            ledger = Ledger.objects.get(id=ledger_id)
-            principal_amount = Decimal(principal)
-            interest_amount = Decimal(interest)
+    """Create a new loan transaction"""
+    if request.method != 'POST':
+        return redirect('entries:add_entries')
 
-            # Resolve the chosen date+time (fallback to now)
-            try:
-                chosen_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
-            except ValueError:
-                chosen_date = timezone.localdate()
-            try:
-                chosen_time = datetime.strptime(time_str, '%H:%M').time() if time_str else timezone.localtime(timezone.now()).time()
-            except ValueError:
-                chosen_time = timezone.localtime(timezone.now()).time()
-            chosen_dt = timezone.make_aware(datetime.combine(chosen_date, chosen_time))
-            today = chosen_date
-            
-            with db_transaction.atomic():
-                # Lock the shop for balance operations
-                shop = Shop.objects.select_for_update().get(pk=ledger.shop_id)
-                
-                # --- Determine loan type labels ---
-                if loan_type == 'LOAN':
-                    if principal_amount > shop.balance:
-                        messages.error(request, "Insufficient balance in shop")
-                        return redirect('entries:add_entries')
-                    name = 'LOAN'
-                    tr_type = 'DEBIT'
-                    principal_remark = 'Loan Principal'
-                    interest_remark = 'Loan Interest'
-                else:
-                    name = 'RELEASE'
-                    tr_type = 'CREDIT'
-                    principal_remark = 'Release Principal'
-                    interest_remark = 'Release Interest'
-                
-                # --- Check if a loan entry already exists for this type/ledger/date ---
-                existing_loan = Loan.objects.filter(
-                    ledger=ledger,
-                    type=loan_type,
-                    created_at__date=today
-                ).first()
-                
-                if existing_loan:
-                    # ── UPDATE existing loan entry ──
-                    logger.info(f"Found existing {loan_type} entry for {ledger.name} on {today}. Updating...")
-                    existing_loan.principal += principal_amount
-                    existing_loan.interest += interest_amount
-                    existing_loan.pawn_no = pawn_no
-                    existing_loan.updated_by = request.user
-                    existing_loan.save()
-                else:
-                    # ── CREATE new loan entry ──
-                    loan_entry = Loan(
-                        pawn_no=pawn_no,
-                        ledger=ledger,
-                        type=loan_type,
-                        principal=principal_amount,
-                        interest=interest_amount,
-                        created_at=chosen_dt,
-                        created_by=request.user,
-                        updated_by=request.user
-                    )
-                    loan_entry.save()
-                
-                # ── PRINCIPAL transaction: find existing or create new ──
-                existing_principal = Transactions.objects.filter(
+    logger.info("============ Loan Creation Started ============")
+
+    pawn_no    = request.POST.get('pawn_no')
+    principal  = request.POST.get('principal')
+    interest   = request.POST.get('interest')
+    ledger_id  = request.POST.get('ledger')
+    loan_type  = request.POST.get('loan_type')
+    date_str   = request.POST.get('date')
+    time_str   = request.POST.get('time')
+
+    try:
+        ledger           = Ledger.objects.get(id=ledger_id)
+        principal_amount = Decimal(principal)
+        interest_amount  = Decimal(interest)
+
+        # ── Resolve chosen date + time ───────────────────────────────
+        try:
+            chosen_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.localdate()
+        except ValueError:
+            chosen_date = timezone.localdate()
+        try:
+            chosen_time = datetime.strptime(time_str, '%H:%M').time() if time_str else timezone.localtime(timezone.now()).time()
+        except ValueError:
+            chosen_time = timezone.localtime(timezone.now()).time()
+
+        chosen_dt = timezone.make_aware(datetime.combine(chosen_date, chosen_time))
+
+        logger.info(f"Loan -> type=[{loan_type}] | pawn_no=[{pawn_no}] | principal=[{principal_amount}] | interest=[{interest_amount}] | date=[{chosen_date}]")
+
+        # ── Determine labels based on loan type ──────────────────────
+        if loan_type == 'LOAN':
+            name              = 'Loan'
+            principal_tr_type = 'DEBIT'
+            principal_remark  = 'Loan Principal'
+            interest_remark   = 'Loan Interest'
+        else:  # RELEASE
+            name              = 'Release'
+            principal_tr_type = 'CREDIT'
+            principal_remark  = 'Release Principal'
+            interest_remark   = 'Release Interest'
+
+        with db_transaction.atomic():
+            shop = Shop.objects.select_for_update().get(pk=ledger.shop_id)
+
+            # ── Step 1: Balance check for LOAN type ──────────────────
+            if loan_type == 'LOAN':
+                available = transaction_helper.get_balance(shop, chosen_date)
+                logger.info(f"Balance check -> shop=[{shop.short_name}] | available=[{available}] | required=[{principal_amount}]")
+                if principal_amount > available:
+                    messages.error(request, f'Insufficient balance in {shop.short_name}. Available: {available}')
+                    return redirect('entries:add_entries')
+
+            # ── Step 2: Create loan record ───────────────────────────
+            loan_entry = Loan(
+                pawn_no=pawn_no,
+                shop=shop,
+                ledger=ledger,
+                type=loan_type,
+                principal=principal_amount,
+                interest=interest_amount,
+                transaction_dt=chosen_dt,
+                created_by=request.user,
+                updated_by=request.user
+            )
+            loan_entry.save()
+            logger.info(f"Loan record created -> id=[{loan_entry.id}]")
+
+            # ── Step 3: Find existing principal transaction for the day ──
+            logger.info(f"Searching transactions -> shop=[{shop.short_name}] | date=[{chosen_date}]")
+            existing_principal = Transactions.objects.filter(
+                shop=shop,
+                remarks=principal_remark,
+                transaction_dt__date=chosen_date
+            ).first()
+            existing_interest = Transactions.objects.filter(
+                shop=shop,
+                remarks=interest_remark,
+                transaction_dt__date=chosen_date
+            ).first()
+            logger.info(f"Existing principal found: [{existing_principal is not None}] | Existing interest found: [{existing_interest is not None}]")
+
+            # ── Step 4: Update or create principal transaction ───────
+            if principal_amount > 0:
+                transaction_helper._add_or_create_transaction(
+                    trans=existing_principal,
+                    amount=principal_amount,
+                    remark=principal_remark,
+                    name=name,
+                    tr_type=principal_tr_type,
                     shop=shop,
-                    remarks=principal_remark,
-                    created_at__date=today
-                ).first()
-                
-                if existing_principal:
-                    # Update existing principal transaction with additional amount
-                    transaction_helper.update_transaction_amount(
-                        txn=existing_principal,
-                        additional_amount=principal_amount,
-                        tr_type=tr_type,
-                        user=request.user,
-                    )
-                    principal_new_balance = existing_principal.new_balance
-                else:
-                    # No principal transaction for this day – get old_balance from
-                    # the most recent transaction *before* chosen_dt
-                    principal_old_balance = transaction_helper.get_previous_balance(shop, chosen_dt)
-                    principal_txn = transaction_helper.create_transaction(
-                        shop=shop,
-                        amount=principal_amount,
-                        name=name,
-                        tr_type=tr_type,
-                        remarks=principal_remark,
-                        old_balance=principal_old_balance,
-                        chosen_dt=chosen_dt,
-                        user=request.user,
-                    )
-                    existing_principal = principal_txn
-                    principal_new_balance = principal_txn.new_balance
-                
-                # ── INTEREST transaction: find existing or create new ──
-                existing_interest = Transactions.objects.filter(
-                    shop=shop,
-                    remarks=interest_remark,
-                    created_at__date=today
-                ).first()
-                
-                last_txn_for_cascade = None  # track which transaction to cascade from
-                
-                if existing_interest:
-                    # Update existing interest transaction; also refresh its old_balance
-                    # to match the (possibly changed) principal transaction's new_balance
-                    transaction_helper.update_transaction_amount(
-                        txn=existing_interest,
-                        additional_amount=interest_amount,
-                        tr_type='CREDIT',
-                        user=request.user,
-                        new_old_balance=principal_new_balance,
-                    )
-                    last_txn_for_cascade = existing_interest
-                elif interest_amount > 0:
-                    # Create new interest transaction whose old_balance = principal's new_balance
-                    interest_txn = transaction_helper.create_transaction(
-                        shop=shop,
-                        amount=interest_amount,
-                        name=name,
-                        tr_type='CREDIT',
-                        remarks=interest_remark,
-                        old_balance=principal_new_balance,
-                        chosen_dt=chosen_dt,
-                        user=request.user,
-                    )
-                    last_txn_for_cascade = interest_txn
-                else:
-                    # No interest amount – cascade from the principal transaction
-                    last_txn_for_cascade = existing_principal
-                
-                # ── CASCADE: update all subsequent transactions & shop balance ──
-                transaction_helper.update_latest_transactions(
-                    request,
-                    last_txn_for_cascade,
-                    last_txn_for_cascade.new_balance,
+                    chosen_dt=chosen_dt,
+                    user=request.user,
+                    label="principal"
                 )
-                # After cascading, the final balance sits on _cascaded_balance;
-                # update the shop to keep it in sync.
-                final_balance = getattr(last_txn_for_cascade, '_cascaded_balance', last_txn_for_cascade.new_balance)
-                shop.refresh_from_db()
-                shop.balance = final_balance
-                shop.save()
-                
-                action = 'updated' if existing_loan else 'created'
-                messages.success(request, f'{loan_type.capitalize()} entry {action} successfully with transactions!')
-                
-        except Ledger.DoesNotExist:
-            messages.error(request, 'Selected ledger does not exist.')
-        except Exception as e:
-            messages.error(request, f'Error creating loan entry: {str(e)}')
-    
+            else:
+                logger.info("[principal] amount is 0 — skipping transaction")
+
+            # ── Step 5: Update or create interest transaction ────────
+            if interest_amount > 0:
+                transaction_helper._add_or_create_transaction(
+                    trans=existing_interest,
+                    amount=interest_amount,
+                    remark=interest_remark,
+                    name=name,
+                    tr_type='CREDIT',
+                    shop=shop,
+                    chosen_dt=chosen_dt + timedelta(milliseconds=10),
+                    user=request.user,
+                    label="interest"
+                )
+            else:
+                logger.info("[interest] amount is 0 — skipping transaction")
+
+        messages.success(request, f'{loan_type.capitalize()} entry created successfully!')
+        logger.info(f"Loan [{loan_entry.id}] created by [{request.user.username}]")
+        logger.info("============ Loan Creation Completed ============")
+
+    except Ledger.DoesNotExist:
+        logger.error(f"Ledger [{ledger_id}] not found")
+        messages.error(request, 'Selected ledger does not exist.')
+    except Exception as e:
+        logger.error(f"Error creating loan: {str(e)}", exc_info=True)
+        messages.error(request, f'Error creating loan entry: {str(e)}')
+
     return redirect('entries:add_entries')
 
 
 @login_required
+@ensure_csrf_cookie
 def loans(request):
     """View all loan transactions with pagination and filtering"""
-    loans_list = Loan.objects.select_related('ledger', 'created_by', 'updated_by').order_by('-created_at')
+    loans_list = Loan.objects.select_related('ledger', 'created_by', 'updated_by').order_by('-transaction_dt')
     
     # Apply filters
     from_date = (request.GET.get('from_date') or '').strip()
@@ -2353,14 +1886,14 @@ def loans(request):
     if from_date:
         try:
             from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
-            loans_list = loans_list.filter(created_at__date__gte=from_date_obj)
+            loans_list = loans_list.filter(transaction_dt__date__gte=from_date_obj)
         except ValueError:
             from_date = ''
 
     if to_date:
         try:
             to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-            loans_list = loans_list.filter(created_at__date__lte=to_date_obj)
+            loans_list = loans_list.filter(transaction_dt__date__lte=to_date_obj)
         except ValueError:
             to_date = ''
 
@@ -2407,7 +1940,9 @@ def loans(request):
         'loan_totals': loan_totals,
         'release_totals': release_totals,
         'all_loans': loans_list,  # For print view
-        'is_admin_user': is_admin(request.user),
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+        'is_admin_user': is_admin(request.user) or request.user.is_superuser,
     }
     return render(request, 'entries/loans.html', context)
 
@@ -2416,547 +1951,298 @@ def loans(request):
 def edit_loan(request, pk):
     """Edit a loan transaction"""
     loan = get_object_or_404(Loan, pk=pk)
-    old_pawn_no = loan.pawn_no
-    old_principal = loan.principal
-    old_interest = loan.interest
-    old_type = loan.type
-    old_ledger = loan.ledger
-    loan_created_date = timezone.localtime(loan.created_at).date()
-    
+
+    # ── Snapshot old values before any changes ──────────────────────
+    old_principal    = loan.principal
+    old_interest     = loan.interest
+    old_type         = loan.type
+    old_ledger       = loan.ledger
+    old_shop         = old_ledger.shop
+    old_date         = timezone.localtime(loan.transaction_dt).date()
+
     if request.method == 'POST':
-        logger.info("************ Loan Updation Started ************")
+        logger.info("============ Loan Update Started ============")
         form = LoanEditForm(request.POST, instance=loan)
+
         if form.is_valid():
-            updated_loan = form.save(commit=False)
-            new_principal = updated_loan.principal
-            new_interest = updated_loan.interest
-            new_type = updated_loan.type
-            new_ledger = updated_loan.ledger
-            logger.info("Old Pawn No.: [" + str(old_pawn_no) + "] New Pawn No.: [" + str(updated_loan.pawn_no) + "]")
-            logger.info("Old Principal: [" + str(old_principal) + "] New Principal: [" + str(new_principal) + "]")
-            logger.info("Old Interest: [" + str(old_interest) + "] New Interest: [" + str(new_interest) + "]")
-            logger.info("Old Type: [" + old_type  +"] New Type: [" + new_type + "]")
-            logger.info("Old Ledger: [" + str(old_ledger)  +"] New Ledger: [" + str(new_ledger) + "]")
-            
-            if request.user.is_authenticated:
-                updated_loan.updated_by = request.user
-            
+            updated_loan     = form.save(commit=False)
+            new_principal    = updated_loan.principal
+            new_interest     = updated_loan.interest
+            new_type         = updated_loan.type
+            new_ledger       = updated_loan.ledger
+            new_shop         = new_ledger.shop
+
+            # Resolve new transaction date
+            chosen_date = form.cleaned_data.get('date')
+            chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
+            new_dt      = timezone.make_aware(datetime.combine(chosen_date, chosen_time))
+            new_date    = chosen_date
+
+            logger.info(f"Old -> type=[{old_type}] | principal=[{old_principal}] | interest=[{old_interest}] | shop=[{old_shop}] | date=[{old_date}]")
+            logger.info(f"New -> type=[{new_type}] | principal=[{new_principal}] | interest=[{new_interest}] | shop=[{new_shop}] | date=[{new_date}]")
+
+            # Remark labels
+            old_principal_remark = f"{'Loan' if old_type == 'LOAN' else 'Release'} Principal"
+            old_interest_remark  = f"{'Loan' if old_type == 'LOAN' else 'Release'} Interest"
+            new_principal_remark = f"{'Loan' if new_type == 'LOAN' else 'Release'} Principal"
+            new_interest_remark  = f"{'Loan' if new_type == 'LOAN' else 'Release'} Interest"
+
+            same_shop = (old_shop.id == new_shop.id)
+            same_date = (old_date == new_date)
+            type_changed = (old_type != new_type)
+
             try:
                 with db_transaction.atomic():
-                    # Find and update/delete old transactions based on original loan type
-                    if old_type == 'LOAN':
-                        old_principal_remark = 'Loan Principal'
-                        old_interest_remark = 'Loan Interest'
-                    else:  # RELEASE
-                        old_principal_remark = 'Release Principal'
-                        old_interest_remark = 'Release Interest'
-                    
-                    # Get old transactions (search by shop since transactions no longer have ledger FK)
-                    old_shop = old_ledger.shop
-                    new_shop_from_ledger = new_ledger.shop
-                    logger.info(f"Searching for old principal transaction: shop={old_shop.name}, remark={old_principal_remark}, date={loan_created_date}")
+
+                    # ── Step 1: Validate balance for LOAN type ──────────────
+                    if new_type == 'LOAN':
+                        available = transaction_helper.get_balance(new_shop, new_date)
+                        # If same shop and old type was LOAN, add back old principal
+                        # because it will be reversed before new amount is applied
+                        if same_shop and old_type == 'LOAN':
+                            available += old_principal
+                        logger.info(f"Balance check -> available=[{available}] | required=[{new_principal}]")
+                        if new_principal > available:
+                            form.add_error(None, f'Insufficient balance in {new_shop.short_name} on {new_date}. Available: {available}')
+                            return render(request, 'entries/edit-loan.html', {
+                                'nav_title': 'Loan Transactions',
+                                'form': form,
+                                'loan': loan,
+                            })
+
+                    # ── Step 2: Find old transactions on old date ───────────
+                    logger.info(f"Searching old transactions -> shop=[{old_shop.short_name}] | date=[{old_date}]")
                     old_principal_trans = Transactions.objects.filter(
                         shop=old_shop,
                         remarks=old_principal_remark,
-                        created_at__date=loan_created_date
+                        transaction_dt__date=old_date
                     ).first()
-                    logger.info(f"Old principal transaction found: {old_principal_trans is not None}")
-                    
-                    logger.info(f"Searching for old interest transaction: shop={old_shop.name}, remark={old_interest_remark}, date={loan_created_date}")
                     old_interest_trans = Transactions.objects.filter(
                         shop=old_shop,
                         remarks=old_interest_remark,
-                        created_at__date=loan_created_date
+                        transaction_dt__date=old_date
                     ).first()
-                    logger.info(f"Old interest transaction found: {old_interest_trans is not None}")
-                    
-                    # Lock the shop(s)
-                    if old_shop.id == new_shop_from_ledger.id:
-                        # Same shop - lock it
-                        shop = Shop.objects.select_for_update().get(pk=old_shop.id)
-                        
-                        # Reverse old transactions
-                        if old_principal_trans:
-                            if old_type == 'LOAN':
-                                shop.balance += old_principal  # Reverse DEBIT
-                            else:
-                                shop.balance -= old_principal  # Reverse CREDIT
-                        
-                        if old_interest_trans:
-                            shop.balance -= old_interest  # Both types have CREDIT for interest
-                        
-                        logger.info("TEMP: Reversed Shop Balance: " + str(shop.balance))
-                        # Apply new transactions
-                        if new_type == 'LOAN':
-                            # Check if debit amount exceeds balance
-                            if new_principal > shop.balance:
-                                form.add_error(None, f'Insufficient balance in {shop.name}. Available balance: {shop.balance}')
-                                context = {
-                                    'nav_title': 'Loan Transactions',
-                                    'form': form,
-                                    'loan': loan,
-                                }
-                                return render(request, 'entries/edit-loan.html', context)
-                            
-                            # Debit principal
-                            old_balance = shop.balance
-                            shop.balance -= new_principal
-                            new_balance = shop.balance
-                            
-                            # Reverse Old Ledger Transaction Principal
-                            logger.info("Old Ledger Transaction Principal: " + str(old_principal_trans.amount))
-                            old_transaction_principal = old_principal_trans.amount - old_principal
-                            logger.info("Reversed Old Ledger Transaction Principal: " + str(old_transaction_principal))
-                            new_transaction_principal = old_transaction_principal + new_principal
-                            logger.info("New Ledger Transaction Principal: " + str(new_transaction_principal))
-                                
-                            # Update or create principal transaction
-                            if old_principal_trans and old_type == 'LOAN':
-                                old_principal_trans.amount = new_transaction_principal
-                                old_principal_trans.new_balance = new_balance
-                                old_principal_trans.updated_by = request.user
-                                old_principal_trans.save()
-                            else:
-                                transaction_helper.reverse_principal_transactions(request,old_principal_trans,old_principal,old_type)
+                    logger.info(f"Old principal trans found: [{old_principal_trans is not None}] | Old interest trans found: [{old_interest_trans is not None}]")
 
-                                Transactions.objects.create(
-                                    amount=new_principal,
-                                    name='Loan',
-                                    shop=shop,
-                                    tr_type='DEBIT',
-                                    remarks='Loan Principal',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                            
-                            # Credit interest
-                            old_balance = shop.balance
-                            shop.balance += new_interest
-                            new_balance = shop.balance
-                            
-                            # Reverse Old Ledger Transaction Interest
-                            logger.info("Old Ledger Transaction Interest: " + str(old_interest_trans.amount))
-                            old_transaction_interest = old_interest_trans.amount - old_interest
-                            logger.info("Reversed Old Ledger Transaction Interest: " + str(old_transaction_interest))
-                            new_transaction_interest = old_transaction_interest + new_interest
-                            logger.info("New Ledger Transaction Interest: " + str(new_transaction_interest))
-                            
-                            # Update or create interest transaction
-                            if old_interest_trans and old_type == 'LOAN':                                
-                                old_interest_trans.amount = new_transaction_interest
-                                old_interest_trans.new_balance = new_balance
-                                old_interest_trans.updated_by = request.user
-                                old_interest_trans.save()
-                            else:
-                                old_interest_trans.amount = old_interest_trans.amount - old_interest
-                                old_interest_trans.new_balance = old_interest_trans.new_balance - old_interest
-                                old_interest_trans.updated_by = request.user
-                                old_interest_trans.save()
-                                
-                                Transactions.objects.create(
-                                    amount=new_interest,
-                                    name='Loan',
-                                    shop=shop,
-                                    tr_type='CREDIT',
-                                    remarks='Loan Interest',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                        else:  # RELEASE
-                            # Credit principal
-                            old_balance = shop.balance
-                            shop.balance += new_principal
-                            new_balance = shop.balance
-                            
-                            # Reverse Old Ledger Transaction Principal
-                            logger.info("Old Ledger Transaction Principal: " + str(old_principal_trans.amount))
-                            old_transaction_principal = old_principal_trans.amount - old_principal
-                            logger.info("Reversed Old Ledger Transaction Principal: " + str(old_transaction_principal))
-                            new_transaction_principal = old_transaction_principal + new_principal
-                            logger.info("New Ledger Transaction Principal: " + str(new_transaction_principal))
-                            
-                            # Update or create principal transaction
-                            if old_principal_trans and old_type == 'RELEASE':
-                                old_principal_trans.amount = new_transaction_principal
-                                old_principal_trans.new_balance = new_balance
-                                old_principal_trans.updated_by = request.user
-                                old_principal_trans.save()
-                            else:
-                                transaction_helper.reverse_principal_transactions(request,old_principal_trans,old_principal,old_type)
-                                
-                                Transactions.objects.create(
-                                    amount=new_principal,
-                                    name='Release',
-                                    shop=shop,
-                                    tr_type='CREDIT',
-                                    remarks='Release Principal',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                            
-                            # Credit interest
-                            old_balance = shop.balance
-                            shop.balance += new_interest
-                            new_balance = shop.balance
-                            
-                            # Reverse Old Ledger Transaction Interest
-                            logger.info("Old Ledger Transaction Interest: " + str(old_interest_trans.amount))
-                            old_transaction_interest = old_interest_trans.amount - old_interest
-                            logger.info("Reversed Old Ledger Transaction Interest: " + str(old_transaction_interest))
-                            new_transaction_interest = old_transaction_interest + new_interest
-                            logger.info("New Ledger Transaction Interest: " + str(new_transaction_interest))
-                            
-                            # Update or create interest transaction
-                            if old_interest_trans and old_type == 'RELEASE':                                
-                                old_interest_trans.amount = new_transaction_interest
-                                old_interest_trans.new_balance = new_balance
-                                old_interest_trans.updated_by = request.user
-                                old_interest_trans.save()
-                            else:
-                                old_interest_trans.amount = old_interest_trans.amount - old_interest
-                                old_interest_trans.old_balance = old_principal_trans.new_balance
-                                old_interest_trans.new_balance = old_interest_trans.old_balance + old_interest_trans.amount
-                                old_interest_trans.updated_by = request.user
-                                old_interest_trans.save()
-                                    
-                                Transactions.objects.create(
-                                    amount=new_interest,
-                                    name='Release',
-                                    shop=shop,
-                                    tr_type='CREDIT',
-                                    remarks='Release Interest',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                        if old_principal_trans.amount == 0:
-                            old_principal_trans.delete()
-                        if old_interest_trans.amount == 0:
-                            old_interest_trans.delete()
-                        shop.save()
+                    # ── Step 3: Find new transactions on new date ───────────
+                    logger.info(f"Searching new transactions -> shop=[{new_shop.short_name}] | date=[{new_date}]")
+                    new_principal_trans = Transactions.objects.filter(
+                        shop=new_shop,
+                        remarks=new_principal_remark,
+                        transaction_dt__date=new_date
+                    ).first()
+                    new_interest_trans = Transactions.objects.filter(
+                        shop=new_shop,
+                        remarks=new_interest_remark,
+                        transaction_dt__date=new_date
+                    ).first()
+                    logger.info(f"New principal trans found: [{new_principal_trans is not None}] | New interest trans found: [{new_interest_trans is not None}]")
+
+                    
+
+                    # ── Step 4: Reduce old amounts from old transactions ─────
+                    # Only needed when shop or date changed
+                    if not (same_shop and same_date):
+                        logger.info("Shop or date changed — reversing old transactions")
+                        transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, request.user, label="old principal")
+                        transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  request.user, label="old interest")
+
+                    # ── Step 5: Apply new amounts to new transactions ────────
+                    if same_shop and same_date:
+                        logger.info("Same shop & date — checking for type change")
+
+                        if type_changed:
+                            # Type changed — delete old transactions and create new ones
+                            logger.info(f"Loan type changed [{old_type}] -> [{new_type}] — removing old, creating new")
+
+                            transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, request.user, label="old principal (type change)")
+                            transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  request.user, label="old interest (type change)")
+
+                            transaction_helper._add_or_create_transaction(
+                                trans=new_principal_trans,
+                                amount=new_principal,
+                                remark=new_principal_remark,
+                                name='Loan' if new_type == 'LOAN' else 'Release',
+                                tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
+                                shop=new_shop,
+                                chosen_dt=new_dt,
+                                user=request.user,
+                                label="new principal (type change)"
+                            )
+                            transaction_helper._add_or_create_transaction(
+                                trans=new_interest_trans,
+                                amount=new_interest,
+                                remark=new_interest_remark,
+                                name='Loan' if new_type == 'LOAN' else 'Release',
+                                tr_type='CREDIT',
+                                shop=new_shop,
+                                chosen_dt=new_dt,
+                                user=request.user,
+                                label="new interest (type change)"
+                            )
+                        else:
+                            # Same type — just update amounts by delta
+                            logger.info("Same type — updating amounts in place")
+                            transaction_helper._apply_amount_delta(
+                                trans=old_principal_trans,
+                                old_amount=old_principal,
+                                new_amount=new_principal,
+                                remark=new_principal_remark,
+                                name='Loan' if new_type == 'LOAN' else 'Release',
+                                tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
+                                shop=new_shop,
+                                chosen_dt=new_dt,
+                                user=request.user,
+                                label="principal"
+                            )
+                            transaction_helper._apply_amount_delta(
+                                trans=old_interest_trans,
+                                old_amount=old_interest,
+                                new_amount=new_interest,
+                                remark=new_interest_remark,
+                                name='Loan' if new_type == 'LOAN' else 'Release',
+                                tr_type='CREDIT',
+                                shop=new_shop,
+                                chosen_dt=new_dt,
+                                user=request.user,
+                                label="interest"
+                            )
                     else:
-                        logger.info("Updating Shop in Loan Transaction")
-                        # Different shops - lock both
-                        shop_ids = list(set([old_shop.id, new_shop_from_ledger.id]))
-                        shops = {s.pk: s for s in Shop.objects.select_for_update().filter(pk__in=shop_ids)}
-                        old_shop_obj = shops[old_shop.id]
-                        new_shop_obj = shops[new_shop_from_ledger.id]
-                        
-                        if new_type == 'LOAN':
-                            new_principal_remark = 'Loan Principal'
-                            new_interest_remark = 'Loan Interest'
-                        else:  # RELEASE
-                            new_principal_remark = 'Release Principal'
-                            new_interest_remark = 'Release Interest'
-                        
-                        new_principal_trans = Transactions.objects.filter(
-                            shop=new_shop_obj,
-                            remarks=new_principal_remark,
-                            created_at__date=loan_created_date
-                        ).first()
-                        
-                        new_interest_trans = Transactions.objects.filter(
-                            shop=new_shop_obj,
-                            remarks=new_interest_remark,
-                            created_at__date=loan_created_date
-                        ).first()
-                        
-                        # Reverse old transactions on old shop
-                        logger.info(f"About to reverse old transactions - Principal: {old_principal_trans is not None}, Interest: {old_interest_trans is not None}")
-                        if old_principal_trans:
-                            logger.info("Trying to reverse old shop transaction")
-                            if old_type == 'LOAN':
-                                old_shop_obj.balance += old_principal
-                                old_principal_trans.new_balance = old_principal_trans.new_balance + old_principal
-                            else:
-                                old_shop_obj.balance -= old_principal
-                                old_principal_trans.new_balance = old_principal_trans.new_balance - old_principal
-                                
-                            # Reverse Old Transaction Principal
-                            logger.info("Old Transaction Principal: " + str(old_principal_trans.amount))
-                            old_transaction_principal = old_principal_trans.amount - old_principal
-                            logger.info("Reversed Old Transaction Principal: " + str(old_transaction_principal))
-                            new_transaction_principal = old_transaction_principal + new_principal
-                            logger.info("New Transaction Principal: " + str(new_transaction_principal))
-                            
-                            if (old_principal_trans.amount - old_principal) == 0:
-                                old_principal_trans.delete()
-                            else:
-                                old_principal_trans.amount = old_principal_trans.amount - old_principal
-                                old_principal_trans.updated_by = request.user
-                                old_principal_trans.save()
-                        else:
-                            logger.warning(f"Old principal transaction NOT FOUND for reversal! Shop: {old_shop.name}, Remark: {old_principal_remark}, Date: {loan_created_date}")
-                            logger.warning(f"All transactions for this shop on this date: {Transactions.objects.filter(shop=old_shop, created_at__date=loan_created_date).values_list('remarks', 'amount', 'tr_type')}")
-                        
-                        if old_interest_trans:
-                            old_shop_obj.balance -= old_interest
-                            if (old_interest_trans.amount - old_interest) == 0:
-                                old_interest_trans.delete()
-                            else:
-                                old_interest_trans.amount = old_interest_trans.amount - old_interest
-                                if old_principal_trans:
-                                    old_interest_trans.old_balance = old_principal_trans.new_balance
-                                else:
-                                    old_interest_trans.old_balance = old_shop_obj.balance - old_interest_trans.amount
-                                old_interest_trans.new_balance = old_interest_trans.new_balance - old_principal
-                                old_interest_trans.updated_by = request.user
-                                old_interest_trans.save()
-                        else:
-                            logger.warning(f"Old interest transaction NOT FOUND for reversal! Shop: {old_shop.name}, Remark: {old_interest_remark}, Date: {loan_created_date}")
-                        
-                        old_shop_obj.save()
-                        
-                        # Refresh new_shop_obj if same as old_shop_obj
-                        if old_shop_obj.pk == new_shop_obj.pk:
-                            new_shop_obj = old_shop_obj
-                        
-                        # Apply new transactions on new shop
-                        if new_type == 'LOAN':
-                            # Check if debit amount exceeds balance
-                            if new_principal > new_shop_obj.balance:
-                                form.add_error(None, f'Insufficient balance in {new_shop_obj.name}. Available balance: {new_shop_obj.balance}')
-                                context = {
-                                    'nav_title': 'Loan Transactions',
-                                    'form': form,
-                                    'loan': loan,
-                                }
-                                return render(request, 'entries/edit-loan.html', context)
-                            
-                            # Debit principal
-                            old_balance = new_shop_obj.balance
-                            new_shop_obj.balance -= new_principal
-                            new_balance = new_shop_obj.balance
-                            
-                            if not new_principal_trans:
-                                Transactions.objects.create(
-                                    amount=new_principal,
-                                    name='Loan',
-                                    shop=new_shop_obj,
-                                    tr_type='DEBIT',
-                                    remarks='Loan Principal',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                            
-                            # Credit interest
-                            old_balance = new_shop_obj.balance
-                            new_shop_obj.balance += new_interest
-                            new_balance = new_shop_obj.balance
-                            
-                            if not new_interest_trans:
-                                Transactions.objects.create(
-                                    amount=new_interest,
-                                    name='Loan',
-                                    shop=new_shop_obj,
-                                    tr_type='CREDIT',
-                                    remarks='Loan Interest',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                        else:  # RELEASE
-                            # Credit principal
-                            old_balance = new_shop_obj.balance
-                            new_shop_obj.balance += new_principal
-                            new_balance = new_shop_obj.balance
-                            
-                            if not new_principal_trans:
-                                Transactions.objects.create(
-                                    amount=new_principal,
-                                    name='Release',
-                                    shop=new_shop_obj,
-                                    tr_type='CREDIT',
-                                    remarks='Release Principal',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                            
-                            # Credit interest
-                            old_balance = new_shop_obj.balance
-                            new_shop_obj.balance += new_interest
-                            new_balance = new_shop_obj.balance
-                            
-                            if not new_interest_trans:
-                                Transactions.objects.create(
-                                    amount=new_interest,
-                                    name='Release',
-                                    shop=new_shop_obj,
-                                    tr_type='CREDIT',
-                                    remarks='Release Interest',
-                                    old_balance=old_balance,
-                                    new_balance=new_balance,
-                                    created_by=request.user,
-                                    created_at=old_principal_trans.created_at,
-                                    updated_by=request.user
-                                )
-                        
-                        if new_principal_trans:
-                            new_principal_trans.amount = new_principal_trans.amount + new_principal
-                            new_principal_trans.old_balance = old_balance
-                            new_principal_trans.new_balance = new_balance
-                            new_principal_trans.updated_by = request.user
-                            new_principal_trans.save()
-                        
-                        if new_interest_trans:
-                            new_interest_trans.amount = new_interest_trans.amount + new_interest
-                            new_interest_trans.old_balance = old_balance
-                            new_interest_trans.new_balance = new_balance
-                            new_interest_trans.updated_by = request.user
-                            new_interest_trans.save()
-                        
-                        new_shop_obj.save()
-                        
-                    # Save the updated loan
-                    updated_loan.save()
+                        # Different shop or date — add to new transactions
+                        logger.info("Different shop or date — applying to new transactions")
+                        transaction_helper._add_or_create_transaction(
+                            trans=new_principal_trans,
+                            amount=new_principal,
+                            remark=new_principal_remark,
+                            name='Loan' if new_type == 'LOAN' else 'Release',
+                            tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
+                            shop=new_shop,
+                            chosen_dt=new_dt,
+                            user=request.user,
+                            label="new principal"
+                        )
+                        transaction_helper._add_or_create_transaction(
+                            trans=new_interest_trans,
+                            amount=new_interest,
+                            remark=new_interest_remark,
+                            name='Loan' if new_type == 'LOAN' else 'Release',
+                            tr_type='CREDIT',
+                            shop=new_shop,
+                            chosen_dt=new_dt,
+                            user=request.user,
+                            label="new interest"
+                        )
 
-                    # Apply chosen date+time to created_at
-                    chosen_date = form.cleaned_data.get('date')
-                    if chosen_date:
-                        chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
-                        chosen_dt = timezone.make_aware(
-                            datetime.combine(chosen_date, chosen_time)
-                        )
-                        Loan.objects.filter(pk=updated_loan.pk).update(
-                            created_at=chosen_dt,
-                        )
-                    
-                    logger.info(f"Loan updated by {request.user.username}: ID {pk}, Type {new_type}, Pawn No {updated_loan.pawn_no}")
-                    messages.success(request, 'Loan transaction and associated ledger transactions updated successfully!')
-                    return redirect('entries:loans')
-                    
+                    # ── Step 6: Save updated loan ───────────────────────────
+                    updated_loan.updated_by = request.user
+                    updated_loan.transaction_dt = new_dt
+                    updated_loan.save()
+                    logger.info(f"Loan [{pk}] saved -> type=[{new_type}] | principal=[{new_principal}] | interest=[{new_interest}]")
+
+                messages.success(request, 'Loan transaction updated successfully!')
+                logger.info("============ Loan Update Completed ============")
+                return redirect('entries:loans')
+
             except Exception as e:
-                logger.error(f"Error updating loan {pk} by {request.user.username}: {str(e)}", exc_info=True)
+                logger.error(f"Error updating loan [{pk}]: {str(e)}", exc_info=True)
                 messages.error(request, f'An error occurred while updating loan: {str(e)}')
+
         else:
             messages.error(request, 'Please correct the errors below.')
+
     else:
         form = LoanEditForm(
             instance=loan,
-            initial={'date': timezone.localtime(loan.created_at).date(), 'time': timezone.localtime(loan.created_at).time().replace(second=0, microsecond=0)},
+            initial={
+                'date': timezone.localtime(loan.transaction_dt).date(),
+                'time': timezone.localtime(loan.transaction_dt).time().replace(second=0, microsecond=0),
+            }
         )
-    
-    context = {
+
+    return render(request, 'entries/edit-loan.html', {
         'nav_title': 'Loan Transactions',
         'form': form,
         'loan': loan,
-    }
-    return render(request, 'entries/edit-loan.html', context)
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
 
 
 @login_required
+@csrf_protect
 @admin_required
 def delete_loan(request, pk):
     """Delete a loan transaction (admin only)"""
     loan = get_object_or_404(Loan, pk=pk)
-    
+
     if request.method == 'POST':
-        loan_id = loan.id
-        loan_pawn_no = loan.pawn_no
-        loan_type = loan.type
-        loan_ledger = loan.ledger
-        loan_created_date = timezone.localtime(loan.created_at).date()
-        
+        loan_id        = loan.id
+        loan_pawn_no   = loan.pawn_no
+        loan_type      = loan.type
+        loan_shop      = loan.ledger.shop
+        loan_date      = timezone.localtime(loan.transaction_dt).date()
+        loan_principal = loan.principal
+        loan_interest  = loan.interest
+
+        principal_remark = f"{'Loan' if loan_type == 'LOAN' else 'Release'} Principal"
+        interest_remark  = f"{'Loan' if loan_type == 'LOAN' else 'Release'} Interest"
+
+        logger.info("============ Loan Deletion Started ============")
+        logger.info(f"Loan -> id=[{loan_id}] | pawn_no=[{loan_pawn_no}] | type=[{loan_type}] | shop=[{loan_shop.short_name}] | date=[{loan_date}]")
+        logger.info(f"Amounts -> principal=[{loan_principal}] | interest=[{loan_interest}]")
+
         try:
             with db_transaction.atomic():
-                # Lock the shop
-                ledger = Ledger.objects.get(pk=loan_ledger.id)
-                shop = Shop.objects.select_for_update().get(pk=ledger.shop_id)
-                
-                # Determine remarks based on loan type
-                if loan_type == 'LOAN':
-                    principal_remark = 'Loan Principal'
-                    interest_remark = 'Loan Interest'
-                else:  # RELEASE
-                    principal_remark = 'Release Principal'
-                    interest_remark = 'Release Interest'
-                
-                # Find associated transactions
+
+                # ── Step 1: Find principal and interest transactions ─────
+                logger.info(f"Searching transactions -> shop=[{loan_shop.short_name}] | date=[{loan_date}]")
                 principal_trans = Transactions.objects.filter(
-                    shop=shop,
+                    shop=loan_shop,
                     remarks=principal_remark,
-                    created_at__date=loan_created_date
+                    transaction_dt__date=loan_date
                 ).first()
-                
-                
-                # Reverse transaction effects on shop balance
-                if principal_trans:
-                    if loan_type == 'LOAN':
-                        # Reverse DEBIT - add back to balance
-                        shop.balance += loan.principal
-                    else:  
-                        # RELEASE
-                        # Reverse CREDIT - subtract from balance
-                        shop.balance -= loan.principal
-                    if (principal_trans.amount - loan.principal) == 0:
-                        transaction_helper.update_latest_transactions(request,principal_trans,principal_trans.new_balance)
-                        principal_trans.delete()
-                        logger.info(f"Deleted {principal_remark} transaction for loan {loan_id}")
-                    else:
-                        principal_trans.amount = principal_trans.amount - loan.principal
-                        principal_trans.new_balance = principal_trans.new_balance + loan.principal
-                        principal_trans.save()
-                        transaction_helper.update_latest_transactions(request,principal_trans,principal_trans.new_balance)
-                        logger.info(f"Updated {principal_remark} transaction for loan {loan_id}")
-                    
-                
                 interest_trans = Transactions.objects.filter(
-                    shop=shop,
+                    shop=loan_shop,
                     remarks=interest_remark,
-                    created_at__date=loan_created_date
+                    transaction_dt__date=loan_date
                 ).first()
-                
-                if interest_trans:
-                    # Both loan and release have CREDIT for interest
-                    shop.balance -= loan.interest
-                    if (interest_trans.amount - loan.interest) == 0:
-                        transaction_helper.update_latest_transactions(request,interest_trans,interest_trans.new_balance)
-                        interest_trans.delete()
-                        logger.info(f"Deleted {interest_remark} transaction for loan {loan_id}")
-                    else:
-                        interest_trans.amount = interest_trans.amount - loan.interest
-                        interest_trans.new_balance = principal_trans.new_balance + interest_trans.amount
-                        interest_trans.save()
-                        transaction_helper.update_latest_transactions(request,interest_trans,interest_trans.new_balance)
-                        logger.info(f"Updated {interest_remark} transaction for loan {loan_id}")
-                
-                # Save updated shop balance
-                shop.save()
-                
-                # Delete the loan entry
+                logger.info(f"Principal trans found: [{principal_trans is not None}] | Interest trans found: [{interest_trans is not None}]")
+
+                # ── Step 2: Reduce or delete principal transaction ───────
+                transaction_helper._reduce_or_delete_transaction(
+                    trans=principal_trans,
+                    amount=loan_principal,
+                    user=request.user,
+                    label="principal"
+                )
+
+                # ── Step 3: Reduce or delete interest transaction ────────
+                transaction_helper._reduce_or_delete_transaction(
+                    trans=interest_trans,
+                    amount=loan_interest,
+                    user=request.user,
+                    label="interest"
+                )
+
+                # ── Step 4: Delete the loan record ───────────────────────
                 loan.delete()
-                logger.warning(f"Loan deleted by {request.user.username}: ID {loan_id}, Type {loan_type}, Pawn No {loan_pawn_no}")
-                messages.success(request, 'Loan transaction and associated ledger transactions deleted successfully!')
+                logger.warning(f"Loan deleted by [{request.user.username}] -> id=[{loan_id}] | type=[{loan_type}] | pawn_no=[{loan_pawn_no}]")
+
+            messages.success(request, 'Loan transaction deleted successfully!')
+            logger.info("============ Loan Deletion Completed ============")
+
         except Exception as e:
-            logger.error(f"Error deleting loan {loan_id} by {request.user.username}: {str(e)}", exc_info=True)
+            logger.error(f"Error deleting loan [{loan_id}] by [{request.user.username}]: {str(e)}", exc_info=True)
             messages.error(request, 'An error occurred while deleting loan.')
-        
+
         return redirect('entries:loans')
-    
-    context = {
+
+    return render(request, 'entries/delete-loan.html', {
         'nav_title': 'Loan Transactions',
         'loan': loan,
-    }
-    return render(request, 'entries/delete-loan.html', context)
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
 
 
 @login_required
@@ -2967,12 +2253,15 @@ def transaction_history(request, pk):
         Transactions.objects.select_related('shop', 'created_by', 'updated_by'),
         pk=pk
     )
-    history_records = transaction.history.all().order_by('-history_date')
+    # Exclude creation record to avoid duplication with current record
+    history_records = transaction.history.all().order_by('-history_date') 
 
     context = {
         'nav_title': 'Other Transactions',
         'transaction': transaction,
         'history_records': history_records,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/transaction_history.html', context)
 
@@ -2991,6 +2280,8 @@ def loan_history(request, pk):
         'nav_title': 'Loan Transactions',
         'loan': loan,
         'history_records': history_records,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/loan_history.html', context)
 

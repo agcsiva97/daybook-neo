@@ -4,81 +4,6 @@ from django import forms
 
 from .models import Ledger, Shop, Transactions, Denomination, Loan
 
-
-class ShopForm(forms.ModelForm):
-    class Meta:
-        model = Shop
-        fields = ['short_name', 'name', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance']
-        labels = {
-            'short_name': 'Short Name',
-            'name': 'Shop Name',
-            'd_no': 'D.No',
-            'addressline1': 'Address Line 1',
-            'addressline2': 'Address Line 2',
-            'place': 'Place',
-            'pincode': 'Pincode',
-            'balance': 'Balance',
-        }
-        widgets = {
-            'short_name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '20'}),
-            'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100'}),
-            'd_no': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '10'}),
-            'addressline1': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '255'}),
-            'addressline2': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '255'}),
-            'place': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '50'}),
-            'pincode': forms.NumberInput(attrs={'class': 'form-control', 'min': '100000', 'max': '999999'}),
-            'balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['d_no'].required = False
-        self.fields['addressline2'].required = False
-
-
-class ShopEditForm(forms.ModelForm):
-    class Meta:
-        model = Shop
-        fields = ['name', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance']
-        labels = {
-            'name': 'Shop Name',
-            'd_no': 'D.No',
-            'addressline1': 'Address Line 1',
-            'addressline2': 'Address Line 2',
-            'place': 'Place',
-            'pincode': 'Pincode',
-            'balance': 'Balance',
-        }
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100'}),
-            'd_no': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '10'}),
-            'addressline1': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '255'}),
-            'addressline2': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '255'}),
-            'place': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '50'}),
-            'pincode': forms.NumberInput(attrs={'class': 'form-control', 'min': '100000', 'max': '999999'}),
-            'balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['d_no'].required = False
-        self.fields['addressline2'].required = False
-
-
-class LedgerForm(forms.ModelForm):
-    class Meta:
-        model = Ledger
-        fields = ['name', 'license_number']
-        labels = {
-            'name': 'Name',
-            'license_number': 'License Number',
-        }
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'license_number': forms.TextInput(attrs={'class': 'form-control'}),
-        }
-
-
 class TransactionForm(forms.ModelForm):
     TR_TYPE_CHOICES = [
         ('DEBIT', 'DEBIT'),
@@ -125,7 +50,7 @@ class TransactionForm(forms.ModelForm):
 
     time = forms.TimeField(
         required=False,
-        widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time', 'id': 'id_time'}),
+        widget=forms.TimeInput(format='%H:%M:%S', attrs={'class': 'form-control', 'type': 'time', 'id': 'id_time','step': '1'}),
         label='Time',
     )
 
@@ -290,7 +215,7 @@ class LoanForm(forms.Form):
 
     time = forms.TimeField(
         required=False,
-        widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time', 'id': 'loan_time'}),
+        widget=forms.TimeInput(format='%H:%M:%S.%f', attrs={'class': 'form-control', 'type': 'time', 'id': 'loan_time','step': '0.001'}),
         label='Time',
     )
 
@@ -340,14 +265,40 @@ class LoanEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Customize shop dropdown to display short_name
         self.fields['shop'].label_from_instance = lambda obj: obj.short_name
-        # If instance exists, filter ledgers by its shop
-        if self.instance and self.instance.pk and self.instance.ledger:
-            shop = self.instance.ledger.shop
-            if shop:
-                self.fields['ledger'].queryset = Ledger.objects.filter(shop=shop).order_by('name')
-                self.fields['shop'].initial = shop
+        
+        # Determine the shop to filter ledgers by
+        shop_for_filter = None
+        if self.data and 'shop' in self.data:
+            # POST data has shop - use it
+            try:
+                shop_for_filter = Shop.objects.get(pk=self.data['shop'])
+            except (ValueError, Shop.DoesNotExist):
+                pass
+        elif self.instance and self.instance.pk and self.instance.ledger:
+            # GET or initial - use instance's shop
+            shop_for_filter = self.instance.ledger.shop
+        
+        if shop_for_filter:
+            self.fields['ledger'].queryset = Ledger.objects.filter(shop=shop_for_filter).order_by('name')
+            if not self.data:  # Only set initial for GET
+                self.fields['shop'].initial = shop_for_filter
+        else:
+            # Fallback - all ledgers
+            self.fields['ledger'].queryset = Ledger.objects.all().order_by('name')
+        
         # Remove empty_label from ledger
         self.fields['ledger'].empty_label = None
+
+    def clean(self):
+        cleaned_data = super().clean()
+        shop = cleaned_data.get('shop')
+        ledger = cleaned_data.get('ledger')
+        
+        if shop and ledger:
+            if ledger.shop != shop:
+                raise forms.ValidationError("The selected ledger does not belong to the selected shop.")
+        
+        return cleaned_data
 
     shop = forms.ModelChoiceField(
         queryset=Shop.objects.all().order_by('short_name'),
@@ -371,7 +322,7 @@ class LoanEditForm(forms.ModelForm):
 
     time = forms.TimeField(
         required=False,
-        widget=forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+        widget=forms.TimeInput(format='%H:%M:%S', attrs={'class': 'form-control', 'type': 'time','step': '1'}),
         label='Time',
     )
 

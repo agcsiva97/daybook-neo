@@ -47,12 +47,20 @@
                     </a>
                   {% endif %}
                   {% if is_admin_group_user or is_super_admin %}
-                    <form method="post" action="{% url 'entries:delete_denomination' item.key %}" class="d-inline" onsubmit="return confirm('Delete this denomination record?');">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                        <i class="fa-solid fa-trash"></i>
-                      </button>
-                    </form>
+                    <!-- Trigger delete modal -->
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            title="Delete"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteModal"
+                            data-key="{{ item.key }}"
+                            data-period="{{ item.time_period|title }}"
+                            data-date="{{ item.date|date:'d-m-Y' }}"
+                            data-shop="{{ item.shop__name|default:'—' }}"
+                            data-total="{{ item.total|floatformat:2 }}"
+                            data-url="{% url 'entries:delete_denomination' item.key %}">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
                   {% endif %}
                 </td>
               </tr>
@@ -67,4 +75,52 @@
     </div>
   </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">
+          <i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>Confirm Delete
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this denomination record?</p>
+        <div class="card">
+          <div class="card-body">
+            <p class="mb-1"><strong>Date:</strong> <span id="modal-date"></span></p>
+            <p class="mb-1"><strong>Period:</strong> <span id="modal-period"></span></p>
+            <p class="mb-1"><strong>Shop:</strong> <span id="modal-shop"></span></p>
+            <p class="mb-0"><strong>Total:</strong> ₹ <span id="modal-total"></span></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fa-solid fa-xmark me-1"></i>Cancel
+        </button>
+        <form id="deleteForm" method="post" action="">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            <i class="fa-solid fa-trash me-1"></i>Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Populate modal with row data on trigger
+  document.getElementById('deleteModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    document.getElementById('modal-date').textContent   = button.getAttribute('data-date');
+    document.getElementById('modal-period').textContent = button.getAttribute('data-period');
+    document.getElementById('modal-shop').textContent   = button.getAttribute('data-shop');
+    document.getElementById('modal-total').textContent  = button.getAttribute('data-total');
+    document.getElementById('deleteForm').action        = button.getAttribute('data-url');
+  });
+</script>
 {% endblock %}

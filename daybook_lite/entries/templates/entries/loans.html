@@ -204,8 +204,8 @@
           <tbody>
             {% for loan in page_obj %}
             <tr>
-              <td>{{ loan.created_at|date:"Y-m-d" }}</td>
-              <td>{{ loan.created_at|time:"H:i:s" }}</td>
+              <td>{{ loan.transaction_dt|date:"Y-m-d" }}</td>
+              <td>{{ loan.transaction_dt|time:"H:i:s" }}</td>
               <td>{{ loan.pawn_no }}</td>
               <td>{{ loan.ledger.name }}</td>
               <td>

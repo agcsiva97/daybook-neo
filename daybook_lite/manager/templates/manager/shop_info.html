@@ -7,17 +7,17 @@
       <h4 class="mb-0"><i class="fa-solid fa-shop"></i> {{ shop.name }}</h4>
       <div class="d-flex gap-2">
         {% if is_admin %}
-            <a href="{% url 'entries:edit_shop' shop.pk %}" class="btn btn-sm btn-outline-primary">
+            <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-outline-primary">
               <i class="fa-solid fa-pencil"></i> Edit
             </a>
         {% endif %}
         {% if is_super_admin %}
-            <a href="{% url 'entries:delete_shop' shop.pk %}" class="btn btn-sm btn-outline-danger">
+            <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-outline-danger">
               <i class="fa-solid fa-trash"></i> Delete
             </a>
         {% endif %}
-        <a href="{% url 'entries:home' %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> Back to Home
+        <a href="{% url 'manager:shops_list' %}" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i> Back to Shops List
         </a>
       </div>
     </div>
@@ -63,11 +63,11 @@
         </div>
         <div class="col-md-6">
           <h5>Balance</h5>
-          <p class="display-6 text-primary">{{ shop.balance }}</p>
+          <p class="display-6 text-primary">{{ balance }}</p>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <h5 class="mb-0">Linked Ledgers</h5>
             {% if is_admin %}
-            <a href="{% url 'entries:add_shop_ledger' shop.pk %}" class="btn btn-sm btn-primary">
+            <a href="{% url 'manager:add_shop_ledger' shop.pk %}" class="btn btn-sm btn-primary">
               <i class="fa-solid fa-plus"></i> Add Ledger
             </a>
             {% endif %}
@@ -75,14 +75,14 @@
           {% if ledgers %}
           <ul class="list-group mt-3">
             {% for ledger in ledgers %}
-            <li class="list-group-item d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="window.location.href='{% url 'entries:ledger_info' ledger.pk %}'">
-              <a href="{% url 'entries:ledger_info' ledger.pk %}">{{ ledger.name }}</a>
+            <li class="list-group-item d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="window.location.href='{% url 'manager:ledger_info' ledger.pk %}'">
+              <a href="{% url 'manager:ledger_info' ledger.pk %}">{{ ledger.name }}</a>
               <div class="d-flex gap-2">
                 {% if is_admin %}
-                <a href="{% url 'entries:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Ledger">
+                <a href="{% url 'manager:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Ledger">
                   <i class="fa-solid fa-pencil"></i>
                 </a>
-                <a href="{% url 'entries:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Ledger">
+                <a href="{% url 'manager:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Ledger">
                   <i class="fa-solid fa-trash"></i>
                 </a>
                 {% endif %}
@@ -100,14 +100,14 @@
 
   <div class="card mt-3">
     <div class="card-header">
-      <h5 class="mb-0">All Transactions ({{ page_obj.paginator.count }} total)</h5>
+      <h5 class="mb-0">Recent Transactions </h5>
+      <small class="text-muted">Showing up to 10 most recent transactions for this shop, to view all transactions, <a href="{% url 'entries:transactions' %}?from_date=&to_date=&shop={{ shop.id }}&type=&name_search=&search=">click here</a>.</small>
     </div>
     <div class="card-body">
       <table class="table table-hover">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Time</th>
+            <th>Transaction Date</th>
             <th>Name</th>
             <th>Remarks</th>
             <th class="text-end">DEBIT</th>
@@ -117,10 +117,9 @@
           </tr>
         </thead>
         <tbody>
-          {% for transaction in page_obj %}
+          {% for transaction in transactions_list %}
           <tr>
-            <td>{{ transaction.created_at|date:"Y-m-d" }}</td>
-            <td>{{ transaction.created_at|time:"H:i:s" }}</td>
+            <td>{{ transaction.transaction_dt|date:"d-m-Y" }} <small class="text-muted"> {{ transaction.transaction_dt|date:"H:i:s" }} </small></td>
             <td>{{ transaction.name|default:"-" }}</td>
             <td>{{ transaction.remarks|default:"-" }}</td>
             {% if transaction.tr_type == 'DEBIT' %}
@@ -153,7 +152,7 @@
       </table>
 
       <!-- Pagination -->
-      {% if page_obj.has_other_pages %}
+      {% comment %} {% if page_obj.has_other_pages %}
       <nav aria-label="Transaction pagination">
         <ul class="pagination justify-content-center">
           {% if page_obj.has_previous %}
@@ -213,7 +212,7 @@
           (showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} transactions)
         </p>
       </nav>
-      {% endif %}
+      {% endif %} {% endcomment %}
     </div>
   </div>
 </div>

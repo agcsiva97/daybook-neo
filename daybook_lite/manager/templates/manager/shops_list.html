@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Users</h4>
+      {% if is_super_admin %}
+        <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-plus"></i> Add Shop
+        </a>
+    {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Short Name</th>
+              <th scope="col">Ledgers</th>
+              <th scope="col">Place</th>
+              <th scope="col">Pincode</th>
+              <th scope="col">Current Balance</th>
+          </thead>
+          <tbody>
+            {% for shop in shops %}
+            <tr onclick="window.location.href='{% url 'manager:shop_info' pk=shop.id %}'" style="cursor:pointer;">
+              <td>{{ shop.name }}</td>
+              <td>{{ shop.short_name }}</td>
+              <td>
+              {% if shop.ledgers.all %}
+                {{ shop.ledgers.all|join:", " }}
+              {% else %}
+                -
+              {% endif %}
+              </td>
+              <td>{{ shop.place|default:"-" }}</td>
+              <td>{{ shop.pincode|default:"-" }}</td>
+              <td>
+                {% if shop.cur_balance > 0 %}
+                  <span class="text-success">₹{{ shop.cur_balance }}</span>
+                {% else %}
+                  ₹0
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No shops found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+<br>
+</div>
+{% endblock %}

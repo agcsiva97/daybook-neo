@@ -6,7 +6,7 @@
     <div class="col-md-6">
       <div class="card">
         <div class="card-header">
-          <h4 class="mb-0">Add Ledger to {{ shop.name }}</h4>
+          <h4 class="mb-0">Edit Ledger</h4>
         </div>
         <div class="card-body">
           <form method="post">
@@ -26,19 +26,19 @@
               {% endif %}
             </div>
             <div class="mb-3">
-              <label class="form-label" for="{{ form.balance.id_for_label }}">Opening Balance</label>
+              <label class="form-label" for="{{ form.balance.id_for_label }}">Current Balance</label>
               {{ form.balance }}
-              <div class="form-text">{{ form.balance.help_text }}</div>
               {% if form.balance.errors %}
                 <div class="text-danger small">{{ form.balance.errors|striptags }}</div>
               {% endif %}
+              <small class="text-muted">Note: Changing the balance will directly update the ledger balance.</small>
             </div>
             {% if form.non_field_errors %}
               <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
             {% endif %}
             <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary">Add Ledger</button>
-              <a href="{% url 'entries:shop_info' shop.pk %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-sm btn-primary">Update Ledger</button>
+              <a href="{% url 'manager:ledger_info' ledger.pk %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
             </div>
           </form>
         </div>

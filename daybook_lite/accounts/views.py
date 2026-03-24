@@ -1,11 +1,12 @@
 import logging
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render, get_object_or_404
 
+from manager.helper.manager_helper import log_activity
 from .forms import CustomPasswordChangeForm, UserCreationForm, UserProfileForm, UserEditForm
 
 logger = logging.getLogger(__name__)
@@ -24,9 +25,33 @@ class DaybookLoginView(LoginView):
             messages.error(self.request, 'User is inactive. Contact administrator.')
         else:
             messages.error(self.request, 'Invalid username or password. Please try again.')
-
+        logger.warning(f"Failed login attempt for username: {username}")
+        log_activity(self.request, 'FAILED_LOGIN', model_name='User', object_id=username, description='Failed login attempt')
         return super().form_invalid(form)
 
+# accounts/views.py
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            # Optional — set remember me
+            remember_me = request.POST.get('remember_me')
+            if not remember_me:
+                # Session expires when browser closes
+                request.session.set_expiry(0)
+
+            logger.info(f"User logged in -> [{user.username}]")
+            return redirect('entries:home')
+        else:
+            messages.error(request, 'Invalid username or password.')
+
+    return render(request, 'accounts/login.html')
 
 def is_admin(user):
     return user.is_superuser or user.groups.filter(name='Admin').exists()
@@ -67,8 +92,9 @@ def can_edit_user(actor, target_user):
 
 def logout_view(request):
     username = request.user.username if request.user.is_authenticated else 'Unknown'
+    log_activity(request, 'LOGOUT', model_name='User', object_id=username, description='User logged out')
     logout(request)
-    logger.info(f"User logged out: {username}")
+    logger.info(f"User logged out: {username}")    
     return redirect('entries:home')
 
 
@@ -90,7 +116,8 @@ def edit_profile(request):
                 form.save()
                 logger.info(f"Profile updated by {request.user.username}, fields changed: {', '.join(changed_fields) if changed_fields else 'None'}")
                 messages.success(request, 'Profile updated successfully!')
-                return redirect('accounts:user_settings')
+                log_activity(request, 'PROFILE_UPDATE', model_name='User', object_id=request.user.username, description=f'Profile updated, fields changed: {", ".join(changed_fields) if changed_fields else "None"}')
+                return redirect('user_settings')
             except Exception as e:
                 logger.error(f"Error updating profile for {request.user.username}: {str(e)}", exc_info=True)
                 messages.error(request, 'An error occurred while updating profile.')
@@ -149,6 +176,8 @@ def create_user(request):
     context = {
         'nav_title': 'Users',
         'form': form,
+        'app_name': 'manager',
+        'is_super_admin': request.user.is_superuser,
     }
     return render(request, 'accounts/create_user.html', context)
 
@@ -160,6 +189,8 @@ def users_list(request):
     context = {
         'nav_title': 'Users',
         'users': users,
+        'app_name': 'manager',
+        'is_super_admin': request.user.is_superuser,
     }
     return render(request, 'accounts/users_list.html', context)
 
@@ -174,11 +205,13 @@ def user_info(request,username):
     can_edit = can_edit_user(request.user, selected_user)
     context={
         "nav_title": "Users",
+        'is_super_admin': request.user.is_superuser,
         "selected_user": selected_user,
         "is_staff_member": is_staff_member,
         "can_make_inactive": can_make_inactive,
         "can_make_active": can_make_active,
         "can_edit": can_edit,
+        'app_name': 'manager',
     }
     return render(request, 'accounts/user_info.html', context)
 
@@ -212,6 +245,8 @@ def edit_user(request, username):
         'nav_title': 'Users',
         'form': form,
         'selected_user': selected_user,
+        'app_name': 'manager',
+        'is_super_admin': request.user.is_superuser,
     }
     return render(request, 'accounts/edit_user.html', context)
 
