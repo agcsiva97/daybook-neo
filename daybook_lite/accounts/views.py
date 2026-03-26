@@ -119,6 +119,8 @@ def logout_view(request):
 def user_settings(request):
     context = {
         'nav_title': 'Users',
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'accounts/user_settings.html', context)
 
@@ -144,6 +146,8 @@ def edit_profile(request):
     context = {
         'nav_title': 'Users',
         'form': form,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'accounts/edit_profile.html', context)
 
@@ -157,6 +161,7 @@ def change_password(request):
                 user = form.save()
                 update_session_auth_hash(request, user)
                 logger.info(f"Password changed successfully for user: {request.user.username}")
+                log_activity(request, 'PASSWORD_CHANGE', model_name='User', object_id=request.user.username, description='Password changed successfully')
                 messages.success(request, 'Password changed successfully!')
                 return redirect('accounts:user_settings')
             except Exception as e:
@@ -168,6 +173,8 @@ def change_password(request):
     context = {
         'nav_title': 'Users',
         'form': form,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
     }
     return render(request, 'accounts/change_password.html', context)
 

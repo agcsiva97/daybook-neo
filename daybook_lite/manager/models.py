@@ -28,9 +28,9 @@ class Shop(models.Model):
     place = models.CharField(max_length=50, null=True, blank=True)
     pincode = models.DecimalField(max_digits=6, decimal_places=0, null=True, blank=True)
     balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    is_local = models.BooleanField(default=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True) 
-    port = models.PositiveIntegerField( null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(65535)])
+    # is_local = models.BooleanField(default=True)
+    # ip_address = models.GenericIPAddressField(null=True, blank=True) 
+    # port = models.PositiveIntegerField( null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(65535)])
 
     def __str__(self):
         return self.short_name

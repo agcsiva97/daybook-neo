@@ -44,7 +44,7 @@ _load_env_file(BASE_DIR / '.env')
 SECRET_KEY = 'django-insecure-00jp4@&#cx9tk*y7&6u_bp8g%o3#4ot8!h=9pm48#s9jq%l^0v'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     'daybook.local',

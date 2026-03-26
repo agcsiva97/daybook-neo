@@ -61,7 +61,7 @@ def add_shop(request):
     if request.method == 'POST':
         form = ShopForm(request.POST)
         if form.is_valid():
-            print(f"is local: {request.POST.get('is_local')}")
+            # print(f"is local: {request.POST.get('is_local')}")
             short_name = form.cleaned_data.get('short_name')
             name = form.cleaned_data.get('name')
             d_no = form.cleaned_data.get('d_no')
@@ -70,42 +70,25 @@ def add_shop(request):
             place = form.cleaned_data.get('place')
             pincode = form.cleaned_data.get('pincode')
             balance = form.cleaned_data.get('balance')
-            if request.POST.get('is_local') == 'on':
-                is_local = True
-                ip_address = '0.0.0.0'
-                port = 0
-            else:
-                is_local = False
-                ip_address = form.cleaned_data.get('ip_address')
-                port = form.cleaned_data.get('port')
-            print(f"Form is valid. Data: {form.cleaned_data}, IP: {ip_address}, Port: {port}")
             try:
                 with db_transaction.atomic():
-                    # Save the shop
-                    
-                    shop = manager_helper.create_shop(short_name, name, d_no, addressline1, addressline2, place, pincode, balance, is_local, ip_address, port)
+                    shop = manager_helper.create_shop(short_name, name, d_no, addressline1, addressline2, place, pincode, balance)
                     if shop is not None:
-                        print(f"Shop created with ID: {shop.id}, IP: {shop.ip_address}, Port: {shop.port}")
+                        print(f"Shop created with ID: {shop.id}")
                         manager_helper.create_ledger(shop.short_name, "", shop)
-                        if shop.is_local:
-                            transaction_helper.create_transaction(
-                                shop=shop,
-                                amount=shop.balance,
-                                tr_type='CREDIT',
-                                name='Opening Deposit',
-                                remarks='Account Opening Deposit',
-                                old_balance=0,
-                                chosen_dt=timezone.now(),
-                                user=request.user
-                            )
-                                            # logger.info(f"Shop created by {request.user.username}: {shop.id}")
-                            messages.success(request, f'Shop "{shop.name}" created successfully!')
-                            return redirect('manager:home')
-                        else:
-                            messages.success(request, f'Remote shop "{shop.name}" created successfully!')
-                            return redirect('manager:home')
-                    else:
-                        messages.error(request, f'Shop not available with short name "{short_name}". Please check the IP address and port for remote shop.')
+                        transaction_helper.create_transaction(
+                            shop=shop,
+                            amount=shop.balance,
+                            tr_type='CREDIT',
+                            name='Opening Deposit',
+                            remarks='Account Opening Deposit',
+                            old_balance=0,
+                            chosen_dt=timezone.now(),
+                            user=request.user
+                        )
+                        # logger.info(f"Shop created by {request.user.username}: {shop.id}")
+                        messages.success(request, f'Shop "{shop.short_name}" created successfully!')
+                        return redirect('manager:home')
             except Exception as e:
                 logger.error(f"Error creating shop by {request.user.username}: {str(e)}", exc_info=True)
                 messages.error(request, f'Error creating shop: {str(e)}')

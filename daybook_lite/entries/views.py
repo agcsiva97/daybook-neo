@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 import requests
 
 from .forms import TransactionForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
@@ -296,35 +297,10 @@ def transactions(request):
     search_query = request.GET.get('search', '')
     name_search_query = request.GET.get('name_search', '')
     
-    transactions_list = Transactions.objects.filter(
-        shop__is_local=True
-        ).select_related(
+    transactions_list = Transactions.objects.all().select_related(
             'shop', 'created_by', 'updated_by'
         ).order_by('-transaction_dt')
 
-    external_shops = Shop.objects.filter(is_local=False).order_by('name')
-
-    for shop in external_shops:
-        response = requests.get(f'http://{shop.ip_address}:{shop.port}/api/shops/{shop.id}/transactions/', timeout=5)
-        if response.status_code == 200:
-            shop_transactions = response.json().get('transactions', [])
-            for tr in shop_transactions:
-                # Convert API data → object-like dict
-                transactions_list.append({
-                    'id': tr['id'],
-                    'name': tr['name'],
-                    'amount': tr.get('amount'),
-                    'tr_type': tr['tr_type'],
-                    'shop': shop,
-                    'created_by': tr.get('created_by'),
-                    'created_at': tr.get('created_at'),
-                    'updated_at': tr.get('updated_at'),
-                    'updated_by': tr.get('updated_by'),
-                    'transaction_dt': tr.get('transaction_dt'),
-                    'remarks': tr.get('remarks'),
-                })
-
-    
     # Apply filters
     if from_date:
         try:
@@ -1458,6 +1434,7 @@ def denomination(request):
                             updated_by=request.user,
                         )
                 
+                log_activity(request, 'CREATE', 'Denomination', key, f'Denomination created: {key}')
                 logger.info(f"Denomination added by {request.user.username}")
                 messages.success(request, 'Denomination added successfully!')
                 transaction_helper.purge_old_denominations()
@@ -1546,6 +1523,7 @@ def delete_denomination(request, key):
     logger.warning(
         f"Denomination group deleted by {request.user.username}: key={key}, records={deleted_count}"
     )
+    log_activity(request, 'DELETE', 'Denomination', key, f'Denomination deleted: {key}')
     messages.success(request, 'Denomination deleted successfully!')
     return redirect('entries:denominations')
 
@@ -1635,6 +1613,7 @@ def edit_denomination(request, key):
                         }
                     )
                 
+                log_activity(request, 'UPDATE', 'Denomination', key, f'Denomination updated: {key}')
                 logger.info(f"Denomination {key} updated by {request.user.username}")
                 messages.success(request, 'Denomination updated successfully!')
                 return redirect('entries:view_denomination', key=key)
@@ -1883,6 +1862,7 @@ def loan(request):
             else:
                 logger.info("[interest] amount is 0 — skipping transaction")
 
+        log_activity(request, 'CREATE', 'Loan', loan_entry.id, f'Loan created: {loan_entry.pawn_no}')
         messages.success(request, f'{loan_type.capitalize()} entry created successfully!')
         logger.info(f"Loan [{loan_entry.id}] created by [{request.user.username}]")
         logger.info("============ Loan Creation Completed ============")
@@ -2166,6 +2146,7 @@ def edit_loan(request, pk):
                     updated_loan.save()
                     logger.info(f"Loan [{pk}] saved -> type=[{new_type}] | principal=[{new_principal}] | interest=[{new_interest}]")
 
+                log_activity(request, 'UPDATE', 'Loan', updated_loan.id, f'Loan updated: {updated_loan.pawn_no}')
                 messages.success(request, 'Loan transaction updated successfully!')
                 logger.info("============ Loan Update Completed ============")
                 return redirect('entries:loans')
@@ -2255,6 +2236,7 @@ def delete_loan(request, pk):
                 loan.delete()
                 logger.warning(f"Loan deleted by [{request.user.username}] -> id=[{loan_id}] | type=[{loan_type}] | pawn_no=[{loan_pawn_no}]")
 
+            log_activity(request, 'DELETE', 'Loan', loan.id, f'Loan deleted: {loan.pawn_no}')
             messages.success(request, 'Loan transaction deleted successfully!')
             logger.info("============ Loan Deletion Completed ============")
 

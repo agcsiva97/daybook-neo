@@ -7,10 +7,11 @@ from .models import Ledger, Shop
 class ShopForm(forms.ModelForm):
     class Meta:
         model = Shop
-        fields = ['short_name', 'is_local', 'name', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance', 'port','ip_address']
+        fields = ['short_name', 'name', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance']
+                #   'is_local', 'port','ip_address']
         labels = {
             'short_name': 'Short Name',
-            'is_local': 'Is Local',
+            # 'is_local': 'Is Local',
             'name': 'Shop Name',
             'd_no': 'D.No',
             'addressline1': 'Address Line 1',
@@ -18,12 +19,12 @@ class ShopForm(forms.ModelForm):
             'place': 'Place',
             'pincode': 'Pincode',
             'balance': 'Balance',
-            'ip_address': 'IP Address',
-            'port': 'Port',
+            # 'ip_address': 'IP Address',
+            # 'port': 'Port',
         }
         widgets = {
             'short_name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '20'}),
-            'is_local': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # 'is_local': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100'}),
             'd_no': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '10'}),
             'addressline1': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '255'}),
@@ -31,8 +32,8 @@ class ShopForm(forms.ModelForm):
             'place': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '50'}),
             'pincode': forms.NumberInput(attrs={'class': 'form-control', 'min': '100000', 'max': '999999'}),
             'balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'ip_address': forms.TextInput(attrs={'class': 'form-control'}),
-            'port': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'max': '65535'}),
+            # 'ip_address': forms.TextInput(attrs={'class': 'form-control'}),
+            # 'port': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'max': '65535'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -44,14 +45,15 @@ class ShopForm(forms.ModelForm):
         self.fields['place'].required = False
         self.fields['pincode'].required = False
         self.fields['balance'].required = False
-        self.fields['ip_address'].required = False
-        self.fields['port'].required = False
+        # self.fields['ip_address'].required = False
+        # self.fields['port'].required = False
 
 
 class ShopEditForm(forms.ModelForm):
     class Meta:
         model = Shop
-        fields = ['name', 'is_local', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance']
+        fields = ['name', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode', 'balance']
+        # , 'is_local'
         labels = {
             'name': 'Shop Name',
             'is_local': 'Is Local',

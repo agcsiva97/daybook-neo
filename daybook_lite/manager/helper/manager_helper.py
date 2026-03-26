@@ -5,11 +5,9 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-def create_shop(short_name, name, d_no, addressline1, addressline2, place, pincode, balance, is_local, ip_address='0.0.0.0', port=0):
-    if is_local:
-        shop = Shop.objects.create(
+def create_shop(short_name, name, d_no, addressline1, addressline2, place, pincode, balance):
+    shop = Shop.objects.create(
             short_name=short_name,
-            is_local=True,
             name=name,
             d_no=d_no,
             addressline1=addressline1,
@@ -17,59 +15,18 @@ def create_shop(short_name, name, d_no, addressline1, addressline2, place, pinco
             place=place,
             pincode=pincode,
             balance=balance,
-            ip_address=ip_address,
-            port=port,
         )
-    else:
-        # http://127.0.0.1:8000/api/shops/
-        response = requests.get(f'http://{ip_address}:{port}/api/shops?short_name={short_name}')
-        if response.status_code == 200:
-            data = response.json()
-            print(f'"API data count: {data}"')
-            if len(data) > 0:
-                data = data[0]  # Assuming short_name is unique and we get one shop
-                shop = Shop.objects.create(
-                    id=data['id'],
-                    short_name=data['short_name'],
-                    is_local=False,
-                    name=data['name'],
-                    d_no=data['d_no'],
-                    addressline1=data['addressline1'],
-                    addressline2=data['addressline2'],
-                    place=data['place'],
-                    pincode=data['pincode'],
-                    balance=data['balance'],
-                    ip_address=ip_address,
-                    port=port,
-                )
-            else:
-                logger.error(f"Shop not available: {data}")
-                return None
-        print(f"Creating remote shop with IP: {ip_address}, Port: {port}")
-
     return shop
 
 
 def create_ledger(name, license_number, shop):
     try:
-        if shop.is_local:
-            ledger = Ledger.objects.create(
-                name=name,
-                license_number=license_number,
-                shop=shop
-            )
-            print(f"Created ledger with ID: {ledger.id} for shop: {shop.short_name}")
-        else:
-            response = requests.get(f'http://{shop.ip_address}:{shop.port}/api/shops/{shop.id}/ledgers/')
-            ledgers = response.json()
-            for ledger_data in ledgers:
-                ledger = Ledger.objects.create(
-                    id=ledger_data['id'],
-                    name=ledger_data['name'],
-                    license_number=ledger_data['license_number'],
-                    shop=shop
-                )
-                print(f"Created ledger with ID: {ledger.id} for shop: {shop.short_name}")
+        ledger = Ledger.objects.create(
+            name=name,
+            license_number=license_number,
+            shop=shop
+        )
+        print(f"Created ledger with ID: {ledger.id} for shop: {shop.short_name}")
         return 1    
     except Exception as e:
         logger.error(f"Error creating ledger: {str(e)}", exc_info=True)
