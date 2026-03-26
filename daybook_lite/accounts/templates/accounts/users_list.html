@@ -24,7 +24,7 @@
           </thead>
           <tbody>
             {% for user in users %}
-            <tr onclick="window.location.href='/accounts/users/{{ user.username }}'" style="cursor:pointer;">
+            <tr onclick="window.location.href='/manager/users/{{ user.username }}'" style="cursor:pointer;">
               <td>{{ user.username }}</td>
               <td>{{ user.first_name|default:"-" }}</td>
               <td>{{ user.last_name|default:"-" }}</td>
@@ -60,9 +60,6 @@
           </tbody>
         </table>
       </div>
-    </div>
-    <div class="card-footer">
-      <a href="{% url 'entries:home' %}" class="btn btn-secondary">Back to Home</a>
     </div>
 </div>
 <br>

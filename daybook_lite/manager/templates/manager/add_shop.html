@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0"><i class="fa-solid fa-shop"></i> Add New Shop</h4>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3" id="field-{{ field.name }}">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+              {% endif %}
+              {% if field.errors %}
+                <div class="text-danger small">{{ field.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+            <p class="text-muted small">
+              Note: By default new leddger will be created for the shop with the same name. You can edit or delete the ledger later if needed.
+            </p>
+            {% if form.non_field_errors %}
+              <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus"></i> Add Shop
+              </button>
+              <a href="{% url 'manager:home' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const checkbox = document.getElementById("id_is_local");
+    const name = document.getElementById("field-name");
+    const d_no = document.getElementById("field-d_no");
+    const addressline1 = document.getElementById("field-addressline1");
+    const addressline2 = document.getElementById("field-addressline2");
+    const place = document.getElementById("field-place");
+    const pincode = document.getElementById("field-pincode");
+    const balance = document.getElementById("field-balance");
+    const port = document.getElementById("field-port");
+    const ip_address = document.getElementById("field-ip_address");
+
+    function toggleFields() {
+        if (checkbox.checked) {
+            name.style.display = "block";
+            d_no.style.display = "block";
+            addressline1.style.display = "block";
+            addressline2.style.display = "block";
+            place.style.display = "block";
+            pincode.style.display = "block";
+            balance.style.display = "block";
+            port.style.display = "none";
+            ip_address.style.display = "none";
+        } else {
+            name.style.display = "none";
+            d_no.style.display = "none";
+            addressline1.style.display = "none";
+            addressline2.style.display = "none";
+            place.style.display = "none";
+            pincode.style.display = "none";
+            balance.style.display = "none";
+            port.style.display = "block";
+            ip_address.style.display = "block";
+        }
+    }
+
+    // Initial state
+    toggleFields();
+
+    // On change
+    checkbox.addEventListener("change", toggleFields);
+});
+</script>
+{% endblock %}

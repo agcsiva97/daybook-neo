@@ -155,10 +155,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         editLoanLedger.add(option);
                     });
                     
-                    // Try to restore the previously selected ledger if it's in the new list
-                    if (currentLedgerId && document.querySelector(`#edit_loan_ledger option[value="${currentLedgerId}"]`)) {
-                        editLoanLedger.value = currentLedgerId;
-                    }
+                    // Do not restore the old ledger if shop changed, as it may not be valid
+                    // The user should select a new ledger from the updated list
                 }
             })
             .catch(error => {

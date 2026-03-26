@@ -7,14 +7,14 @@
       <h4 class="mb-0"><i class="fa-solid fa-wallet"></i> {{ ledger.name }}</h4>
       <div class="d-flex gap-2">
         {% if is_admin %}
-            <a href="{% url 'entries:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary">
+            <a href="{% url 'manager:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary">
               <i class="fa-solid fa-pencil"></i> Edit
             </a>
-            <a href="{% url 'entries:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger">
+            <a href="{% url 'manager:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger">
               <i class="fa-solid fa-trash"></i> Delete
             </a>
         {% endif %}
-        <a href="{% url 'entries:shop_info' ledger.shop.pk %}" class="btn btn-sm btn-secondary">
+        <a href="{% url 'manager:shop_info' ledger.shop.pk %}" class="btn btn-sm btn-secondary">
           <i class="fa-solid fa-arrow-left"></i> Back to {{ ledger.shop.short_name }}
         </a>
       </div>

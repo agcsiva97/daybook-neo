@@ -4,14 +4,96 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Daybook Lite</title>
+    <title>
+      {% if app_name == 'manager' %}
+        Manager | {{ nav_title }}
+      {% else %}
+        Daybook Lite | {{ nav_title }}
+      {% endif %}
+    </title>
     <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
     <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
+        <!-- PNG format (modern browsers) -->
+    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
+
+    <!-- For desktop shortcut / PWA on mobile -->
+    <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,200&icon_names=apps" />
+    <style>
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 40
+}
+    .app-launcher:hover {
+      border-radius: 0rem;
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    .app-launcher {
+      {% comment %} border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */ {% endcomment %}
+      border-radius: 0rem;  /* same as hamburger border-radius */
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    margin-left: -12px;
+    align-self: stretch;
+    font-size: 1.75rem;
+    transition: background-color 0.2s ease;
+    
+    /* Add these to cover top and bottom gaps */
+    margin-top: -14px;
+    margin-bottom: -14px;
+    padding-top: 8px;
+    padding-bottom: 3px;
+  }
+    .app-launcher-box {
+        {% comment %} display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5em;           /* same as Bootstrap's navbar-toggler-icon size */
+        height: 1.5em;
+        border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */
+        border-radius: 0rem;  /* same as hamburger border-radius */
+        padding: 3px; {% endcomment %}
+    }
+</style>
   </head>
   <body>
     <nav  class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container-fluid">
+  <!-- App Library Icon -->
+  <div class="dropdown me-2">
+    <a class="nav-link app-launcher" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="app-launcher-box">
+            <span class="material-symbols-outlined">apps</span>
+        </span>
+    </a>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item" href="{% url 'entries:home' %}">
+        <i class="fa-solid fa-book"></i>
+        <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+      </a></li>
+      {% if user and user.is_authenticated %}
+        {% if is_super_admin %}        
+          <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-users me-2"></i>Manager</a></li>
+        {% else %}
+          {% for group in user.groups.all %}
+            {% if group.name == 'Admin' %}
+              <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-users me-2"></i>Manager</a></li>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+    </ul>
+  </div>
+      {% if app_name == 'manager' %}
+        {% include 'manager/top-navbar.html' %}
+      {% else %}
         {% include 'entries/top-navbar.html' %}
+      {% endif %}
     </nav>
     <main>
         {% block content %}{% endblock %}
@@ -22,7 +104,11 @@
       {% if messages %}
         {% for message in messages %}
           <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+            {% if message.tags == 'error' %}
+            <div class="toast-header text-bg-danger">
+            {% else %}
             <div class="toast-header text-bg-{{ message.tags }}">
+            {% endif %}
               <i class="fa-solid fa-book me-2"></i>
               <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
               <small class="ms-auto text-body-dark">just now</small>
@@ -30,7 +116,11 @@
                 <i class="fa-solid fa-circle-xmark"></i>
               </button>
             </div>
+            {% if message.tags == 'error' %}
+            <div class="toast-body text-bg-danger">
+            {% else %}
             <div class="toast-body text-bg-{{ message.tags }}">
+            {% endif %}
               {{ message }}
             </div>
           </div>
@@ -38,7 +128,25 @@
       {% endif %}
     </div>
 
+<div class="modal fade" id="sessionTimeoutModal" tabindex="-1" aria-labelledby="sessionTimeoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sessionTimeoutModalLabel">Session Timeout</h5>
+        <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Your session has been expired due to inactivity.</p>
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn btn-primary" data-bs-dismiss="modal">Ok</button>
+      </div>
+    </div>
+  </div>
+</div>
+
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
     <script>
       // Auto-show toasts on page load
       document.addEventListener('DOMContentLoaded', function() {
@@ -50,5 +158,47 @@
         });
       });
     </script>
+    <script>
+    let timeout;
+    let logoutTime = 30 * 60 * 1000; // Default 30 minutes
+
+    // Fetch session timeout from database on page load
+    async function fetchSessionTimeout() {
+        try {
+            const response = await fetch('{% url "api:get_session_timeout" %}');
+            const data = await response.json();
+            logoutTime = data.timeout_seconds * 1000; // Convert seconds to milliseconds
+            console.log('Session timeout loaded from DB:', data.timeout_seconds, 'seconds');
+            resetTimer(); // Start the timer with the new timeout value
+        } catch (error) {
+            console.warn('Failed to fetch session timeout, using default:', error);
+            logoutTime = 30 * 60 * 1000; // Keep default if fetch fails
+            resetTimer();
+        }
+    }
+
+    function resetTimer() {
+        clearTimeout(timeout);
+        timeout = setTimeout(logoutUser, logoutTime);
+    }
+
+    function logoutUser() {
+        const modalElement = document.getElementById('sessionTimeoutModal');
+        const modal = new bootstrap.Modal(modalElement, {
+          backdrop: 'static',  // ❌ disable outside click
+          keyboard: false      // ❌ disable ESC key
+        });
+        modal.show();
+    }
+
+    // Events to track activity
+    window.onload = function() {
+        fetchSessionTimeout(); // Load timeout from DB first
+    };
+    document.onmousemove = resetTimer;
+    document.onkeypress = resetTimer;
+    document.onclick = resetTimer;
+    document.onscroll = resetTimer;
+</script>
   </body>
 </html>

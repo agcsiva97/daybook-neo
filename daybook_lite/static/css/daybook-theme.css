@@ -1,7 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
 :root {
   --daybook-primary: #4A7766;
-  --daybook-primary-click: #3e6656;
+  /* #4A7766; */
+  --daybook-primary-click: #006440;
   --daybook-active-background: #ECE7E2;
   --daybook-secondary: #EEE;
   --daybook-surface: #ffffff;
