@@ -2,7 +2,6 @@
 import logging
 from ..models import ActivityLog, Configuration, Ledger, Shop
 import requests
-from django.db import connection
 
 logger = logging.getLogger(__name__)
 
@@ -48,33 +47,7 @@ def create_shop(short_name, name, d_no, addressline1, addressline2, place, pinco
                 return None
         print(f"Creating remote shop with IP: {ip_address}, Port: {port}")
 
-    _ensure_entries_shop(shop)
     return shop
-
-
-def _ensure_entries_shop(shop):
-    """Keep old entries_shop table in sync for legacy transactions FK."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT 1 FROM entries_shop WHERE id = ?",
-            [shop.id]
-        )
-        if cursor.fetchone():
-            return
-        cursor.execute(
-            "INSERT INTO entries_shop (id, name, addressline1, addressline2, place, pincode, balance, short_name, d_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                shop.id,
-                shop.name or '',
-                shop.addressline1 or '',
-                shop.addressline2 or '',
-                shop.place or '',
-                shop.pincode,
-                shop.balance,
-                shop.short_name or '',
-                shop.d_no or '',
-            ]
-        )
 
 
 def create_ledger(name, license_number, shop):
@@ -85,7 +58,6 @@ def create_ledger(name, license_number, shop):
                 license_number=license_number,
                 shop=shop
             )
-            _ensure_entries_ledger(ledger)
             print(f"Created ledger with ID: {ledger.id} for shop: {shop.short_name}")
         else:
             response = requests.get(f'http://{shop.ip_address}:{shop.port}/api/shops/{shop.id}/ledgers/')
@@ -102,21 +74,6 @@ def create_ledger(name, license_number, shop):
     except Exception as e:
         logger.error(f"Error creating ledger: {str(e)}", exc_info=True)
         return 0
-
-
-def _ensure_entries_ledger(ledger):
-    """Keep old entries_ledger table synchronized for legacy shop/ledger FKs."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT 1 FROM entries_ledger WHERE id = ?",
-            [ledger.id]
-        )
-        if cursor.fetchone():
-            return
-        cursor.execute(
-            "INSERT INTO entries_ledger (name, shop_id, license_number) VALUES (?, ?, ?)",
-            [ledger.name or '', ledger.shop_id, ledger.license_number or '']
-        )
 
 
 def log_activity(request, action, model_name='', object_id='', description=''):
