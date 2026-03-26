@@ -189,6 +189,7 @@ def create_user(request):
                 new_user = form.save()
                 user_groups = ', '.join([g.name for g in new_user.groups.all()]) if new_user.groups.exists() else 'None'
                 logger.info(f"User created by {request.user.username}: new username={new_user.username}, groups={user_groups}")
+                log_activity(request, 'USER_CREATED', model_name='User', object_id=new_user.username, description=f'{new_user.username} User created with groups: {user_groups} by {request.user.username}')
                 messages.success(request, 'User created successfully!')
                 return redirect('accounts:users_list')
             except Exception as e:
@@ -291,6 +292,7 @@ def promote_to_admin(request, username):
             selected_user.groups.add(admin_group)
             
             logger.warning(f"User promoted to Admin by {request.user.username}: {selected_user.username}")
+            log_activity(request, 'USER_PROMOTED', model_name='User', object_id=selected_user.username, description=f'{selected_user.username} user is promoted to Admin by {request.user.username}')
             messages.success(request, f'{selected_user.username} has been promoted to Admin group.')
             return redirect('accounts:user_info', username=username)
         except Exception as e:
@@ -319,6 +321,7 @@ def deactivate_staff_user(request, username):
             selected_user.is_active = False
             selected_user.save(update_fields=['is_active'])
 
+            log_activity(request, 'USER_DEACTIVATED', model_name='User', object_id=selected_user.username, description=f'{selected_user.username} user is deactivated by {request.user.username}')
             logger.warning(f"User deactivated by {request.user.username}: {selected_user.username}")
             messages.success(request, f'{selected_user.username} has been marked as inactive.')
             return redirect('accounts:user_info', username=username)
@@ -348,6 +351,7 @@ def activate_staff_user(request, username):
             selected_user.is_active = True
             selected_user.save(update_fields=['is_active'])
 
+            log_activity(request, 'USER_ACTIVATED', model_name='User', object_id=selected_user.username, description=f'{selected_user.username} user is activated by {request.user.username}')
             logger.warning(f"User activated by {request.user.username}: {selected_user.username}")
             messages.success(request, f'{selected_user.username} has been marked as active.')
             return redirect('accounts:user_info', username=username)
