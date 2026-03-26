@@ -7,17 +7,17 @@
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fa-solid fa-shop"></i> Shops</h5>
         {% if is_super_admin %}
-        <a href="{% url 'entries:add_shop' %}" class="btn btn-sm btn-primary">
+        <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
           <i class="fa-solid fa-plus"></i> Add Shop
         </a>
         {% endif %}
       </div>
       <div class="ledger-cards">
           {% for item in shop_balances %}
-          <div class="ledger-card" onclick="window.location.href='{% url 'entries:shop_info' item.shop.pk %}'" style="cursor: pointer; position: relative;">
+          <div class="ledger-card" {% if is_admin or is_super_admin %} onclick="window.location.href='{% url 'manager:shop_info' item.shop.pk %}'" {% endif %} style="cursor: pointer; position: relative;">
             <div class="d-flex justify-content-between align-items-start">
               <div class="ledger-card-ledgername hanuman-600">
-                {{ item.shop.name }}
+                {{ item.shop.short_name }}
               </div>
               {% if is_admin %}
                   <div class="dropdown" onclick="event.stopPropagation();">
@@ -25,9 +25,9 @@
                       <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                      <li><a class="dropdown-item" href="{% url 'entries:edit_shop' item.shop.pk %}"><i class="fa-solid fa-pencil"></i> Edit</a></li>
+                      <li><a class="dropdown-item" href="{% url 'manager:edit_shop' item.shop.pk %}"><i class="fa-solid fa-pencil"></i> Edit</a></li>
                       {% if is_super_admin %}
-                      <li><a class="dropdown-item text-danger" href="{% url 'entries:delete_shop' item.shop.pk %}"><i class="fa-solid fa-trash"></i> Delete</a></li>
+                      <li><a class="dropdown-item text-danger" href="{% url 'manager:delete_shop' item.shop.pk %}"><i class="fa-solid fa-trash"></i> Delete</a></li>
                       {% endif %}
                     </ul>
                   </div>

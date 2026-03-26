@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
+from manager.models import Shop, Ledger
+
 
 def generate_custom_id(ledger_name):
     """Generate a custom ID: <LEDGER_PREFIX><DDMMYY><HHMMSSMMM>-<6-digit-random>
@@ -25,29 +27,6 @@ def _generate_shop_id():
     """Generate a unique 8-char shop ID: SHP + 5 random alphanumeric chars."""
     return 'SHP' + uuid.uuid4().hex[:5].upper()
 
-
-class Shop(models.Model):
-    id = models.CharField(max_length=10, primary_key=True, default=_generate_shop_id, editable=False)
-    short_name = models.CharField(max_length=20, unique=True)
-    name = models.CharField(max_length=100)
-    d_no = models.CharField(max_length=10, blank=True, default='')
-    addressline1 = models.CharField(max_length=255)
-    addressline2 = models.CharField(max_length=255, blank=True, default='')
-    place = models.CharField(max_length=50)
-    pincode = models.DecimalField(max_digits=6, decimal_places=0)
-    balance = models.DecimalField(max_digits=12, decimal_places=2)
-
-    def __str__(self):
-        return self.short_name
-
-
-class Ledger(models.Model):
-    name = models.CharField(max_length=50)
-    license_number = models.CharField(max_length=50, blank=True, default='')
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
-
-    def __str__(self):
-        return self.name
     
 class Transactions(models.Model):
     id = models.CharField(max_length=30, primary_key=True, editable=False)
@@ -72,16 +51,30 @@ class Transactions(models.Model):
         blank=True,
         related_name='updated_transactions',
     )
+    transaction_dt = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['shop', 'transaction_dt']),  # updated from created_at
+            models.Index(fields=['shop', 'name']),
+        ]
     
     def __str__(self):
         return str(self.amount)
 
     def save(self, *args, **kwargs):
         if not self.id:
-            shop_name = self.shop.name if self.shop_id and self.shop else 'TRN'
+            # Access short_name safely without triggering a DB lookup
+            if self.shop_id and hasattr(self, '_shop_cache'):
+                shop_name = self.shop.short_name  # already cached, no DB hit
+            elif self.shop_id:
+                # Avoid the lookup — use a fallback or pre-set the id before save
+                shop_name = 'TRN'
+            else:
+                shop_name = 'TRN'
             self.id = generate_custom_id(shop_name)
         super().save(*args, **kwargs)
 
@@ -100,7 +93,7 @@ class Denomination(models.Model):
     time_period = models.CharField(max_length=20, choices=TIME_PERIOD_CHOICES, default='Night')
     key = models.CharField(max_length=100, default='MMDDYYYY-XX-username')
     shop = models.ForeignKey(
-        'Shop',
+        Shop,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -128,7 +121,7 @@ class Denomination(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            shop_name = self.shop.name if self.shop_id and self.shop else 'DEN'
+            shop_name = self.shop.short_name if self.shop_id and self.shop else 'DEN'
             self.id = generate_custom_id(shop_name)
         super().save(*args, **kwargs)
 
@@ -160,8 +153,9 @@ class Loan(models.Model):
         blank=True,
         related_name='updated_loans',
     )
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    transaction_dt = models.DateTimeField(default=timezone.now)
     history = HistoricalRecords()
     
     def __str__(self):

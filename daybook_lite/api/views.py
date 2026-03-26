@@ -1,4 +1,6 @@
-from datetime import timedelta, date as date_type
+from datetime import datetime, timedelta, date as date_type
+from os import name
+import logging
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 
@@ -18,7 +20,30 @@ from rest_framework.response import Response
 from entries.models import Ledger, Loan, Transactions, Shop
 from django.db.models import Sum
 
-from .serializers import ShopSerializer
+from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer
+from django.db import transaction as db_transaction
+from manager.models import Configuration
+from entries.helpers import transactions as transaction_helper
+from manager.helper.manager_helper import log_activity
+
+logger = logging.getLogger(__name__)
+
+# ──────────────────────────────────────────────────────────────
+# Configuration API endpoints
+# ──────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@login_required
+def get_session_timeout(request):
+    """Get session timeout in seconds from database configuration."""
+    try:
+        timeout_str = Configuration.get_value('SESSION_TIMEOUT', '1800')
+        timeout_seconds = int(timeout_str)
+    except (ValueError, TypeError):
+        from django.conf import settings
+        timeout_seconds = getattr(settings, 'SESSION_COOKIE_AGE', 1800)
+    
+    return JsonResponse({'timeout_seconds': timeout_seconds})
 
 
 # ──────────────────────────────────────────────────────────────
@@ -32,7 +57,24 @@ def shop_list_create(request):
     POST - Create a new shop (id provided by the user)
     """
     if request.method == 'GET':
+        short_name = request.GET.get('short_name', '').strip()
+        name = request.GET.get('name', '').strip()
+        
+        logger.info(f"Shop list API called with filters: short_name='{short_name}', name='{name}'")
+        
         shops = Shop.objects.all().order_by('name')
+        
+        # Apply filters only if parameters are provided and not empty
+        if short_name:
+            shops = shops.filter(short_name__icontains=short_name)
+            logger.info(f"Applied short_name filter: '{short_name}'")
+        if name:
+            shops = shops.filter(name__icontains=name)
+            logger.info(f"Applied name filter: '{name}'")
+            
+        shop_count = shops.count()
+        logger.info(f"Returning {shop_count} shops")
+            
         serializer = ShopSerializer(shops, many=True)
         return Response(serializer.data)
 
@@ -79,6 +121,35 @@ def shop_ledgers(request, pk):
     data = [{'id': l.pk, 'name': l.name} for l in ledgers]
     return JsonResponse(data, safe=False)
 
+@api_view(['GET', 'POST'])
+def shop_ledger_list_create(request, pk):
+    """
+    GET  - List all ledgers for a shop
+    POST - Create a new ledger for a shop
+    """
+    try:
+        shop = Shop.objects.get(pk=pk)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        logger.info(f"Fetching ledgers for shop ID: {shop.id}, Name: {shop.short_name}")
+        ledgers = Ledger.objects.filter(shop_id=pk).order_by('name')
+        logger.info(f"Found {ledgers.count()} ledgers for shop ID {shop.id} - {shop.short_name}")
+
+        serializer = LedgerSerializer(ledgers, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        # Add shop_id to the data before validation
+        data = request.data.copy()
+        data['shop'] = pk
+
+        serializer = LedgerSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @login_required
 @user_passes_test(_is_admin, login_url='/accounts/login/')
@@ -97,7 +168,7 @@ def transaction_pie_data(request):
             tr_type=tr_type,
             created_at__date__gte=start_date,
             created_at__date__lte=end_date,
-        )
+        ).exclude(name='Openning Deposit')
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
         qs = qs.values('name').annotate(total=Sum('amount')).order_by('-total')
@@ -198,7 +269,7 @@ def dashboard_chart_data(request):
 
     # Summary: total debit/credit for the range (also filtered by shop if set)
     debit_base  = Transactions.objects.filter(tr_type='DEBIT',  created_at__date__gte=start_date, created_at__date__lte=end_date)
-    credit_base = Transactions.objects.filter(tr_type='CREDIT', created_at__date__gte=start_date, created_at__date__lte=end_date)
+    credit_base = Transactions.objects.filter(tr_type='CREDIT', created_at__date__gte=start_date, created_at__date__lte=end_date).exclude(name='Openning Deposit')
     if shop_id:
         debit_base  = debit_base.filter(shop_id=shop_id)
         credit_base = credit_base.filter(shop_id=shop_id)
@@ -220,3 +291,189 @@ def dashboard_chart_data(request):
             'to_date':   str(end_date),
         },
     })
+
+@api_view(['POST'])
+def create_transaction(request):
+    serializer = TransactionSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        logger.warning(f"Transaction API invalid -> errors={serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+
+    try:
+        with db_transaction.atomic():
+
+            # ── Prepare transaction object ─────────────────────
+            transaction_obj = Transactions(**data)
+
+            if request.user.is_authenticated:
+                transaction_obj.created_by = request.user
+                transaction_obj.updated_by = request.user
+
+            # ── Date + Time handling ───────────────────────────
+            chosen_date = data.get('date')
+            chosen_time = data.get('time') or timezone.localtime(timezone.now()).time()
+
+            transaction_obj.transaction_dt = timezone.make_aware(
+                datetime.combine(chosen_date, chosen_time)
+            )
+
+            logger.info("============ Transaction API Creation Started ============")
+            logger.info(
+                f"Transaction -> type=[{transaction_obj.tr_type}] | amount=[{transaction_obj.amount}] | date=[{transaction_obj.transaction_dt}]"
+            )
+
+            # ── Lock shop row ──────────────────────────────────
+            shop = Shop.objects.select_for_update().get(pk=transaction_obj.shop_id)
+
+            logger.info(f"Shop -> name=[{shop.short_name}]")
+
+            # ── Balance check ──────────────────────────────────
+            if transaction_obj.tr_type == 'DEBIT':
+                available = transaction_helper.get_balance(shop, chosen_date)
+
+                logger.info(
+                    f"Balance check -> available=[{available}] | required=[{transaction_obj.amount}]"
+                )
+
+                if transaction_obj.amount > available:
+                    return Response(
+                        {
+                            "error": f"Insufficient balance in {shop.short_name}",
+                            "available": available
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # ── Save transaction ───────────────────────────────
+            transaction_obj.save()
+
+            logger.info(
+                f"Transaction [{transaction_obj.id}] created -> type=[{transaction_obj.tr_type}] | amount=[{transaction_obj.amount}] | shop=[{shop.short_name}]"
+            )
+
+        # ── Activity log (outside atomic is also fine) ─────────
+        log_activity(
+            request,
+            'CREATE',
+            'Transaction',
+            transaction_obj.id,
+            f'Transaction created: {transaction_obj.name} ({transaction_obj.amount} {transaction_obj.tr_type}) for {shop.short_name}'
+        )
+
+        logger.info("============ Transaction API Creation Completed ============")
+
+        return Response(
+            {
+                "message": "Transaction created successfully",
+                "id": transaction_obj.id
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    except Shop.DoesNotExist:
+        return Response(
+            {"error": "Invalid shop"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Error creating transaction via API by [{request.user}]: {str(e)}",
+            exc_info=True
+        )
+
+        return Response(
+            {"error": "Something went wrong"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])    
+def get_transactions(request):
+    """Returns transactions as JSON. Supports optional ?shop=ID filter."""
+    if request.method == 'GET':
+        print('get_transactions called')
+        transactions_list = Transactions.objects.all().order_by('transaction_dt')
+
+        from_date = request.GET.get('from_date')
+        to_date = request.GET.get('to_date')
+        shop_filter = request.GET.get('shop')
+        type_filter = request.GET.get('type')
+        search_query = request.GET.get('search', '')
+        name_search_query = request.GET.get('name_search', '')   
+
+        # Apply filters
+        if from_date:
+            try:
+                from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__gte=from_date_obj)
+            except ValueError:
+                pass
+        
+        if to_date:
+            try:
+                to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__lte=to_date_obj)
+            except ValueError:
+                pass
+        
+        if shop_filter:
+            transactions_list = transactions_list.filter(shop_id=shop_filter)
+        
+        if type_filter and type_filter in ['DEBIT', 'CREDIT']:
+            transactions_list = transactions_list.filter(tr_type=type_filter)
+        
+        if name_search_query:
+            transactions_list = transactions_list.filter(name__icontains=name_search_query)
+        
+        if search_query:
+            transactions_list = transactions_list.filter(remarks__icontains=search_query)
+
+        serializer = TransactionSerializer(transactions_list, many=True)
+        return Response(serializer.data)
+
+@api_view(['GET'])    
+def get_shop_transactions(request,pk=None):
+    """Returns transactions as JSON. Supports optional ?shop=ID filter."""
+    if request.method == 'GET':
+        print('get_shop_transactions called with pk:', pk)
+        transactions_list = Transactions.objects.filter(shop_id=pk).order_by('transaction_dt')
+
+        from_date = request.GET.get('from_date')
+        to_date = request.GET.get('to_date')
+        shop_filter = request.GET.get('shop')
+        type_filter = request.GET.get('type')
+        search_query = request.GET.get('search', '')
+        name_search_query = request.GET.get('name_search', '')   
+
+        # Apply filters
+        if from_date:
+            try:
+                from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__gte=from_date_obj)
+            except ValueError:
+                pass
+        
+        if to_date:
+            try:
+                to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__lte=to_date_obj)
+            except ValueError:
+                pass
+        
+        if shop_filter:
+            transactions_list = transactions_list.filter(shop_id=shop_filter)
+        
+        if type_filter and type_filter in ['DEBIT', 'CREDIT']:
+            transactions_list = transactions_list.filter(tr_type=type_filter)
+        
+        if name_search_query:
+            transactions_list = transactions_list.filter(name__icontains=name_search_query)
+        
+        if search_query:
+            transactions_list = transactions_list.filter(remarks__icontains=search_query)
+
+        serializer = TransactionSerializer(transactions_list, many=True)
+        return Response(serializer.data)

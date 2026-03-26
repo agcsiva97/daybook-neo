@@ -50,6 +50,7 @@ ALLOWED_HOSTS = [
     'daybook.local',
     'localhost',
     '127.0.0.1',
+    '192.168.1.29',
 ]
 
 
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'simple_history',
     'entries',
+    'manager',
     'api',
 ]
 
@@ -84,6 +86,15 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'daybook_lite.urls'
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# Session settings - timeout controlled by JavaScript and database config
+SESSION_COOKIE_AGE          = 86400                 # 24 hours (let JS handle actual timeout)
+SESSION_SAVE_EVERY_REQUEST  = False                 # Don't reset timer on every request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True             # Expire session when browser closes
+SESSION_COOKIE_HTTPONLY     = True
+SESSION_COOKIE_SAMESITE     = 'Lax'
 
 TEMPLATES = [
     {
@@ -198,6 +209,22 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'entries:home'
 LOGOUT_REDIRECT_URL = 'entries:home'
 
+# Custom logging handler for UTF-8 console output
+import logging
+import sys
+
+class UTF8StreamHandler(logging.StreamHandler):
+    def __init__(self, stream=None):
+        super().__init__(stream)
+        if stream is None:
+            stream = sys.stdout
+        # Set encoding to UTF-8
+        if hasattr(stream, 'reconfigure'):
+            try:
+                stream.reconfigure(encoding='utf-8')
+            except Exception:
+                pass  # Fallback if reconfigure fails
+
 # Logging Configuration
 LOGGING = {
     'version': 1,
@@ -223,7 +250,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'level': 'INFO',
-            'class': 'logging.StreamHandler',
+            'class': 'daybook_lite.settings.UTF8StreamHandler',
             'formatter': 'simple',
         },
         'file': {

@@ -12,10 +12,12 @@
 
     <div class="card-body">
       <h5 class="mb-3">Current Record</h5>
+      <strong>Created At:</strong> {{ loan.created_at|date:"Y-m-d H:i:s" }}
       <div class="table-responsive mb-4">
         <table class="table table-hover table-sm">
           <thead class="table-light">
             <tr>
+              <th>Transaction Date</th>
               <th>Pawn No</th>
               <th>Ledger</th>
               <th>Type</th>
@@ -23,12 +25,11 @@
               <th class="text-end">Interest</th>
               <th>Created By</th>
               <th>Updated By</th>
-              <th>Created At</th>
-              <th>Updated At</th>
             </tr>
           </thead>
           <tbody>
             <tr>
+              <td>{{ loan.transaction_dt|date:"Y-m-d H:i:s" }}</td>
               <td>{{ loan.pawn_no }}</td>
               <td>{{ loan.ledger.name }}</td>
               <td>{{ loan.type }}</td>
@@ -36,8 +37,7 @@
               <td class="text-end">{{ loan.interest }}</td>
               <td>{% if loan.created_by %}{{ loan.created_by.username }}{% else %}-{% endif %}</td>
               <td>{% if loan.updated_by %}{{ loan.updated_by.username }}{% else %}-{% endif %}</td>
-              <td>{{ loan.created_at|date:"Y-m-d H:i:s" }}</td>
-              <td>{{ loan.updated_at|date:"Y-m-d H:i:s" }}</td>
+              
             </tr>
           </tbody>
         </table>
@@ -49,36 +49,26 @@
           <thead class="table-light">
             <tr>
               <th>Changed At</th>
-              <th>Change Type</th>
               <th>Changed By</th>
+              <th>Transaction Date</th>
               <th>Pawn No</th>
               <th>Ledger</th>
               <th>Type</th>
               <th class="text-end">Principal</th>
               <th class="text-end">Interest</th>
-              <th>Created By</th>
             </tr>
           </thead>
           <tbody>
             {% for record in history_records %}
             <tr>
               <td>{{ record.history_date|date:"Y-m-d H:i:s" }}</td>
-              <td>
-                {% if record.history_type == '+' %}
-                  <span class="badge bg-success">Created</span>
-                {% elif record.history_type == '~' %}
-                  <span class="badge bg-warning text-dark">Updated</span>
-                {% else %}
-                  <span class="badge bg-danger">Deleted</span>
-                {% endif %}
-              </td>
               <td>{% if record.history_user %}{{ record.history_user.username }}{% else %}-{% endif %}</td>
+              <td>{{ record.transaction_dt|date:"Y-m-d H:i:s" }}</td>
               <td>{{ record.pawn_no|default:"-" }}</td>
               <td>{{ record.ledger|default:"-" }}</td>
               <td>{{ record.type|default:"-" }}</td>
               <td class="text-end">{{ record.principal|default:"-" }}</td>
               <td class="text-end">{{ record.interest|default:"-" }}</td>
-              <td>{% if record.created_by %}{{ record.created_by.username }}{% else %}-{% endif %}</td>
             </tr>
             {% empty %}
             <tr>
