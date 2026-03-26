@@ -391,6 +391,50 @@ def create_transaction(request):
         )
 
 @api_view(['GET'])    
+def get_transactions(request):
+    """Returns transactions as JSON. Supports optional ?shop=ID filter."""
+    if request.method == 'GET':
+        print('get_transactions called')
+        transactions_list = Transactions.objects.all().order_by('transaction_dt')
+
+        from_date = request.GET.get('from_date')
+        to_date = request.GET.get('to_date')
+        shop_filter = request.GET.get('shop')
+        type_filter = request.GET.get('type')
+        search_query = request.GET.get('search', '')
+        name_search_query = request.GET.get('name_search', '')   
+
+        # Apply filters
+        if from_date:
+            try:
+                from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__gte=from_date_obj)
+            except ValueError:
+                pass
+        
+        if to_date:
+            try:
+                to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+                transactions_list = transactions_list.filter(transaction_dt__date__lte=to_date_obj)
+            except ValueError:
+                pass
+        
+        if shop_filter:
+            transactions_list = transactions_list.filter(shop_id=shop_filter)
+        
+        if type_filter and type_filter in ['DEBIT', 'CREDIT']:
+            transactions_list = transactions_list.filter(tr_type=type_filter)
+        
+        if name_search_query:
+            transactions_list = transactions_list.filter(name__icontains=name_search_query)
+        
+        if search_query:
+            transactions_list = transactions_list.filter(remarks__icontains=search_query)
+
+        serializer = TransactionSerializer(transactions_list, many=True)
+        return Response(serializer.data)
+
+@api_view(['GET'])    
 def get_shop_transactions(request,pk=None):
     """Returns transactions as JSON. Supports optional ?shop=ID filter."""
     if request.method == 'GET':

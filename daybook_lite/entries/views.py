@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+import requests
 
 from .forms import TransactionForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
 from .models import Transactions, Denomination, Loan
@@ -295,8 +296,34 @@ def transactions(request):
     search_query = request.GET.get('search', '')
     name_search_query = request.GET.get('name_search', '')
     
-    # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-transaction_dt','-updated_at')
+    transactions_list = Transactions.objects.filter(
+        shop__is_local=True
+        ).select_related(
+            'shop', 'created_by', 'updated_by'
+        ).order_by('-transaction_dt')
+
+    external_shops = Shop.objects.filter(is_local=False).order_by('name')
+
+    for shop in external_shops:
+        response = requests.get(f'http://{shop.ip_address}:{shop.port}/api/shops/{shop.id}/transactions/', timeout=5)
+        if response.status_code == 200:
+            shop_transactions = response.json().get('transactions', [])
+            for tr in shop_transactions:
+                # Convert API data → object-like dict
+                transactions_list.append({
+                    'id': tr['id'],
+                    'name': tr['name'],
+                    'amount': tr.get('amount'),
+                    'tr_type': tr['tr_type'],
+                    'shop': shop,
+                    'created_by': tr.get('created_by'),
+                    'created_at': tr.get('created_at'),
+                    'updated_at': tr.get('updated_at'),
+                    'updated_by': tr.get('updated_by'),
+                    'transaction_dt': tr.get('transaction_dt'),
+                    'remarks': tr.get('remarks'),
+                })
+
     
     # Apply filters
     if from_date:

@@ -12,6 +12,7 @@ urlpatterns = [
     path('dashboard/transaction-pie/', views.transaction_pie_data, name='transaction_pie_data'),
     # Shop CRUD endpoints
     path('shops/', views.shop_list_create, name='shop_list_create'),
+    path('transactions/', views.get_transactions, name='transactions'),
     path('shops/<str:pk>/', views.shop_detail, name='shop_detail'),
     path('shops/<str:pk>/ledgers/', views.shop_ledger_list_create, name='shop_ledgers'),
     path('shops/<str:pk>/transactions/', views.get_shop_transactions, name='shop_transactions'),

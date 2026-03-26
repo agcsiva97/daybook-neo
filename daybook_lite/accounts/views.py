@@ -28,6 +28,23 @@ class DaybookLoginView(LoginView):
         logger.warning(f"Failed login attempt for username: {username}")
         log_activity(self.request, 'FAILED_LOGIN', model_name='User', object_id=username, description='Failed login attempt')
         return super().form_invalid(form)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+
+        user = self.request.user
+
+        logger.info(f"User logged in -> [{user.username}]")
+
+        log_activity(
+            self.request,
+            'LOGIN',
+            model_name='User',
+            object_id=user.username,
+            description='User logged in successfully'
+        )
+
+        return response
 
 # accounts/views.py
 
