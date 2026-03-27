@@ -68,26 +68,26 @@
             </div>
         </div>
         <div class="card-footer">
-          <button onclick="window.location.href='{% url 'accounts:users_list' %}'" class="btn btn-secondary">Back to Users</button>
+          <button onclick="window.location.href='{% url 'accounts:users_list' %}'" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Users</span></button>
           {% if can_edit %}
-            <button onclick="window.location.href='{% url 'accounts:edit_user' selected_user.username %}'" class="btn btn-primary"><i class="fa-solid fa-edit"></i> Edit User</button>
+            <button onclick="window.location.href='{% url 'accounts:edit_user' selected_user.username %}'" class="btn btn-primary"><i class="fa-solid fa-edit"></i> <span class="d-none d-md-inline">Edit User</span></button>
           {% endif %}
           {% if is_staff_member %}
             <form method="POST" action="{% url 'accounts:promote_to_admin' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to promote {{ selected_user.username }} to Admin group?');">
               {% csrf_token %}
-              <button type="submit" class="btn btn-primary">Promote to Admin</button>
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> <span class="d-none d-md-inline">Promote to Admin</span></button>
             </form>
           {% endif %}
           {% if can_make_inactive %}
             <form method="POST" action="{% url 'accounts:deactivate_staff_user' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to mark {{ selected_user.username }} as inactive?');">
               {% csrf_token %}
-              <button type="submit" class="btn btn-outline-danger">Make Inactive</button>
+              <button type="submit" class="btn btn-outline-danger"><i class="fa-solid fa-user-slash"></i> <span class="d-none d-md-inline">Make Inactive</span></button>
             </form>
           {% endif %}
           {% if can_make_active %}
             <form method="POST" action="{% url 'accounts:activate_staff_user' selected_user.username %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to mark {{ selected_user.username }} as active?');">
               {% csrf_token %}
-              <button type="submit" class="btn btn-outline-success">Make Active</button>
+              <button type="submit" class="btn btn-outline-success"><i class="fa-solid fa-user-check"></i> <span class="d-none d-md-inline">Make Active</span></button>
             </form>
           {% endif %}
         </div>

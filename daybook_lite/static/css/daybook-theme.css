@@ -1,4 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+
+/* Primary	#4A7766	Deep Garnet	#774A4B */
+/* Click/Active	#006440	Crimson Punch	#640001 */
+/* Accent/Soft	#d9e6e1	Misty Rose	#e6d9da */
+
 :root {
   --daybook-primary: #4A7766;
   /* #4A7766; */
@@ -11,6 +16,10 @@
   --daybook-border: rgba(74, 119, 102, 0.2);
   --daybook-accent: #d9e6e1;
   --daybook-shadow: 0 12px 30px rgba(31, 43, 39, 0.08);
+  --daybook-red: #FF5555;
+  --daybook-red-click: #fd4444;
+  --daybook-teal: #f5c55f;
+  --daybook-teal-click: #dcb155;
 }
 
 h5{
@@ -150,7 +159,55 @@ a:hover {
   border-color: var(--daybook-primary-click);
 }
 
+/* Teal */
+
+.btn-teal {
+  color:#181309;
+  font-weight: bold;
+  background-color: var(--daybook-teal);
+  border-color: var(--daybook-teal);
+}
+
+.btn-teal:hover,
+.btn-teal:focus {
+  background-color: var(--daybook-teal-click);
+  border-color: var(--daybook-teal-click);
+}
+
+.btn-teal:active,
+.btn-teal.active,
+.btn-teal:active:focus {
+  background-color: var(--daybook-teal-click) !important;
+  border-color: var(--daybook-teal-click) !important;
+  box-shadow: 0 0 0 0.2rem rgba(62, 102, 86, 0.5) !important;
+}
+
+/* Red */
+
+.btn-red {
+  font-weight: bold;
+  background-color: var(--daybook-red);
+  border-color: var(--daybook-red);
+}
+
+.btn-red:hover,
+.btn-red:focus {
+  background-color: var(--daybook-red-click);
+  border-color: var(--daybook-red-click);
+}
+
+.btn-red:active,
+.btn-red.active,
+.btn-red:active:focus {
+  background-color: var(--daybook-red-click) !important;
+  border-color: var(--daybook-red-click) !important;
+  box-shadow: 0 0 0 0.2rem rgba(62, 102, 86, 0.5) !important;
+}
+
+/* Primary */
+
 .btn-primary {
+  font-weight: bold;
   background-color: var(--daybook-primary);
   border-color: var(--daybook-primary);
 }

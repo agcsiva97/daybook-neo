@@ -8,14 +8,14 @@
       <div class="d-flex gap-2">
         {% if is_admin %}
             <a href="{% url 'manager:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary">
-              <i class="fa-solid fa-pencil"></i> Edit
+              <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
             </a>
             <a href="{% url 'manager:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger">
-              <i class="fa-solid fa-trash"></i> Delete
+              <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
             </a>
         {% endif %}
         <a href="{% url 'manager:shop_info' ledger.shop.pk %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> Back to {{ ledger.shop.short_name }}
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ ledger.shop.short_name }}</span>
         </a>
       </div>
     </div>
@@ -43,55 +43,57 @@
       <h5 class="mb-0">All Loan Transactions ({{ page_obj.paginator.count }} total)</h5>
     </div>
     <div class="card-body">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Pawn No</th>
-            <th>Type</th>
-            <th class="text-end">Principal</th>
-            <th class="text-end">Interest</th>
-            <th>Created By</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for loan in page_obj %}
-          <tr>
-            <td>{{ loan.created_at|date:"Y-m-d" }}</td>
-            <td>{{ loan.created_at|time:"H:i:s" }}</td>
-            <td>{{ loan.pawn_no }}</td>
-            <td>
-              {% if loan.type == 'LOAN' %}
-                <span class="badge bg-danger">Loan</span>
-              {% else %}
-                <span class="badge bg-success">Release</span>
-              {% endif %}
-            </td>
-            <td class="text-end">{{ loan.principal }}</td>
-            <td class="text-end">{{ loan.interest }}</td>
-            <td>{{ loan.created_by.username|default:"-" }}</td>
-            <td>
-              <div class="d-flex gap-1">
-                {% if is_admin %}
-                <a href="{% url 'entries:edit_loan' loan.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Loan">
-                  <i class="fa-solid fa-pencil"></i>
-                </a>
-                <a href="{% url 'entries:delete_loan' loan.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Loan">
-                  <i class="fa-solid fa-trash"></i>
-                </a>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Pawn No</th>
+              <th>Type</th>
+              <th class="text-end">Principal</th>
+              <th class="text-end">Interest</th>
+              <th>Created By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in page_obj %}
+            <tr>
+              <td>{{ loan.created_at|date:"Y-m-d" }}</td>
+              <td>{{ loan.created_at|time:"H:i:s" }}</td>
+              <td>{{ loan.pawn_no }}</td>
+              <td>
+                {% if loan.type == 'LOAN' %}
+                  <span class="badge bg-danger">Loan</span>
+                {% else %}
+                  <span class="badge bg-success">Release</span>
                 {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="8" class="text-center text-muted">No loan transactions found</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              </td>
+              <td class="text-end">{{ loan.principal }}</td>
+              <td class="text-end">{{ loan.interest }}</td>
+              <td>{{ loan.created_by.username|default:"-" }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  {% if is_admin %}
+                  <a href="{% url 'entries:edit_loan' loan.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Loan">
+                    <i class="fa-solid fa-pencil"></i>
+                  </a>
+                  <a href="{% url 'entries:delete_loan' loan.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Loan">
+                    <i class="fa-solid fa-trash"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No loan transactions found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>  
 
       <!-- Pagination -->
       {% if page_obj.has_other_pages %}

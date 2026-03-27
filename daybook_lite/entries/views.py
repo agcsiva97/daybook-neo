@@ -2303,3 +2303,12 @@ def custom_404_view(request, exception=None):
 def custom_403_view(request, exception=None):
     """Custom 403 error handler for permission denied"""
     return render(request, '403.html', status=403)
+
+def about(request):
+    """About page with system information and credits"""
+    context = {
+        'nav_title': 'About',
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    }
+    return render(request, 'entries/about.html', context)

@@ -93,15 +93,15 @@ def can_edit_user(actor, target_user):
     - Admin group users can edit Staff group users only
     """
     # Prevent editing self via this function (use profile edit instead)
-    if actor.username == target_user.username:
-        return False
+    # if actor.username == target_user.username:
+    #     return False
     
     target_is_admin = target_user.groups.filter(name='Admin').exists()
     target_is_staff = target_user.groups.filter(name='Staff').exists()
 
-    # Super admin can edit both Admin and Staff group users
+    # Super admin can edit any other user (Admin, Staff, or another super admin)
     if actor.is_superuser:
-        return target_is_admin or target_is_staff
+        return True
 
     # Admin group users can edit only Staff group users (not Admin users)
     return actor.groups.filter(name='Admin').exists() and target_is_staff and not target_is_admin

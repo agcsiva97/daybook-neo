@@ -14,16 +14,16 @@
       <div class="d-flex gap-2">
         {% if is_admin %}
           <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-pencil"></i> Edit
+            <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
           </a>
         {% endif %}
         {% if is_super_admin %}
           <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-outline-danger">
-            <i class="fa-solid fa-trash"></i> Delete
+            <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
           </a>
         {% endif %}
         <a href="{% url 'manager:shops_list' %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> Back to Shops List
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Shops List</span>
         </a>
       </div>
     </div>
@@ -74,7 +74,7 @@
             <h5 class="mb-0">Linked Ledgers</h5>
             {% if is_admin %}
             <a href="{% url 'manager:add_shop_ledger' shop.pk %}" class="btn btn-sm btn-primary">
-              <i class="fa-solid fa-plus"></i> Add Ledger
+              <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Ledger</span>
             </a>
             {% endif %}
           </div>
@@ -110,52 +110,54 @@
       <small class="text-muted">Showing up to 10 most recent transactions for this shop, to view all transactions, <a href="{% url 'entries:transactions' %}?from_date=&to_date=&shop={{ shop.id }}&type=&name_search=&search=">click here</a>.</small>
     </div>
     <div class="card-body">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Transaction Date</th>
-            <th>Name</th>
-            <th>Remarks</th>
-            <th class="text-end">DEBIT</th>
-            <th class="text-end">CREDIT</th>
-            <th>Created By</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for transaction in transactions_list %}
-          <tr>
-            <td>{{ transaction.transaction_dt|date:"d-m-Y" }} <small class="text-muted"> {{ transaction.transaction_dt|date:"H:i:s" }} </small></td>
-            <td>{{ transaction.name|default:"-" }}</td>
-            <td>{{ transaction.remarks|default:"-" }}</td>
-            {% if transaction.tr_type == 'DEBIT' %}
-              <td class="text-danger text-end">{{ transaction.amount }}</td>
-              <td class="text-end"></td>
-            {% else %}
-              <td class="text-end"></td>
-              <td class="text-success text-end">{{ transaction.amount }}</td>
-            {% endif %}
-            <td>{{ transaction.created_by.username|default:"-" }}</td>
-            <td>
-              <div class="d-flex gap-1">
-                {% if is_admin %}
-                <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Transaction">
-                  <i class="fa-solid fa-pencil"></i>
-                </a>
-                <a href="{% url 'entries:delete_transaction' transaction.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Transaction">
-                  <i class="fa-solid fa-trash"></i>
-                </a>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="8" class="text-center text-muted">No transactions found</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Transaction Date</th>
+              <th>Name</th>
+              <th>Remarks</th>
+              <th class="text-end">DEBIT</th>
+              <th class="text-end">CREDIT</th>
+              <th>Created By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for transaction in transactions_list %}
+            <tr>
+              <td>{{ transaction.transaction_dt|date:"d-m-Y" }} <small class="text-muted"> {{ transaction.transaction_dt|date:"H:i:s" }} </small></td>
+              <td>{{ transaction.name|default:"-" }}</td>
+              <td>{{ transaction.remarks|default:"-" }}</td>
+              {% if transaction.tr_type == 'DEBIT' %}
+                <td class="text-danger text-end">{{ transaction.amount }}</td>
+                <td class="text-end"></td>
+              {% else %}
+                <td class="text-end"></td>
+                <td class="text-success text-end">{{ transaction.amount }}</td>
+              {% endif %}
+              <td>{{ transaction.created_by.username|default:"-" }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  {% if is_admin %}
+                  <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Transaction">
+                    <i class="fa-solid fa-pencil"></i>
+                  </a>
+                  <a href="{% url 'entries:delete_transaction' transaction.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Transaction">
+                    <i class="fa-solid fa-trash"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">No transactions found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
       <!-- Pagination -->
       {% comment %} {% if page_obj.has_other_pages %}

@@ -66,8 +66,8 @@
               <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
             {% endif %}
             <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-              <a href="{% url 'accounts:user_info' selected_user.username %}" class="btn btn-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> <span class="d-none d-md-inline">Save </span></button>
+              <a href="{% url 'accounts:user_info' selected_user.username %}" class="btn btn-secondary"><i class="fa-solid fa-times"></i> <span class="d-none d-md-inline">Cancel</span></a>
             </div>
           </form>
         </div>

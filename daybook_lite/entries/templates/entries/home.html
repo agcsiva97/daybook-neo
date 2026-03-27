@@ -53,37 +53,39 @@
   <div class="row mt-4">
     <div class="col">
       <h5>Today's Transactions</h5>
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th scope="col">Shop</th>
-            <th scope="col">Name</th>
-            <th scope="col">Remarks</th>
-            <th scope="col" class="text-end">DEBIT</th>
-            <th scope="col" class="text-end">CREDIT</th>
-            <th scope="col">Created At</th>
-            <th scope="col">Updated At</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for transaction in transactions %}
-          <tr>
-              <td>{{transaction.shop.short_name}}</td>
-              <td>{{ transaction.name|default:"-" }}</td>
-              <td>{{ transaction.remarks|default:"-" }}</td>
-            {% if transaction.tr_type == 'DEBIT' %}
-              <td class="text-end">{{transaction.amount}}</td>
-              <td class="text-end"></td>
-            {% else %}
-              <td class="text-end"></td>
-              <td class="text-end">{{transaction.amount}}</td>
-          {% endif %}
-              <td>{{ transaction.created_at|time:"H:i:s" }}</td>
-              <td>{{ transaction.updated_at|time:"H:i:s" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th scope="col">Shop</th>
+              <th scope="col">Name</th>
+              <th scope="col">Remarks</th>
+              <th scope="col" class="text-end">DEBIT</th>
+              <th scope="col" class="text-end">CREDIT</th>
+              <th scope="col">Created At</th>
+              <th scope="col">Updated At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for transaction in transactions %}
+            <tr>
+                <td>{{transaction.shop.short_name}}</td>
+                <td>{{ transaction.name|default:"-" }}</td>
+                <td>{{ transaction.remarks|default:"-" }}</td>
+              {% if transaction.tr_type == 'DEBIT' %}
+                <td class="text-end">{{transaction.amount}}</td>
+                <td class="text-end"></td>
+              {% else %}
+                <td class="text-end"></td>
+                <td class="text-end">{{transaction.amount}}</td>
+            {% endif %}
+                <td>{{ transaction.created_at|time:"H:i:s" }}</td>
+                <td>{{ transaction.updated_at|time:"H:i:s" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>  
     </div>
   </div>
 </div>

@@ -4,7 +4,7 @@
 <div class="container">
   <div class="row">
     <div class="col-md-6">
-      <h5>Add Transaction</h5>
+      <h5>Add <span style="text-decoration: underline;">T</span>ransaction</h5>
       <form method="post" class="card card-body">
         {% csrf_token %}
         <div class="mb-3">
@@ -26,14 +26,14 @@
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
+          <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
           {{ form.shop }}
           {% if form.shop.errors %}
             <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
           {% endif %}
         </div>
         <div class="mb-3">
-          <label class="form-label" for="{{ form.amount.id_for_label }}">Amount</label>
+          <label class="form-label" for="{{ form.amount.id_for_label }}"><u>A</u>mount</label>
           {{ form.amount }}
           {% if form.amount.errors %}
             <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
@@ -41,14 +41,14 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+          <label class="form-label" for="{{ form.name.id_for_label }}"><u>N</u>ame</label>
           {{ form.name }}
           {% if form.name.errors %}
             <div class="text-danger small">{{ form.name.errors|striptags }}</div>
           {% endif %}
         </div>
         <div class="mb-3">
-          <label class="form-label" for="{{ form.remarks.id_for_label }}">Remarks</label>
+          <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
           {{ form.remarks }}
           {% if form.remarks.errors %}
             <div class="text-danger small">{{ form.remarks.errors|striptags }}</div>
@@ -60,17 +60,17 @@
         <div class="row">
           <div class="col">
             {% comment %} பற்று {% endcomment %}
-            <button type="button" class="cust-button" onclick="submitTransaction('DEBIT')">DEBIT</button>
+            <button type="button" class="cust-button btn-red" onclick="submitTransaction('DEBIT')">DEBIT</button>
           </div>
           <div class="col">
             {% comment %} வரவு {% endcomment %}
-            <button type="button" class="cust-button" onclick="submitTransaction('CREDIT')">CREDIT</button>
+            <button type="button" class="cust-button btn-primary" onclick="submitTransaction('CREDIT')">CREDIT</button>
           </div>
         </div>
       </form>
     </div>
     <div class="col-md-6">
-      <h5>Loan Management</h5>
+      <h5><u>L</u>oan Management</h5>
       <div class="card card-body">
         <div class="row">
           <div class="mb-3">
@@ -94,14 +94,14 @@
           <div class="mb-3">
             <div class="row">
               <div class="col">
-                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">{{ loan_form.shop.label }}</label>
+                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">S<u>h</u>op</label>
                 {{ loan_form.shop }}
                 {% if loan_form.shop.errors %}
                   <div class="text-danger small">{{ loan_form.shop.errors|striptags }}</div>
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">{{ loan_form.ledger.label }}</label>
+                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">L<u>e</u>dger</label>
                 {{ loan_form.ledger }}
                 {% if loan_form.ledger.errors %}
                   <div class="text-danger small">{{ loan_form.ledger.errors|striptags }}</div>
@@ -110,21 +110,21 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">{{ loan_form.pawn_no.label }}</label>
+            <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pa<u>w</u>n No</label>
             {{ loan_form.pawn_no }}
             {% if loan_form.pawn_no.errors %}
               <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
             {% endif %}
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.principal.id_for_label }}">{{ loan_form.principal.label }}</label>
+            <label class="form-label" for="{{ loan_form.principal.id_for_label }}"><u>P</u>rincipal</label>
             {{ loan_form.principal }}
             {% if loan_form.principal.errors %}
               <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
             {% endif %}
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.interest.id_for_label }}">{{ loan_form.interest.label }}</label>
+            <label class="form-label" for="{{ loan_form.interest.id_for_label }}"><u>I</u>ntrest</label>
             {{ loan_form.interest }}
             {% if loan_form.interest.errors %}
               <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
@@ -136,10 +136,10 @@
         {% endif %}
         <div class="row">
           <div class="col">
-            <button type="button" class="cust-button" onclick="submitLoan('LOAN')">Loan</button>
+            <button type="button" class="cust-button btn-teal" onclick="submitLoan('LOAN')">LOAN</button>
           </div>
           <div class="col">
-            <button type="button" class="cust-button" onclick="submitLoan('RELEASE')">Release</button>
+            <button type="button" class="cust-button btn-primary" onclick="submitLoan('RELEASE')">RELEASE</button>
           </div>
         </div>
       </div> 
@@ -148,6 +148,32 @@
 </div>
 
 <script>
+const shortcuts = {
+    't': 'id_date',
+    's': 'id_shop',
+    'a': 'id_amount',
+    'n': 'id_name',
+    'm': 'id_remarks',
+
+    'l': 'loan_date',
+    'h': 'loan_shop',
+    'e': 'loan_ledger',
+    'w': 'loan_pawn_no',
+    'p': 'loan_principal',
+    'i': 'loan_interest',
+    
+};
+
+document.addEventListener('keydown', function(e) {
+    if (!e.altKey) return;
+    const inputId = shortcuts[e.key.toLowerCase()];
+    if (inputId) {
+        e.preventDefault();
+        const el = document.getElementById(inputId);
+        if (el) el.focus();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const fromLedger = document.getElementById('id_from_ledger');
     const toLedger = document.getElementById('id_to_ledger');

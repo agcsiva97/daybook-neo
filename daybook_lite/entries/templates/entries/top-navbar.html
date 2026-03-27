@@ -29,8 +29,8 @@
       </li>
     </ul>
     <ul class="navbar-nav ms-auto">
-      <li class="nav-item {% if nav_title == 'Denomination' %} active-nav {% endif %}">
-        <a class="nav-link" href="{% url 'entries:denominations' %}"><i class="fa-solid fa-circle-info"></i></a>
+      <li class="nav-item {% if nav_title == 'About' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:about' %}"><i class="fa-solid fa-circle-info"></i></a>
       </li>
       {% if user and user.is_authenticated %}
         <li class="nav-item dropdown">

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .header h1 {
+        color: var(--daybook-primary);
+        font-size: 2.5rem;
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        color: var(--daybook-muted);
+        font-size: 1.1rem;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    }
+
+    .card {
+        background: var(--daybook-surface);
+        padding: 30px;
+        border-radius: 12px;
+        border: 1px solid var(--daybook-border);
+        box-shadow: var(--daybook-shadow);
+        /* Hover animation removed */
+    }
+
+    .card-title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1px;
+    }
+
+    .badge {
+        display: inline-block; /* Ensures width matches content */
+        background: var(--daybook-accent);
+        color: var(--daybook-primary);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    .card h2 {
+        margin: 0;
+        color: var(--daybook-primary);
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+        margin: 20px 0;
+    }
+
+    .feature-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--daybook-secondary);
+        color: var(--daybook-muted);
+        display: flex;
+        align-items: center;
+    }
+
+    .feature-list li::before {
+        content: "•";
+        color: var(--daybook-primary);
+        font-weight: bold;
+        width: 20px;
+    }
+
+    .footer {
+        margin-top: 60px;
+        color: var(--daybook-muted);
+        border-top: 1px solid var(--daybook-border);
+        padding-top: 20px;
+    }
+</style>
+
+<div class="container">
+    <header class="header">
+        <h1>System Information</h1>
+        <p>Comprehensive Management Suite for Modern Pawn Shops</p>
+    </header>
+
+    <main class="grid">
+        <section class="card">
+            <div class="card-title-row">
+                <h2><i class="fa-solid fa-book"></i> <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span></h2>
+                <span class="badge">v1.0.0</span>
+            </div>
+            <p>The core operational module designed for seamless daily floor management and financial tracking.</p>
+            <ul class="feature-list">
+                <li>Daily Transaction Logging</li>
+                <li>Loan Issuance & Management</li>
+                <li>Loan Release Processing</li>
+                <li>Real-time Balance Updates</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <div class="card-title-row">
+                <h2><i class="fa-solid fa-user-shield"></i> Manager</h2>
+                <span class="badge">v1.0.0</span>
+            </div>
+            <p>The administrative engine providing high-level oversight and organizational control.</p>
+            <ul class="feature-list">
+                <li>Multi-shop Configuration</li>
+                <li>Master Ledger Management</li>
+                <li>User Access & Permissions</li>
+                <li>Detailed Activity Auditing</li>
+                <li>Apps Configuration</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer align-items-cente r d-flex justify-content-center">    
+        <div class="d-flex align-items-center">
+            <div class="me-2">
+                {% comment %} <i class="fa-solid fa-bolt" style="color: var(--daybook-primary); font-size: 1.8rem;"></i> {% endcomment %}
+                <i class="fa-solid fa-meteor" style="color: #D97A2B; font-size: 1.8rem;"></i>
+            </div>
+
+            <div class="d-flex flex-column align-items-start lh-1" style="padding-right: 8px;">
+                <span class="fw-bold text-uppercase" 
+                    style="color: var(--daybook-primary); font-size: 1.2rem; letter-spacing: 0.5px;">
+                    Kinetic
+                </span>
+                <span class="text-uppercase" 
+                    style="color: var(--daybook-muted); font-size: 0.65rem; letter-spacing: 1.5px; margin-top: 2px;">
+                    Solutions
+                </span>
+            </div>
+            <div style="margin-right: 5px; border-left: 1px solid var(--daybook-border); padding-left: 8px;">
+                <i class="fa-regular fa-copyright"></i> 2026 . All rights reserved.
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}

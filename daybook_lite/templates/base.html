@@ -78,11 +78,11 @@
       </a></li>
       {% if user and user.is_authenticated %}
         {% if is_super_admin %}        
-          <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-users me-2"></i>Manager</a></li>
+          <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
         {% else %}
           {% for group in user.groups.all %}
             {% if group.name == 'Admin' %}
-              <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-users me-2"></i>Manager</a></li>
+              <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
             {% endif %}
           {% endfor %}
         {% endif %}
