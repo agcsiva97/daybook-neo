@@ -198,6 +198,55 @@ class DenominationForm(forms.Form):
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
         label='Damage',
     )
+    inside = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='Inside',
+    )
+    bundle_500 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='500 Bundle x',
+    )
+    bundle_200 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='200 Bundle x',
+    )
+    bundle_100 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='100 Bundle x',
+    )
+    bundle_50 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='50 Bundle x',
+    )
+    bundle_20 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='20 Bundle x',
+    )
+    bundle_10 = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+        label='10 Bundle x',
+    )
 
 
 class LoanForm(forms.Form):

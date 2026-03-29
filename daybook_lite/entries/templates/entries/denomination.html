@@ -211,6 +211,118 @@
               </div>
             </div>
 
+            <!-- Inside -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.inside.id_for_label }}">{{ form.inside.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.inside }}
+                {% if form.inside.errors %}
+                  <div class="text-danger small">{{ form.inside.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_inside" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 500 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_500.id_for_label }}">{{ form.bundle_500.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_500 }}
+                {% if form.bundle_500.errors %}
+                  <div class="text-danger small">{{ form.bundle_500.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 200 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_200.id_for_label }}">{{ form.bundle_200.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_200 }}
+                {% if form.bundle_200.errors %}
+                  <div class="text-danger small">{{ form.bundle_200.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 100 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_100.id_for_label }}">{{ form.bundle_100.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_100 }}
+                {% if form.bundle_100.errors %}
+                  <div class="text-danger small">{{ form.bundle_100.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 50 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_50 }}
+                {% if form.bundle_50.errors %}
+                  <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 20 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_20.id_for_label }}">{{ form.bundle_20.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_20 }}
+                {% if form.bundle_20.errors %}
+                  <div class="text-danger small">{{ form.bundle_20.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- 10 -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_10.id_for_label }}">{{ form.bundle_10.label }}</label>
+              </div>
+              <div class="col-md-2">
+                {{ form.bundle_10 }}
+                {% if form.bundle_10.errors %}
+                  <div class="text-danger small">{{ form.bundle_10.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="bundle_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
             <!-- Total -->
             <div class="row mb-3 align-items-center border-top pt-3">
               <div class="col-md-2">
@@ -307,8 +419,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const calc10 = getNumericValue(document.getElementById('calc_10').textContent);
     const calcCoins = getNumericValue(document.getElementById('calc_coins').textContent);
     const calcDamage = getNumericValue(document.getElementById('calc_damage').textContent);
-    
-    const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10 + calcCoins + calcDamage;
+    const calcInside = getNumericValue(document.getElementById('calc_inside').textContent);
+    const bundle500 = getNumericValue(document.getElementById('bundle_500').textContent);
+    const bundle200 = getNumericValue(document.getElementById('bundle_200').textContent);
+    const bundle100 = getNumericValue(document.getElementById('bundle_100').textContent);
+    const bundle50 = getNumericValue(document.getElementById('bundle_50').textContent);
+    const bundle20 = getNumericValue(document.getElementById('bundle_20').textContent);
+    const bundle10 = getNumericValue(document.getElementById('bundle_10').textContent);
+
+    const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10 + calcCoins + calcDamage + calcInside + bundle500 + bundle200 + bundle100 + bundle50 + bundle20 + bundle10;
     document.getElementById('calc_total').textContent = '₹ ' + total.toFixed(2);
   }
   
@@ -321,6 +440,25 @@ document.addEventListener('DOMContentLoaded', function() {
       const updateValue = function() {
         const value = parseFloat(input.value) || 0;
         const result = value * denomination;
+        display.textContent = '₹ ' + result.toFixed(2);
+        updateTotal();
+      };
+      
+      input.addEventListener('keyup', updateValue);
+      input.addEventListener('input', updateValue);
+      input.addEventListener('change', updateValue);
+    }
+  }
+
+  // Function to calculate and display denomination values
+  function calculateBundle(inputId, denomination, displayId) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(displayId);
+    
+    if (input && display) {
+      const updateValue = function() {
+        const value = parseFloat(input.value) || 0;
+        const result = value * denomination * 100; // Assuming bundle means 100 notes of that denomination
         display.textContent = '₹ ' + result.toFixed(2);
         updateTotal();
       };
@@ -361,11 +499,19 @@ document.addEventListener('DOMContentLoaded', function() {
   // Setup display for coins and damage
   displaySameValue('id_coins', 'calc_coins');
   displaySameValue('id_damage', 'calc_damage');
-  
+  displaySameValue('id_inside', 'calc_inside');
+
+  calculateBundle('id_bundle_500', 500, 'bundle_500');
+  calculateBundle('id_bundle_200', 200, 'bundle_200');
+  calculateBundle('id_bundle_100', 100, 'bundle_100');
+  calculateBundle('id_bundle_50', 50, 'bundle_50');
+  calculateBundle('id_bundle_20', 20, 'bundle_20');
+  calculateBundle('id_bundle_10', 10, 'bundle_10');
+
   // Trigger initial calculations if form has values (edit or view mode)
   {% if is_edit_mode or is_view_mode %}
   const triggerCalculations = function() {
-    const fields = ['id_note_2000', 'id_note_500', 'id_note_200', 'id_note_100', 'id_note_50', 'id_note_20', 'id_note_10', 'id_coins', 'id_damage'];
+    const fields = ['id_note_2000', 'id_note_500', 'id_note_200', 'id_note_100', 'id_note_50', 'id_note_20', 'id_note_10', 'id_coins', 'id_damage', 'id_inside', 'id_bundle_500', 'id_bundle_200', 'id_bundle_100', 'id_bundle_50', 'id_bundle_20', 'id_bundle_10'];
     fields.forEach(fieldId => {
       const field = document.getElementById(fieldId);
       if (field && field.value) {

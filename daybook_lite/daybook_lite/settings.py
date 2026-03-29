@@ -51,6 +51,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '192.168.1.29',
+    '192.168.1.47',
 ]
 
 
@@ -91,7 +92,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Session settings - timeout controlled by JavaScript and database config
 SESSION_COOKIE_AGE          = 86400                 # 24 hours (let JS handle actual timeout)
-SESSION_SAVE_EVERY_REQUEST  = False                 # Don't reset timer on every request
+SESSION_SAVE_EVERY_REQUEST  = True                  # Reset timer on every request to keep user logged in
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True             # Expire session when browser closes
 SESSION_COOKIE_HTTPONLY     = True
 SESSION_COOKIE_SAMESITE     = 'Lax'
