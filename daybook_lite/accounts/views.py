@@ -26,7 +26,7 @@ class DaybookLoginView(LoginView):
         else:
             messages.error(self.request, 'Invalid username or password. Please try again.')
         logger.warning(f"Failed login attempt for username: {username}")
-        log_activity(self.request, 'FAILED_LOGIN', model_name='User', object_id=username, description='Failed login attempt')
+        # log_activity(self.request, 'FAILED_LOGIN', model_name='User', object_id=username, description='Failed login attempt')
         return super().form_invalid(form)
     
     def form_valid(self, form):
@@ -36,13 +36,13 @@ class DaybookLoginView(LoginView):
 
         logger.info(f"User logged in -> [{user.username}]")
 
-        log_activity(
-            self.request,
-            'LOGIN',
-            model_name='User',
-            object_id=user.username,
-            description='User logged in successfully'
-        )
+        # log_activity(
+        #     self.request,
+        #     'LOGIN',
+        #     model_name='User',
+        #     object_id=user.username,
+        #     description='User logged in successfully'
+        # )
 
         return response
 
@@ -109,7 +109,7 @@ def can_edit_user(actor, target_user):
 
 def logout_view(request):
     username = request.user.username if request.user.is_authenticated else 'Unknown'
-    log_activity(request, 'LOGOUT', model_name='User', object_id=username, description='User logged out')
+    # log_activity(request, 'LOGOUT', model_name='User', object_id=username, description='User logged out')
     logout(request)
     logger.info(f"User logged out: {username}")    
     return redirect('entries:home')
