@@ -112,7 +112,7 @@ class Configuration(models.Model):
         Key.LOAN_PAPER: 'A5',
         Key.LOAN_ORIENTATION: 'Portrait',
         Key.DEN_PURGE_DAYS: '7',
-        Key.SESSION_TIMEOUT: '60',
+        Key.SESSION_TIMEOUT: '1800',
         Key.ACTIVITY_PURGE_DAYS: '7'
     }
 

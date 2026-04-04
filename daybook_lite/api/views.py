@@ -188,7 +188,7 @@ def transaction_pie_data(request):
             tr_type=tr_type,
             created_at__date__gte=start_date,
             created_at__date__lte=end_date,
-        ).exclude(name='Openning Deposit')
+        ).exclude(name='Opening Deposit' or 'Openning Deposit')
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
         # Group by account name instead of transaction name

@@ -1490,6 +1490,13 @@ def denomination(request):
             note_10 = form.cleaned_data.get('note_10') or 0
             coins = form.cleaned_data.get('coins') or Decimal('0.00')
             damage = form.cleaned_data.get('damage') or Decimal('0.00')
+            inside = form.cleaned_data.get('inside') or Decimal('0.00')
+            bundle_500 = form.cleaned_data.get('bundle_500') or 0
+            bundle_200 = form.cleaned_data.get('bundle_200') or 0
+            bundle_100 = form.cleaned_data.get('bundle_100') or 0
+            bundle_50 = form.cleaned_data.get('bundle_50') or 0
+            bundle_20 = form.cleaned_data.get('bundle_20') or 0
+            bundle_10 = form.cleaned_data.get('bundle_10') or 0
             
             try:
                 # Calculate amounts and create denomination records
@@ -1503,6 +1510,13 @@ def denomination(request):
                     ('10', note_10, note_10 * 10),
                     ('Coins', 1, coins),
                     ('Damage', 1, damage),
+                    ('Inside', 1, inside),
+                    ('500 Bundle', bundle_500, bundle_500 * 500 * 100),
+                    ('200 Bundle', bundle_200, bundle_200 * 200 * 100),
+                    ('100 Bundle', bundle_100, bundle_100 * 100 * 100),
+                    ('50 Bundle', bundle_50, bundle_50 * 50 * 100),
+                    ('20 Bundle', bundle_20, bundle_20 * 20 * 100),
+                    ('10 Bundle', bundle_10, bundle_10 * 10 * 100),
                 ]
                 
                 for denom_name, count, amount in denominations:
@@ -1670,6 +1684,15 @@ def edit_denomination(request, key):
                 
                 shop = form.cleaned_data.get('shop')
 
+                # Get inside value
+                inside = form.cleaned_data.get('inside') or Decimal('0.00')
+                bundle_500 = form.cleaned_data.get('bundle_500') or 0
+                bundle_200 = form.cleaned_data.get('bundle_200') or 0
+                bundle_100 = form.cleaned_data.get('bundle_100') or 0
+                bundle_50 = form.cleaned_data.get('bundle_50') or 0
+                bundle_20 = form.cleaned_data.get('bundle_20') or 0
+                bundle_10 = form.cleaned_data.get('bundle_10') or 0
+                
                 # Create denomination map with new values
                 denomination_updates = {
                     '2000': (note_2000, note_2000 * 2000),
@@ -1681,6 +1704,13 @@ def edit_denomination(request, key):
                     '10': (note_10, note_10 * 10),
                     'Coins': (1, coins),
                     'Damage': (1, damage),
+                    'Inside': (1, inside),
+                    '500 Bundle': (bundle_500, bundle_500 * 500 * 100),
+                    '200 Bundle': (bundle_200, bundle_200 * 200 * 100),
+                    '100 Bundle': (bundle_100, bundle_100 * 100 * 100),
+                    '50 Bundle': (bundle_50, bundle_50 * 50 * 100),
+                    '20 Bundle': (bundle_20, bundle_20 * 20 * 100),
+                    '10 Bundle': (bundle_10, bundle_10 * 10 * 100),
                 }
                 
                 # Update or create denominations
@@ -1731,6 +1761,20 @@ def edit_denomination(request, key):
                 initial_data['coins'] = denom.amount
             elif denom.denomination == 'Damage':
                 initial_data['damage'] = denom.amount
+            elif denom.denomination == 'Inside':
+                initial_data['inside'] = denom.amount
+            elif denom.denomination == '500 Bundle':
+                initial_data['bundle_500'] = denom.count
+            elif denom.denomination == '200 Bundle':
+                initial_data['bundle_200'] = denom.count
+            elif denom.denomination == '100 Bundle':
+                initial_data['bundle_100'] = denom.count
+            elif denom.denomination == '50 Bundle':
+                initial_data['bundle_50'] = denom.count
+            elif denom.denomination == '20 Bundle':
+                initial_data['bundle_20'] = denom.count
+            elif denom.denomination == '10 Bundle':
+                initial_data['bundle_10'] = denom.count
         
         initial_data['shop'] = first_denom.shop
         form = DenominationForm(initial=initial_data)
@@ -1801,6 +1845,20 @@ def view_denomination(request, key):
             initial_data['coins'] = denom.amount
         elif denom.denomination == 'Damage':
             initial_data['damage'] = denom.amount
+        elif denom.denomination == 'Inside':
+            initial_data['inside'] = denom.amount
+        elif denom.denomination == '500 Bundle':
+            initial_data['bundle_500'] = denom.count
+        elif denom.denomination == '200 Bundle':
+            initial_data['bundle_200'] = denom.count
+        elif denom.denomination == '100 Bundle':
+            initial_data['bundle_100'] = denom.count
+        elif denom.denomination == '50 Bundle':
+            initial_data['bundle_50'] = denom.count
+        elif denom.denomination == '20 Bundle':
+            initial_data['bundle_20'] = denom.count
+        elif denom.denomination == '10 Bundle':
+            initial_data['bundle_10'] = denom.count
     
     initial_data['shop'] = first_denom.shop
     form = DenominationForm(initial=initial_data)
