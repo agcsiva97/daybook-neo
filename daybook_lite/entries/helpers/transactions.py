@@ -1,12 +1,13 @@
 import logging
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib import messages
 
 from ..models import Transactions, Denomination, Loan, Shop
 from django.db.models.functions import Coalesce
-from django.db.models import Case, DecimalField, F, Min, Sum, Value, When
+from django.db.models import Case, DecimalField, F, Min, Sum, Value, When, Q
+from manager.helper import date_helper
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def get_previous_balance(shop, reference_dt):
     """
     Get the new_balance of the most recent transaction for *shop*
     that was created strictly before *reference_dt*.
-    Falls back to shop.balance if no earlier transaction exists.
+    Returns 0 if no earlier transaction exists.
     This is used as old_balance when inserting a transaction at an older date.
     """
     prev_transaction = (
@@ -34,9 +35,9 @@ def get_previous_balance(shop, reference_dt):
             f"new_balance=[{prev_transaction.new_balance}]"
         )
         return prev_transaction.new_balance
-    # No earlier transaction – use the shop's current balance
-    logger.info(f"No previous transaction for {shop.name} before {reference_dt}, using shop balance [{shop.balance}]")
-    return shop.balance
+    # No earlier transaction – return 0 (no balance)
+    logger.info(f"No previous transaction for {shop.name} before {reference_dt}, returning 0")
+    return Decimal('0.00')
 
 
 def calculate_new_balance(old_balance, amount, tr_type):
@@ -262,6 +263,41 @@ def get_opening_balance(shop, reference_dt):
         'closing_balance': round(closing_balance, 2)
     }
 
+def get_account_balance(account, reference_dt=None):
+    if reference_dt is None:
+        transactions = Transactions.objects.filter(
+            acc=account
+        ).select_related('acc', 'created_by', 'updated_by')
+    else:
+        transactions = Transactions.objects.filter(
+            transaction_dt__date__lte=reference_dt, acc=account
+        ).select_related('acc', 'created_by', 'updated_by')
+    totals = transactions.aggregate(
+        debit_total=Coalesce(
+        Sum(
+            Case(
+                When(tr_type='DEBIT', then=F('amount')),
+                default=Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        ),
+        Value(0),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+        credit_total=Coalesce(
+        Sum(
+            Case(
+                When(tr_type='CREDIT', then=F('amount')),
+                default=Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        ),
+        Value(0),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
+    )
+    return round(totals['credit_total'] - totals['debit_total'], 2)
+
 def get_balance(shop, reference_dt=None):
     if reference_dt is None:
         transactions = Transactions.objects.filter(
@@ -413,3 +449,131 @@ def purge_old_denominations():
     except Exception as e:
         logger.error(f"Error during denomination purge: {str(e)}", exc_info=True)
         return 0
+    
+# ─────────────────────────────────────────
+# Account level summary
+# ─────────────────────────────────────────
+
+def get_account_summary(account, financial_year: str) -> dict:
+    """Returns all balances for an account in a single grouped query."""
+    start_date, end_date = date_helper.get_fy_dates(financial_year)
+    decimal_mask = Decimal('0.01')
+    # Opening: everything before FY — single query
+    opening_qs = Transactions.objects.filter(
+        acc=account,
+        transaction_dt__date__lt=start_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
+
+    # Credits & Debits within FY — single query
+    fy_qs = Transactions.objects.filter(
+        acc=account,
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    credits = fy_qs['credit'] or Decimal('0.00')
+    debits  = fy_qs['debit']  or Decimal('0.00')
+    closing = opening + credits - debits
+    cur_balance = credits - debits
+    net_balance = opening + cur_balance
+    return {
+        'name': account.t_name,
+        'opening': Decimal(opening).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'credits': Decimal(credits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'debits':  Decimal(debits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'closing': Decimal(closing).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'net_balance': Decimal(net_balance).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'cur_balance': Decimal(cur_balance).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+    }
+
+# ─────────────────────────────────────────
+# Type level summary
+# ─────────────────────────────────────────
+
+def get_type_summary(acc_type, financial_year: str) -> dict:
+    """Returns all balances for an account in a single grouped query."""
+    start_date, end_date = date_helper.get_fy_dates(financial_year)
+    decimal_mask = Decimal('0.01')
+
+    # Opening: everything before FY — single query
+    opening_qs = Transactions.objects.filter(
+        acc__acc_type=acc_type,
+        transaction_dt__date__lt=start_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
+
+    # Credits & Debits within FY — single query
+    fy_qs = Transactions.objects.filter(
+        acc__acc_type=acc_type,
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    credits = fy_qs['credit'] or Decimal('0.00')
+    debits  = fy_qs['debit']  or Decimal('0.00')
+    cur_balance = credits - debits
+    net_balance = opening + cur_balance
+    closing = opening + credits - debits
+    print(f"Type Summary for {acc_type.e_name} in FY {financial_year}:")
+    print(f"  Opening: {opening}, Credits: {credits}, Debits: {debits}, Closing: {closing}")
+    return {
+        'name': acc_type.t_name,
+        'opening': Decimal(opening).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'credits': Decimal(credits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'debits':  Decimal(debits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'closing': Decimal(closing).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'net_balance': Decimal(net_balance).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'cur_balance': Decimal(cur_balance).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+    }
+
+# ─────────────────────────────────────────
+# Type level summary
+# ─────────────────────────────────────────
+
+def get_group_summary(group, financial_year: str) -> dict:
+    """Returns all balances for an account in a single grouped query."""
+    start_date, end_date = date_helper.get_fy_dates(financial_year)
+    decimal_mask = Decimal('0.01')
+
+    # Opening: everything before FY — single query
+    opening_qs = Transactions.objects.filter(
+        acc__acc_type__group=group,
+        transaction_dt__date__lt=start_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
+
+    # Credits & Debits within FY — single query
+    fy_qs = Transactions.objects.filter(
+        acc__acc_type__group=group,
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    ).aggregate(
+        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+    )
+    credits = fy_qs['credit'] or Decimal('0.00')
+    debits  = fy_qs['debit']  or Decimal('0.00')
+    closing = opening + credits - debits
+
+    return {
+        'name': group.t_name,
+        'id': group.order,
+        'opening': Decimal(opening).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'credits': Decimal(credits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'debits':  Decimal(debits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+        'closing': Decimal(closing).quantize(decimal_mask, rounding=ROUND_HALF_UP),
+    }

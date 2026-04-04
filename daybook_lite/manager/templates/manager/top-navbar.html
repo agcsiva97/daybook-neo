@@ -12,11 +12,17 @@
       <li class="nav-item {% if nav_title == 'Dashboard' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'manager:home' %}"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
       </li>
+      <li class="nav-item {% if nav_title == 'Balance Sheet' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'manager:balance_sheet' %}"><i class="fa-solid fa-chart-bar"></i> Balance Sheet</a>
+      </li>
       <li class="nav-item {% if nav_title == 'Users' or nav_title == 'users' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'accounts:users_list' %}"><i class="fa-solid fa-users"></i> Users</a>
       </li>
       <li class="nav-item {% if nav_title == 'Shops' or nav_title == 'shops' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'manager:shops_list' %}"><i class="fa-solid fa-store"></i> Shops</a>
+      </li>
+      <li class="nav-item {% if nav_title == 'Sync History' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'manager:sync_history' %}"><i class="fa-solid fa-arrows-rotate"></i> Sync History</a>
       </li>
       <li class="nav-item {% if nav_title == 'Configurations' or nav_title == 'configurations' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'manager:configurations' %}"><i class="fa-solid fa-gear"></i> Configurations</a>

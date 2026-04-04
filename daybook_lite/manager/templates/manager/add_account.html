@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h4 class="mb-0">Add new account for {{shop.name}}</h4>
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+                      <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+                {{ form.date }}
+                {% if form.date.errors %}
+                  <div class="text-danger small">{{ form.date.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ form.time.id_for_label }}">{{ form.time.label }} <span class="text-muted small">(optional)</span></label>
+                {{ form.time }}
+                {% if form.time.errors %}
+                  <div class="text-danger small">{{ form.time.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+            
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.acc_type.id_for_label }}">
+                {{ form.acc_type.label }}
+              </label>
+              {{ form.acc_type }}
+              {% if form.acc_type.errors %}
+                <div class="text-danger small">{{ form.acc_type.errors|striptags }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.e_name.id_for_label }}">
+                English Name <span class="text-muted">(English)</span>
+              </label>
+              {{ form.e_name }}
+              {% if form.e_name.errors %}
+                <div class="text-danger small">{{ form.e_name.errors|striptags }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.t_name.id_for_label }}">
+                Tamil Name <span class="text-muted">(தமிழ்)</span>
+              </label>
+              {{ form.t_name }}  {% if form.t_name.errors %}
+                <div class="text-danger small">{{ form.t_name.errors|striptags }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                {{ form.is_admin_only }}
+                <label class="form-check-label" for="{{ form.is_admin_only.id_for_label }}">
+                  Is Admin Only? <span class="text-muted small">(Only visible to admin users)</span>
+                </label>
+                {% if form.is_admin_only.errors %}
+                  <div class="text-danger small">{{ form.is_admin_only.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.balance.id_for_label }}">
+                Openning Balance
+              </label>
+              {{ form.balance }}  {% if form.balance.errors %}
+                <div class="text-danger small">{{ form.balance.errors|striptags }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <a href="{% url 'manager:shop_info' pk=shop.id %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary px-4">Add Account</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

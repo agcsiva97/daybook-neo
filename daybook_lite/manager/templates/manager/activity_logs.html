@@ -4,7 +4,7 @@
 <div class="container mt-4">
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">Users</h4>
+      <h4 class="mb-0"><i class="fa-solid fa-clock-rotate-left"></i> Activity Logs</h4>
         <div class="col-md-2">
           <select class="form-select" id="selected_user" name="selected_user" onchange="location = '?selected_user=' + this.value;">
             <option value="" {% if selected_user == "" %}selected{% endif %}>
@@ -23,6 +23,8 @@
         <table class="table table-hover">
           <thead>
             <tr>
+              <th scope="col">Activity Time</th>
+              <th scope="col">Shop</th>
               <th scope="col">Name</th>
               <th scope="col">Short Name</th>
               <th scope="col">Ledgers</th>
@@ -30,6 +32,8 @@
           <tbody>
             {% for log in logs %}
             <tr style="cursor:pointer;">
+              <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ log.shop.name|default:"N/A" }}</td>
               <td>{{ log.user }}</td>
               <td>{{ log.action }}</td>
               <td>  {{ log.description }} </td>

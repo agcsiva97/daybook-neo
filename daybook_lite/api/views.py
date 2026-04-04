@@ -20,9 +20,9 @@ from rest_framework.response import Response
 from entries.models import Ledger, Loan, Transactions, Shop
 from django.db.models import Sum
 
-from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer
+from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer, AccountSerializer
 from django.db import transaction as db_transaction
-from manager.models import Configuration
+from manager.models import Configuration, Accounts
 from entries.helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
 
@@ -151,10 +151,30 @@ def shop_ledger_list_create(request, pk):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def shop_account_list(request, pk):
+    """
+    GET  - List all ledgers for a shop
+    POST - Create a new ledger for a shop
+    """
+    try:
+        shop = Shop.objects.get(pk=pk)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        logger.info(f"Fetching accounts for shop ID: {shop.id}, Name: {shop.short_name}")
+        accounts = Accounts.objects.filter(shop_id=pk).order_by('-priority')
+        if request.user.is_authenticated and not _is_admin(request.user) and not request.user.is_superuser:
+            accounts = accounts.filter(is_admin_only=False)
+        logger.info(f"Found {accounts.count()} accounts for shop ID {shop.id} - {shop.short_name}")
+        serializer = AccountSerializer(accounts, many=True)
+        return Response(serializer.data)
+
 @login_required
 @user_passes_test(_is_admin, login_url='/accounts/login/')
 def transaction_pie_data(request):
-    """Returns debit/credit transaction totals grouped by name as JSON.
+    """Returns debit/credit transaction totals grouped by account as JSON.
     Query params: from_date, to_date (YYYY-MM-DD), shop (ID, optional).
     Defaults to last 7 days.
     """
@@ -171,11 +191,12 @@ def transaction_pie_data(request):
         ).exclude(name='Openning Deposit')
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
-        qs = qs.values('name').annotate(total=Sum('amount')).order_by('-total')
+        # Group by account name instead of transaction name
+        qs = qs.values('acc__e_name').annotate(total=Sum('amount')).order_by('-total')
         labels = []
         values = []
         for item in qs:
-            label = item['name'].strip() if item['name'] and item['name'].strip() else 'Unnamed'
+            label = item['acc__e_name'].strip() if item['acc__e_name'] and item['acc__e_name'].strip() else 'No Account'
             labels.append(label)
             values.append(float(item['total']))
         return labels, values
@@ -360,7 +381,8 @@ def create_transaction(request):
             'CREATE',
             'Transaction',
             transaction_obj.id,
-            f'Transaction created: {transaction_obj.name} ({transaction_obj.amount} {transaction_obj.tr_type}) for {shop.short_name}'
+            f'Transaction created: {transaction_obj.name} ({transaction_obj.amount} {transaction_obj.tr_type}) for {shop.short_name}',
+            shop=shop
         )
 
         logger.info("============ Transaction API Creation Completed ============")

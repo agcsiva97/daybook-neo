@@ -22,9 +22,11 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import requests
 
-from .forms import TransactionForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
+from manager.helper import manager_helper
+
+from .forms import TransactionForm, TransactionEditForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
 from .models import Transactions, Denomination, Loan
-from manager.models import Shop, Ledger, Configuration
+from manager.models import Shop, Ledger, Configuration, Accounts, Type
 from .helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
 
@@ -174,8 +176,9 @@ def add_entries(request):
 
                     # ── Save transaction ──────────────────────────────
                     transaction.save()
+                    manager_helper.update_account_priority(transaction.acc)
                     logger.info(f"Transaction [{transaction.id}] created -> type=[{transaction.tr_type}] | amount=[{transaction.amount}] | shop=[{shop.short_name}]")
-                log_activity(request, 'CREATE', 'Transaction', transaction.id, f'Transaction created: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {shop.short_name}')
+                log_activity(request, 'CREATE', 'Transaction', transaction.id, f'Transaction created: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {shop.short_name}', shop=shop)
                 logger.info("============ Transaction Creation Completed ============")
                 messages.success(request, 'Transaction added successfully!')
 
@@ -203,88 +206,88 @@ def add_entries(request):
         'is_admin': is_admin(request.user),
     })
 
-@login_required
-def transfer(request):
-    if request.method == 'POST':
-        form = TransferForm(request.POST)
-        if form.is_valid():
-            from_ledger_obj = form.cleaned_data['from_ledger']
-            to_ledger_obj = form.cleaned_data['to_ledger']
-            amount = form.cleaned_data['amount']
-            name = form.cleaned_data['name']
-            remarks = form.cleaned_data['remarks'] or f"Transfer to {to_ledger_obj.name} from {from_ledger_obj.name}"
+# @login_required
+# def transfer(request):
+#     if request.method == 'POST':
+#         form = TransferForm(request.POST)
+#         if form.is_valid():
+#             from_ledger_obj = form.cleaned_data['from_ledger']
+#             to_ledger_obj = form.cleaned_data['to_ledger']
+#             amount = form.cleaned_data['amount']
+#             name = form.cleaned_data['name']
+#             remarks = form.cleaned_data['remarks'] or f"Transfer to {to_ledger_obj.name} from {from_ledger_obj.name}"
             
-            try:
-                with db_transaction.atomic():
-                    # Get ledgers and lock the shop rows to prevent race conditions
-                    from_ledger = Ledger.objects.get(pk=from_ledger_obj.pk)
-                    to_ledger = Ledger.objects.get(pk=to_ledger_obj.pk)
+#             try:
+#                 with db_transaction.atomic():
+#                     # Get ledgers and lock the shop rows to prevent race conditions
+#                     from_ledger = Ledger.objects.get(pk=from_ledger_obj.pk)
+#                     to_ledger = Ledger.objects.get(pk=to_ledger_obj.pk)
                     
-                    # Lock unique shops
-                    shop_ids = list(set(filter(None, [from_ledger.shop_id, to_ledger.shop_id])))
-                    shops = {s.pk: s for s in Shop.objects.select_for_update().filter(pk__in=shop_ids)}
-                    from_shop = shops[from_ledger.shop_id]
-                    to_shop = shops[to_ledger.shop_id]
+#                     # Lock unique shops
+#                     shop_ids = list(set(filter(None, [from_ledger.shop_id, to_ledger.shop_id])))
+#                     shops = {s.pk: s for s in Shop.objects.select_for_update().filter(pk__in=shop_ids)}
+#                     from_shop = shops[from_ledger.shop_id]
+#                     to_shop = shops[to_ledger.shop_id]
                     
-                    # Check if from_shop has sufficient balance
-                    if amount > from_shop.balance:
-                        messages.error(request, f'Insufficient balance in {from_shop.short_name}. Current balance: {from_shop.balance}')
-                        return redirect('entries:add_entries')
+#                     # Check if from_shop has sufficient balance
+#                     if amount > from_shop.balance:
+#                         messages.error(request, f'Insufficient balance in {from_shop.short_name}. Current balance: {from_shop.balance}')
+#                         return redirect('entries:add_entries')
                     
-                    # Create DEBIT transaction for from_ledger
-                    old_balance_from = from_shop.balance
-                    new_balance_from = old_balance_from - amount
+#                     # Create DEBIT transaction for from_ledger
+#                     old_balance_from = from_shop.balance
+#                     new_balance_from = old_balance_from - amount
                     
-                    debit_transaction = Transactions.objects.create(
-                        amount=amount,
-                        name=name,
-                        shop=from_shop,
-                        tr_type='DEBIT',
-                        remarks=remarks,
-                        old_balance=old_balance_from,
-                        new_balance=new_balance_from,
-                        created_by=request.user if request.user.is_authenticated else None,
-                        updated_by=request.user if request.user.is_authenticated else None,
-                    )
+#                     debit_transaction = Transactions.objects.create(
+#                         amount=amount,
+#                         name=name,
+#                         shop=from_shop,
+#                         tr_type='DEBIT',
+#                         remarks=remarks,
+#                         old_balance=old_balance_from,
+#                         new_balance=new_balance_from,
+#                         created_by=request.user if request.user.is_authenticated else None,
+#                         updated_by=request.user if request.user.is_authenticated else None,
+#                     )
                     
-                    # Update from_shop balance
-                    from_shop.balance = new_balance_from
-                    from_shop.save()
+#                     # Update from_shop balance
+#                     from_shop.balance = new_balance_from
+#                     from_shop.save()
                     
-                    # Refresh to_shop if same as from_shop
-                    if from_shop.pk == to_shop.pk:
-                        to_shop = from_shop
+#                     # Refresh to_shop if same as from_shop
+#                     if from_shop.pk == to_shop.pk:
+#                         to_shop = from_shop
                     
-                    # Create CREDIT transaction for to_ledger
-                    old_balance_to = to_shop.balance
-                    new_balance_to = old_balance_to + amount
+#                     # Create CREDIT transaction for to_ledger
+#                     old_balance_to = to_shop.balance
+#                     new_balance_to = old_balance_to + amount
                     
-                    credit_transaction = Transactions.objects.create(
-                        amount=amount,
-                        name=name,
-                        shop=to_shop,
-                        tr_type='CREDIT',
-                        remarks=remarks,
-                        old_balance=old_balance_to,
-                        new_balance=new_balance_to,
-                        created_by=request.user if request.user.is_authenticated else None,
-                        updated_by=request.user if request.user.is_authenticated else None,
-                    )
+#                     credit_transaction = Transactions.objects.create(
+#                         amount=amount,
+#                         name=name,
+#                         shop=to_shop,
+#                         tr_type='CREDIT',
+#                         remarks=remarks,
+#                         old_balance=old_balance_to,
+#                         new_balance=new_balance_to,
+#                         created_by=request.user if request.user.is_authenticated else None,
+#                         updated_by=request.user if request.user.is_authenticated else None,
+#                     )
                     
-                    # Update to_shop balance
-                    to_shop.balance = new_balance_to
-                    to_shop.save()
+#                     # Update to_shop balance
+#                     to_shop.balance = new_balance_to
+#                     to_shop.save()
                     
-                    logger.info(f"Transfer completed by {request.user.username}: {amount} from {from_ledger.name} to {to_ledger.name}")
-                    messages.success(request, f'Successfully transferred {amount} from {from_ledger.name} to {to_ledger.name}')
-            except Exception as e:
-                logger.error(f"Error during transfer by {request.user.username}: {str(e)}", exc_info=True)
-                messages.error(request, 'An error occurred while processing the transfer.')
-        else:
-            # Form has validation errors, show them to the user
-            messages.error(request, 'Please correct the errors in the transfer form.')
+#                     logger.info(f"Transfer completed by {request.user.username}: {amount} from {from_ledger.name} to {to_ledger.name}")
+#                     messages.success(request, f'Successfully transferred {amount} from {from_ledger.name} to {to_ledger.name}')
+#             except Exception as e:
+#                 logger.error(f"Error during transfer by {request.user.username}: {str(e)}", exc_info=True)
+#                 messages.error(request, 'An error occurred while processing the transfer.')
+#         else:
+#             # Form has validation errors, show them to the user
+#             messages.error(request, 'Please correct the errors in the transfer form.')
     
-    return redirect('entries:add_entries')
+#     return redirect('entries:add_entries')
 
 @login_required
 @ensure_csrf_cookie
@@ -296,10 +299,26 @@ def transactions(request):
     type_filter = request.GET.get('type')
     search_query = request.GET.get('search', '')
     name_search_query = request.GET.get('name_search', '')
+    account_filter = request.GET.get('account')
+    account_type_filter = request.GET.get('account_type')
+    amount_value = request.GET.get('amount_value', '')
+    amount_operator = request.GET.get('amount_operator', 'equals')
     
-    transactions_list = Transactions.objects.all().select_related(
-            'shop', 'created_by', 'updated_by'
+    if is_admin(request.user) or is_super_admin(request.user):
+        transactions_list = Transactions.objects.all().select_related(
+                'shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by'
+            ).order_by('-transaction_dt')
+    else:
+        transactions_list = Transactions.objects.filter(
+            acc__is_admin_only=False
+        ).select_related(
+            'acc',      # Essential since you are filtering/displaying account info 
+            'acc__acc_type',
+            'shop', 
+            'created_by', 
+            'updated_by'
         ).order_by('-transaction_dt')
+    
 
     # Apply filters
     if from_date:
@@ -321,6 +340,25 @@ def transactions(request):
     
     if type_filter and type_filter in ['DEBIT', 'CREDIT']:
         transactions_list = transactions_list.filter(tr_type=type_filter)
+    
+    if account_filter:
+        transactions_list = transactions_list.filter(acc_id=account_filter)
+    
+    if account_type_filter:
+        transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
+    
+    # Apply amount filter with operator
+    if amount_value:
+        try:
+            amount_val = Decimal(amount_value)
+            if amount_operator == 'greater':
+                transactions_list = transactions_list.filter(amount__gt=amount_val)
+            elif amount_operator == 'lesser':
+                transactions_list = transactions_list.filter(amount__lt=amount_val)
+            elif amount_operator == 'equals':
+                transactions_list = transactions_list.filter(amount=amount_val)
+        except (ValueError, TypeError):
+            pass
     
     if name_search_query:
         transactions_list = transactions_list.filter(name__icontains=name_search_query)
@@ -362,6 +400,12 @@ def transactions(request):
     # Get all shops for filter dropdown
     all_shops = Shop.objects.all().order_by('name')
     
+    # Get all accounts for filter dropdown
+    all_accounts = Accounts.objects.all().select_related('acc_type').order_by('e_name')
+    
+    # Get all account types for filter dropdown
+    all_account_types = Type.objects.all().order_by('e_name')
+    
     if request.headers.get('HX-Request'):
         return render(request, 'entries/partials/transaction_rows.html', {
             'page_obj': page_obj,
@@ -375,10 +419,16 @@ def transactions(request):
         'page_obj': page_obj,
         'all_transactions': transactions_list,  # All filtered transactions for printing
         'all_shops': all_shops,
+        'all_accounts': all_accounts,
+        'all_account_types': all_account_types,
         'from_date': from_date,
         'to_date': to_date,
         'shop_filter': shop_filter,
         'type_filter': type_filter,
+        'account_filter': account_filter,
+        'account_type_filter': account_type_filter,
+        'amount_value': amount_value,
+        'amount_operator': amount_operator,
         'search_query': search_query,
         'name_search_query': name_search_query,
         'debit_total': totals['debit_total'],
@@ -397,9 +447,13 @@ def _get_filtered_transactions(request):
     type_filter = request.GET.get('type')
     search_query = request.GET.get('search', '')
     name_search_query = request.GET.get('name_search', '')
+    account_filter = request.GET.get('account')
+    account_type_filter = request.GET.get('account_type')
+    amount_value = request.GET.get('amount_value', '')
+    amount_operator = request.GET.get('amount_operator', 'equals')
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'created_by', 'updated_by').order_by('-transaction_dt','-updated_at')
+    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by').order_by('-transaction_dt','-updated_at')
     
     # Apply filters
     if from_date:
@@ -421,6 +475,25 @@ def _get_filtered_transactions(request):
     
     if type_filter and type_filter in ['DEBIT', 'CREDIT']:
         transactions_list = transactions_list.filter(tr_type=type_filter)
+    
+    if account_filter:
+        transactions_list = transactions_list.filter(acc_id=account_filter)
+    
+    if account_type_filter:
+        transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
+    
+    # Apply amount filter with operator
+    if amount_value:
+        try:
+            amount_val = Decimal(amount_value)
+            if amount_operator == 'greater':
+                transactions_list = transactions_list.filter(amount__gt=amount_val)
+            elif amount_operator == 'lesser':
+                transactions_list = transactions_list.filter(amount__lt=amount_val)
+            elif amount_operator == 'equals':
+                transactions_list = transactions_list.filter(amount=amount_val)
+        except (ValueError, TypeError):
+            pass
     
     if name_search_query:
         transactions_list = transactions_list.filter(name__icontains=name_search_query)
@@ -724,10 +797,11 @@ def edit_transaction(request, pk):
     old_amount  = transaction.amount
     old_type    = transaction.tr_type
     old_shop    = transaction.shop
+    old_acc     = transaction.acc
     old_date    = timezone.localtime(transaction.transaction_dt).date()
 
     if request.method == 'POST':
-        form = TransactionForm(request.POST, instance=transaction)
+        form = TransactionEditForm(request.POST, instance=transaction, user=request.user)
 
         if form.is_valid():
             updated_transaction = form.save(commit=False)
@@ -743,12 +817,13 @@ def edit_transaction(request, pk):
             )
             new_date = chosen_date
             new_shop = updated_transaction.shop
+            new_acc  = updated_transaction.acc
             new_type = updated_transaction.tr_type
             new_amount = updated_transaction.amount
 
             logger.info("============ Transaction Update Started ============")
-            logger.info(f"Old -> amount=[{old_amount}] | type=[{old_type}] | shop=[{old_shop}] | date=[{old_date}]")
-            logger.info(f"New -> amount=[{new_amount}] | type=[{new_type}] | shop=[{new_shop}] | date=[{new_date}]")
+            logger.info(f"Old -> amount=[{old_amount}] | type=[{old_type}] | shop=[{old_shop}] | account=[{old_acc}] | date=[{old_date}]")
+            logger.info(f"New -> amount=[{new_amount}] | type=[{new_type}] | shop=[{new_shop}] | account=[{new_acc}] | date=[{new_date}]")
 
             try:
                 with db_transaction.atomic():
@@ -766,6 +841,8 @@ def edit_transaction(request, pk):
                                 'nav_title': 'Other Transactions',
                                 'form': form,
                                 'transaction': transaction,
+                                'is_super_admin': request.user.is_superuser,
+                                'is_admin': is_admin(request.user),
                             })
 
                     # ── Save updated transaction ──────────────────────
@@ -780,6 +857,10 @@ def edit_transaction(request, pk):
                     changes.append(f"type: [{old_type}] -> [{new_type}]")
                 if old_shop.id != new_shop.id:
                     changes.append(f"shop: [{old_shop.short_name}] -> [{new_shop.short_name}]")
+                old_acc_id = old_acc.id if old_acc else None
+                new_acc_id = new_acc.id if new_acc else None
+                if old_acc_id != new_acc_id:
+                    changes.append(f"account: [{old_acc.t_name if old_acc else 'None'}] -> [{new_acc.t_name if new_acc else 'None'}]")
                 if old_date != new_date:
                     changes.append(f"date: [{old_date}] -> [{new_date}]")
                 logger.info(f"Transaction [{pk}] changes -> {', '.join(changes) if changes else 'no changes'}")
@@ -793,16 +874,19 @@ def edit_transaction(request, pk):
                     'nav_title': 'Other Transactions',
                     'form': form,
                     'transaction': transaction,
+                    'is_super_admin': request.user.is_superuser,
+                    'is_admin': is_admin(request.user),
                 })
-            log_activity(request, 'UPDATE', 'Transaction', transaction.id, f'Transaction updated: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}')
+            log_activity(request, 'UPDATE', 'Transaction', transaction.id, f'Transaction updated: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}', shop=transaction.shop)
             return redirect('entries:transactions')
 
         else:
             logger.warning(f"Transaction form invalid -> errors=[{form.errors}]")
 
     else:
-        form = TransactionForm(
+        form = TransactionEditForm(
             instance=transaction,
+            user=request.user,
             initial={
                 'date': timezone.localtime(transaction.transaction_dt).date(),
                 'time': timezone.localtime(transaction.transaction_dt).time().replace(second=0, microsecond=0),
@@ -841,7 +925,7 @@ def delete_transaction(request, pk):
                 if transaction.remarks in LOAN_REMARKS:
                     messages.error(request, 'This transaction is linked to a loan entry. Please delete it from Loan Transactions page instead.')
                     return redirect('entries:transactions')
-                log_activity(request, 'DELETE', 'Transaction', transaction.id, f'Transaction deleted: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}')
+                log_activity(request, 'DELETE', 'Transaction', transaction.id, f'Transaction deleted: {transaction.name} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}', shop=transaction.shop)
                 transaction.delete()
                 logger.warning(f"Transaction deleted by [{request.user.username}] -> id=[{transaction_id}] | type=[{transaction_type}] | amount=[{transaction_amount}] | shop=[{shop_name}]")
             messages.success(request, 'Transaction deleted successfully!')
@@ -1200,8 +1284,8 @@ def export_report_excel(request):
         debit_total = shop_day_transactions['debit_total']
         credit_total = shop_day_transactions['credit_total']
         
-        # Closing balance is current shop balance
-        closing_balance = shop.balance
+        # Closing balance is opening balance + credits - debits
+        closing_balance = opening_balance + credit_total - debit_total
         
         shop_summaries.append({
             'shop': shop,
@@ -1434,7 +1518,7 @@ def denomination(request):
                             updated_by=request.user,
                         )
                 
-                log_activity(request, 'CREATE', 'Denomination', key, f'Denomination created: {key}')
+                log_activity(request, 'CREATE', 'Denomination', key, f'Denomination created: {key}', shop=shop)
                 logger.info(f"Denomination added by {request.user.username}")
                 messages.success(request, 'Denomination added successfully!')
                 transaction_helper.purge_old_denominations()
@@ -1518,12 +1602,13 @@ def delete_denomination(request, key):
         return redirect('entries:denominations')
 
     deleted_count = denominations_qs.count()
+    shop = denominations_qs.first().shop if denominations_qs.exists() else None
     denominations_qs.delete()
 
     logger.warning(
         f"Denomination group deleted by {request.user.username}: key={key}, records={deleted_count}"
     )
-    log_activity(request, 'DELETE', 'Denomination', key, f'Denomination deleted: {key}')
+    log_activity(request, 'DELETE', 'Denomination', key, f'Denomination deleted: {key}', shop=shop)
     messages.success(request, 'Denomination deleted successfully!')
     return redirect('entries:denominations')
 
@@ -1613,7 +1698,7 @@ def edit_denomination(request, key):
                         }
                     )
                 
-                log_activity(request, 'UPDATE', 'Denomination', key, f'Denomination updated: {key}')
+                log_activity(request, 'UPDATE', 'Denomination', key, f'Denomination updated: {key}', shop=shop)
                 logger.info(f"Denomination {key} updated by {request.user.username}")
                 messages.success(request, 'Denomination updated successfully!')
                 return redirect('entries:view_denomination', key=key)
@@ -1862,7 +1947,7 @@ def loan(request):
             else:
                 logger.info("[interest] amount is 0 — skipping transaction")
 
-        log_activity(request, 'CREATE', 'Loan', loan_entry.id, f'Loan created: {loan_entry.pawn_no}')
+        log_activity(request, 'CREATE', 'Loan', loan_entry.id, f'Loan created: {loan_entry.pawn_no}', shop=shop)
         messages.success(request, f'{loan_type.capitalize()} entry created successfully!')
         logger.info(f"Loan [{loan_entry.id}] created by [{request.user.username}]")
         logger.info("============ Loan Creation Completed ============")
@@ -2146,7 +2231,7 @@ def edit_loan(request, pk):
                     updated_loan.save()
                     logger.info(f"Loan [{pk}] saved -> type=[{new_type}] | principal=[{new_principal}] | interest=[{new_interest}]")
 
-                log_activity(request, 'UPDATE', 'Loan', updated_loan.id, f'Loan updated: {updated_loan.pawn_no}')
+                log_activity(request, 'UPDATE', 'Loan', updated_loan.id, f'Loan updated: {updated_loan.pawn_no}', shop=updated_loan.shop)
                 messages.success(request, 'Loan transaction updated successfully!')
                 logger.info("============ Loan Update Completed ============")
                 return redirect('entries:loans')
@@ -2236,7 +2321,7 @@ def delete_loan(request, pk):
                 loan.delete()
                 logger.warning(f"Loan deleted by [{request.user.username}] -> id=[{loan_id}] | type=[{loan_type}] | pawn_no=[{loan_pawn_no}]")
 
-            log_activity(request, 'DELETE', 'Loan', loan.id, f'Loan deleted: {loan.pawn_no}')
+            log_activity(request, 'DELETE', 'Loan', loan.id, f'Loan deleted: {loan.pawn_no}', shop=loan.shop)
             messages.success(request, 'Loan transaction deleted successfully!')
             logger.info("============ Loan Deletion Completed ============")
 

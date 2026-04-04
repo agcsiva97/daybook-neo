@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="input-group" style="width: 150px;">
+        <button class="btn btn-outline-primary" onclick="changeYear(-1)">-</button>
+        <input type="text" id="year" class="form-control text-center" readonly>
+        <button class="btn btn-outline-primary" onclick="changeYear(1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-start">
+      <div>
+        <h4 class="mb-0">
+          <i class="fa-solid fa-wallet"></i> Types Summary of {{ shop.name }} for FY{{ fy }}
+        </h4>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span class="d-none d-md-inline">Back to {{ shop.name }}</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      {% if grouped_list %}
+        <div class="mb-4">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Group</th>
+                  <th class="text-end">Opening</th>
+                  <th class="text-end">Current Balance</th>
+                  <th class="text-end">Net Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for group in grouped_list %}
+                {% for item in group.types %}
+              <tr>
+                <td>
+                  <a href="{% url 'manager:type_balance_sheet' shop.pk item.id %}{% if fy %}?fy={{ fy }}{% endif %}">
+                    {{ item.name }}
+                  </a>
+                </td>
+                <td>
+                  {{ group.group_name }}
+                </td>
+                <td class="text-end {% if item.opening < 0 %}text-danger {% else %} text-success {% endif %}">
+                  ₹{{ item.opening|stringformat:".2f"|cut:"-" }}
+                </td>
+                <td class="text-end {% if item.closing < 0 %}text-danger {% else %} text-success {% endif %}">
+                  ₹{{ item.cur_balance|stringformat:".2f"|cut:"-" }}
+                </td>
+                <td class="text-end {% if item.net_balance < 0 %}text-danger{% else %} text-success {% endif %}">
+                  ₹{{ item.net_balance|stringformat:".2f"|cut:"-" }}
+                </td>
+              </tr>
+              {% endfor %}
+        {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div> 
+      {% else %}
+        <p class="text-muted">No data available for this financial year.</p>
+      {% endif %}
+    </div>{# end card-body #}
+  </div>{# end card #}
+</div>{# end container #}
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+</script>
+
+{% endblock %}

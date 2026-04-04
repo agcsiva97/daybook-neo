@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
-from manager.models import Shop, Ledger
+from manager.models import Shop, Ledger, Accounts
 
 
 def generate_custom_id(ledger_name):
@@ -32,11 +32,10 @@ class Transactions(models.Model):
     id = models.CharField(max_length=30, primary_key=True, editable=False)
     amount = models.DecimalField(decimal_places=2, max_digits=12)
     name = models.TextField(blank=True)
+    acc = models.ForeignKey(Accounts, on_delete=models.CASCADE, null=True, blank=True, related_name = 'transactions')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='transactions')
     tr_type = models.CharField(max_length=10)
     remarks = models.TextField(blank=True)
-    old_balance = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
-    new_balance = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -54,6 +53,7 @@ class Transactions(models.Model):
     transaction_dt = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_tally = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:

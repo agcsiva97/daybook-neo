@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i> Export Details
+      </h4>
+      <a href="{% url 'manager:sync_history' %}" class="btn btn-sm btn-secondary">
+        <i class="fa-solid fa-arrow-left"></i> Back to Sync History
+      </a>
+    </div>
+    <div class="card-body">
+      <!-- Export Information -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6 class="card-title"><i class="fa-solid fa-shop"></i> Shop Information</h6>
+              <p class="mb-2">
+                <strong>Shop Name:</strong> 
+                <a href="{% url 'manager:shop_info' export_history.shop.id %}">{{ export_history.shop.name }}</a>
+              </p>
+              <p class="mb-2">
+                <strong>Short Name:</strong> {{ export_history.shop.short_name }}
+              </p>
+              <p class="mb-0">
+                <strong>Export Type:</strong> 
+                <span class="badge bg-info">{{ export_history.export_type|upper }}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6 class="card-title"><i class="fa-solid fa-clock"></i> Export Timestamp</h6>
+              <p class="mb-2">
+                <strong>Exported At:</strong> 
+                {{ export_history.exported_at|date:"Y-m-d H:i:s" }}
+              </p>
+              <p class="mb-0">
+                <strong>Total Records:</strong> 
+                <span class="badge bg-success">
+                  {{ details_by_type.values|length }}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Details by Type -->
+      <h5 class="mb-3"><i class="fa-solid fa-list"></i> Exported Records</h5>
+      
+      {% if details_by_type %}
+        {% for record_type, details in details_by_type.items %}
+        <div class="card mb-3">
+          <div class="card-header bg-light">
+            <h6 class="mb-0">
+              {% if record_type == 'Type' %}
+                <i class="fa-solid fa-tag"></i> Account Types
+              {% elif record_type == 'Account' %}
+                <i class="fa-solid fa-book"></i> Accounts
+              {% elif record_type == 'Transaction' %}
+                <i class="fa-solid fa-exchange"></i> Transactions
+              {% else %}
+                {{ record_type }}
+              {% endif %}
+              <span class="badge bg-secondary float-end">{{ details|length }} records</span>
+            </h6>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 10%">Record ID</th>
+                  <th style="width: 15%">Record Type</th>
+                  <th style="width: 15%">Status</th>
+                  <th style="width: 40%">Message</th>
+                  <th style="width: 20%">Exported At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for detail in details %}
+                <tr>
+                  <td>
+                    <code>{{ detail.record_id }}</code>
+                  </td>
+                  <td>{{ detail.record_type }}</td>
+                  <td>
+                    {% if detail.status == 'success' %}
+                      <span class="badge bg-success">
+                        <i class="fa-solid fa-check"></i> Success
+                      </span>
+                    {% elif detail.status == 'failed' %}
+                      <span class="badge bg-danger">
+                        <i class="fa-solid fa-xmark"></i> Failed
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ detail.status|upper }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if detail.message %}
+                      <small>{{ detail.message }}</small>
+                    {% else %}
+                      <small class="text-muted">-</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small class="text-muted">
+                      {{ export_history.exported_at|date:"Y-m-d H:i" }}
+                    </small>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="alert alert-info" role="alert">
+          <i class="fa-solid fa-info-circle"></i> No records exported in this export.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

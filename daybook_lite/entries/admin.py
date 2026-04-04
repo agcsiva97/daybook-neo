@@ -5,7 +5,7 @@ from .models import Ledger, Transactions, Denomination, Loan, Shop
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
-	list_display = ('name', 'short_name', 'balance')
+	list_display = ('name', 'short_name')
 
 @admin.register(Ledger)
 class LedgerAdmin(admin.ModelAdmin):

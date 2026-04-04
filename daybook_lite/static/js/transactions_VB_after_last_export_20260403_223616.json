@@ -1,0 +1,22 @@
+{
+  "shop_id": "SHP8D20C",
+  "shop_name": "Vishalakshi Bankers",
+  "export_mode": "after_last_export",
+  "export_date": "2026-04-03T22:36:16.434844+00:00",
+  "last_export_time": null,
+  "types": {
+    "created": [],
+    "updated": [],
+    "deleted": []
+  },
+  "accounts": {
+    "created": [],
+    "updated": [],
+    "deleted": []
+  },
+  "transactions": {
+    "created": [],
+    "updated": [],
+    "deleted": []
+  }
+}

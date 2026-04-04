@@ -26,11 +26,22 @@
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
-          {{ form.shop }}
-          {% if form.shop.errors %}
-            <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
-          {% endif %}
+          <div class="row">
+            <div class="col">
+              <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
+              {{ form.shop }}
+              {% if form.shop.errors %}
+                <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+              {% endif %}
+              </div>
+            <div class="col">
+              <label class="form-label" for="{{ form.acc.id_for_label }}"><u>A</u>ccount</label>
+              {{ form.acc }}
+              {% if form.acc.errors %}
+                <div class="text-danger small">{{ form.acc.errors|striptags }}</div>
+              {% endif %}
+              </div>
+            </div>  
         </div>
         <div class="mb-3">
           <label class="form-label" for="{{ form.amount.id_for_label }}"><u>A</u>mount</label>
@@ -174,55 +185,54 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// Transaction form - dynamically load accounts based on shop selection
 document.addEventListener('DOMContentLoaded', function() {
-    const fromLedger = document.getElementById('id_from_ledger');
-    const toLedger = document.getElementById('id_to_ledger');
+    const transShop = document.getElementById('id_shop');
+    const transAccount = document.getElementById('id_account');
     
-    if (!fromLedger || !toLedger) return;
+    if (!transShop || !transAccount) return;
+
+    transAccount.disabled = true;
+    transAccount.innerHTML = '<option value="">First select a shop</option>';
     
-    // Store all original options
-    const fromOptions = Array.from(fromLedger.options).map(opt => ({
-        value: opt.value,
-        text: opt.text
-    }));
-    
-    const toOptions = Array.from(toLedger.options).map(opt => ({
-        value: opt.value,
-        text: opt.text
-    }));
-    
-    // Function to filter options
-    function filterOptions(selectElement, allOptions, excludeValue) {
-        const currentValue = selectElement.value;
+    transShop.addEventListener('change', function() {
+        const shopId = this.value;
         
-        // Clear current options
-        selectElement.innerHTML = '';
+        // Clear existing ledger options
+        transAccount.innerHTML = '<option value="">Loading...</option>';
+        transAccount.disabled = true;
         
-        // Add filtered options
-        allOptions.forEach(opt => {
-            if (opt.value !== excludeValue) {
-                const option = new Option(opt.text, opt.value);
-                selectElement.add(option);
-            }
-        });
-        
-        // Restore previous selection if still valid
-        if (currentValue && currentValue !== excludeValue) {
-            selectElement.value = currentValue;
+        if (!shopId) {
+            transAccount.innerHTML = '<option value="">First select a shop</option>';
+            transAccount.disabled = true;
+            return;
         }
-    }
-    
-    // Event listeners
-    fromLedger.addEventListener('change', function() {
-        filterOptions(toLedger, toOptions, this.value);
-    });
-    
-    toLedger.addEventListener('change', function() {
-        filterOptions(fromLedger, fromOptions, this.value);
+        
+        // Fetch accounts for selected shop
+        fetch(`/api/shops/${shopId}/accounts/`)
+            .then(response => response.json())
+            .then(data => {
+                transAccount.innerHTML = '';
+                transAccount.disabled = false;
+                
+                if (data.length === 0) {
+                    transAccount.innerHTML = '<option value="">No accounts available for this shop</option>';
+                    transAccount.disabled = true;
+                } else {
+                    data.forEach(account => {
+                        const option = new Option(account.t_name, account.id);
+                        transAccount.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching accounts:', error);
+                transAccount.innerHTML = '<option value="">Error loading accounts</option>';
+                transAccount.disabled = true;
+            });
     });
 });
 
-// Loan form - dynamically load ledgers based on shop selection
 document.addEventListener('DOMContentLoaded', function() {
     const loanShop = document.getElementById('loan_shop');
     const loanLedger = document.getElementById('loan_ledger');
@@ -271,6 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function submitTransaction(transactionType) {
     const amount = document.getElementById('id_amount').value.trim();
     const shop = document.getElementById('id_shop').value;
+    const account = document.getElementById('id_account').value;
     const name = document.getElementById('id_name').value.trim();
     const remarks = document.getElementById('id_remarks').value.trim();
     const date = document.getElementById('id_date').value;
@@ -292,6 +303,11 @@ function submitTransaction(transactionType) {
         document.getElementById('id_shop').focus();
         return;
     }
+    if (!account) {
+        alert('Please select an Account');
+        document.getElementById('id_account').focus();
+        return;
+    }
     
     const form = document.createElement('form');
     form.method = 'POST';
@@ -302,6 +318,7 @@ function submitTransaction(transactionType) {
         <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
         <input type="hidden" name="amount" value="${amount}">
         <input type="hidden" name="shop" value="${shop}">
+        <input type="hidden" name="acc" value="${account}">
         <input type="hidden" name="tr_type" value="${transactionType}">
         <input type="hidden" name="name" value="${name}">
         <input type="hidden" name="remarks" value="${remarks}">

@@ -96,7 +96,7 @@
           <!-- Filter Information for Print -->
       <div class="print-filters" style="display: none;">
         <h6>Applied Filters:</h6>
-        {% if from_date or to_date or shop_filter or type_filter or search_query or name_search_query %}
+        {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query or name_search_query %}
           <div style="margin: 0; padding-left: 20px;">
             {% if from_date %}
             <strong>From Date:</strong> {{ from_date }} |
@@ -114,6 +114,25 @@
             {% endif %}
             {% if type_filter %}
             <strong>Type:</strong> {{ type_filter }} |
+            {% endif %}
+            {% if account_filter %}
+            <strong>Account:</strong>
+              {% for account in all_accounts %}
+                {% if account.id|stringformat:"s" == account_filter %}
+                  {{ account.e_name }} |
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if account_type_filter %}
+            <strong>Account Type:</strong>
+              {% for acc_type in all_account_types %}
+                {% if acc_type.id|stringformat:"s" == account_type_filter %}
+                  {{ acc_type.e_name }} |
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if amount_value %}
+            <strong>Amount:</strong> {{ amount_operator }} {{ amount_value }} |
             {% endif %}
             {% if name_search_query %}
             <strong>Name:</strong> {{ name_search_query }} |
@@ -149,11 +168,33 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="type" class="form-label">Type</label>
+          <label for="type" class="form-label">Transaction Type</label>
           <select class="form-select" id="type" name="type">
             <option value="">All Types</option>
             <option value="DEBIT" {% if type_filter == 'DEBIT' %}selected{% endif %}>DEBIT</option>
             <option value="CREDIT" {% if type_filter == 'CREDIT' %}selected{% endif %}>CREDIT</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="account" class="form-label">Account</label>
+          <select class="form-select" id="account" name="account">
+            <option value="">All Accounts</option>
+            {% for account in all_accounts %}
+            <option value="{{ account.id }}" {% if account_filter == account.id|stringformat:"s" %}selected{% endif %}>
+              {{ account.e_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="account_type" class="form-label">Account Type</label>
+          <select class="form-select" id="account_type" name="account_type">
+            <option value="">All Types</option>
+            {% for acc_type in all_account_types %}
+            <option value="{{ acc_type.id }}" {% if account_type_filter == acc_type.id|stringformat:"s" %}selected{% endif %}>
+              {{ acc_type.e_name }}
+            </option>
+            {% endfor %}
           </select>
         </div>
         <div class="col-md-2">
@@ -164,12 +205,24 @@
           <label for="search" class="form-label">Search Remarks</label>
           <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search remarks...">
         </div>
+        <div class="col-md-1">
+          <label for="amount_operator" class="form-label">Amount</label>
+          <select class="form-select" id="amount_operator" name="amount_operator">
+            <option value="equals" {% if amount_operator == 'equals' %}selected{% endif %}>=</option>
+            <option value="greater" {% if amount_operator == 'greater' %} selected{% endif %}>&gt;</option>
+            <option value="lesser" {% if amount_operator == 'lesser' %}selected{% endif %}>&lt;</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label for="amount_value" class="form-label">&nbsp;</label>
+          <input type="number" class="form-control" id="amount_value" name="amount_value" value="{{ amount_value }}" placeholder="Amount" step="0.01">
+        </div>
         <div class="col-md-1 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filter</button>
         </div>
       </form>
 
-      {% if from_date or to_date or shop_filter or type_filter or search_query or name_search_query %}
+      {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query or name_search_query %}
       <div class="mb-3">
         <a href="{% url 'entries:transactions' %}" class="btn btn-sm btn-outline-secondary">
           <i class="fa-solid fa-times"></i> Clear Filters
@@ -183,12 +236,12 @@
           Showing {{ page_obj.paginator.count }} transaction{{ page_obj.paginator.count|pluralize }}
         </p>
         <div class="btn-group" role="group">
-          <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
+          <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
              class="btn btn-sm btn-outline-success">
             <i class="fa-solid fa-file-csv"></i> 
             <span class="d-none d-md-inline"> CSV</span>
           </a>
-          <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
+          <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
              class="btn btn-sm btn-outline-success">
             <i class="fa-solid fa-file-excel"></i> 
             <span class="d-none d-md-inline"> Excel </span>

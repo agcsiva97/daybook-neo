@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="input-group" style="width: 150px;">
+        <button class="btn btn-outline-primary" onclick="changeYear(-1)">-</button>
+        <input type="text" id="year" class="form-control text-center" readonly>
+        <button class="btn btn-outline-primary" onclick="changeYear(1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-start">      
+      <!-- LEFT SIDE -->
+      <div>
+        <h4 class="mb-0">
+          <i class="fa-solid fa-wallet"></i> Accounts summary of {{ shop.name }} for FY{{fy}}
+        </h4>
+      </div>
+      <!-- RIGHT SIDE (buttons) -->
+      <div class="d-flex gap-2">
+        <a href="{% url 'manager:shop_balance_sheet' shop.pk %}?fy={{ fy }}" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ shop.short_name }} Types Summary</span>
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if items %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">Account Name</th>
+                <th scope="col" class="text-end">Opening Balance</th>
+                {% comment %} <th scope="col" class="text-end">Debits</th>
+                <th scope="col" class="text-end">Credits</th> {% endcomment %}
+                <th scope="col" class="text-end">Current Balance</th>
+                <th scope="col" class="text-end">Net Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  <a href="{% url 'manager:account_info' item.id %}?fy={{ fy }}">
+                     {{ item.name }}
+                  </a>
+                </td>
+                <td class="text-end">
+                  {% if item.opening >= 0 %}
+                    <span class="text-success"><strong>₹{{ item.opening }}CR</strong></span>
+                  {% else %}
+                    <span class="text-danger">
+                        <strong>₹{{ item.opening|stringformat:".2f"|cut:"-" }}DB</strong>
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if item.cur_balance >= 0 %}
+                    <span class="text-success"><strong>₹{{ item.cur_balance }}CR</strong></span>
+                  {% else %}
+                    <span class="text-danger">
+                        <strong>₹{{ item.cur_balance|stringformat:".2f"|cut:"-" }}DB</strong>
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if item.net_balance >= 0 %}
+                    <span class="text-success"><strong>₹{{ item.net_balance }}CR</strong></span>
+                  {% else %}
+                    <span class="text-danger">
+                        <strong>₹{{ item.net_balance|stringformat:".2f"|cut:"-" }}DB</strong>
+                    </span>
+                  {% endif %}
+                </td>
+                {% comment %} <td class="text-end">₹{{ item.debits }}</td>
+                <td class="text-end">₹{{ item.credits }}</td>
+                <td class="text-end">
+                  {% if item.closing >= 0 %}
+                    <span class="text-success"><strong>₹{{ item.closing }}CR</strong></span>
+                  {% else %}
+                    <span class="text-danger">
+                        <strong>₹{{ item.closing|stringformat:".2f"|cut:"-" }}DB</strong>
+                    </span>
+                  {% endif %}
+                </td> {% endcomment %}
+              </tr>
+              {% endfor %} 
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No account types found for this shop.</p>
+      {% endif %}
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+</script>
+
+{% endblock %}

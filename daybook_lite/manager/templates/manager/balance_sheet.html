@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <h4>
+        <i class="fa-solid fa-chart-bar"></i> Balance Sheet for FY{{ fy }}
+      </h4>
+      <div class="input-group" style="width: 150px;">
+        <button class="btn btn-outline-primary" onclick="changeYear(-1)">-</button>
+        <input type="text" id="year" class="form-control text-center" readonly>
+        <button class="btn btn-outline-primary" onclick="changeYear(1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-wallet"></i> Group Summary
+      </h5>
+    </div>
+
+    <div class="card-body">
+      {% if group_summaries %}
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="table-light">
+              <tr>
+                <th>Group</th>
+                <th class="text-end">Opening Balance</th>
+                <th class="text-end">Closing Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for group in group_summaries %}
+              <tr>
+                <td class="fw-bold">{{ group.name }}</td>
+                <td class="text-end {% if group.opening < 0 %}text-danger {% else %} text-success {% endif %}">
+                  ₹{{ group.opening|stringformat:".2f" }}
+                </td>
+                <td class="text-end {% if group.closing < 0 %}text-danger {% else %} text-success {% endif %}">
+                  ₹{{ group.closing|stringformat:".2f" }}
+                </td>
+              </tr>
+            {% endfor %}
+                <tr class="table-light">
+                    <td class="fw-bold">நிகர மதிப்பு </td>
+                    <td class="text-end {% if net_worth_opening < 0 %}text-danger {% else %} text-success {% endif %}">
+                    ₹{{ net_worth_opening|stringformat:".2f" }}
+                    </td>
+                    <td class="text-end {% if net_worth_closing < 0 %}text-danger {% else %} text-success {% endif %}">
+                    ₹{{ net_worth_closing|stringformat:".2f" }}
+                    </td>
+                </tr>
+                <tr class="table-light">
+                    <td class="fw-bold">கை இருப்பு</td>
+                    <td class="text-end {% if cash_in_hand_opening < 0 %}text-danger {% else %} text-success {% endif %}">
+                    ₹{{ cash_in_hand_opening|stringformat:".2f" }}
+                    </td>
+                    <td class="text-end {% if cash_in_hand_closing < 0 %}text-danger {% else %} text-success {% endif %}">
+                    ₹{{ cash_in_hand_closing|stringformat:".2f" }}
+                    </td>
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No data available for this financial year.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+</script>
+
+{% endblock %}

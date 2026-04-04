@@ -33,11 +33,22 @@
               {% endif %}
             </div>
             <div class="mb-3">
-              <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
-              {{ form.shop }}
-              {% if form.shop.errors %}
-                <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
-              {% endif %}
+              <div class="row">
+                <div class="col">
+                  <label class="form-label" for="{{ form.shop.id_for_label }}">Shop</label>
+                  {{ form.shop }}
+                  {% if form.shop.errors %}
+                    <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
+                  {% endif %}
+                </div>
+                <div class="col">
+                  <label class="form-label" for="{{ form.acc.id_for_label }}">Account</label>
+                  {{ form.acc }}
+                  {% if form.acc.errors %}
+                    <div class="text-danger small">{{ form.acc.errors|striptags }}</div>
+                  {% endif %}
+                </div>
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
@@ -112,4 +123,56 @@
     </div>
   </div>
 </div>
+
+<script>
+// Dynamically load accounts based on shop selection
+document.addEventListener('DOMContentLoaded', function() {
+    const shopSelect = document.getElementById('id_shop');
+    const accountSelect = document.getElementById('id_account');
+    
+    if (!shopSelect || !accountSelect) return;
+    
+    shopSelect.addEventListener('change', function() {
+        const shopId = this.value;
+        const currentAccountId = accountSelect.value;
+        
+        // Clear existing account options
+        accountSelect.innerHTML = '<option value="">Loading...</option>';
+        accountSelect.disabled = true;
+        
+        if (!shopId) {
+            accountSelect.innerHTML = '<option value="">First select a shop</option>';
+            accountSelect.disabled = true;
+            return;
+        }
+        
+        // Fetch accounts for selected shop
+        fetch(`/api/shops/${shopId}/accounts/`)
+            .then(response => response.json())
+            .then(data => {
+                accountSelect.innerHTML = '';
+                accountSelect.disabled = false;
+                
+                if (data.length === 0) {
+                    accountSelect.innerHTML = '<option value="">No accounts available for this shop</option>';
+                    accountSelect.disabled = true;
+                } else {
+                    data.forEach(account => {
+                        const option = new Option(account.t_name, account.id);
+                        // Set selected if it matches the current account
+                        if (account.id === currentAccountId) {
+                            option.selected = true;
+                        }
+                        accountSelect.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching accounts:', error);
+                accountSelect.innerHTML = '<option value="">Error loading accounts</option>';
+                accountSelect.disabled = true;
+            });
+    });
+});
+</script>
 {% endblock %}
