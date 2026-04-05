@@ -59,9 +59,18 @@
         border-radius: 0rem;  /* same as hamburger border-radius */
         padding: 3px; {% endcomment %}
     }
+    .htmx-indicator {
+    display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    display: table-row !important;
+}
 </style>
   </head>
   <body>
+    {% load indian_format %}
     <nav  class="navbar navbar-expand-lg bg-body-tertiary">
       <div class="container-fluid">
   <!-- App Library Icon -->

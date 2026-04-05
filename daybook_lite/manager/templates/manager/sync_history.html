@@ -7,7 +7,7 @@
 <div class="container-fluid mt-4">
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0"><i class="fa-solid fa-arrows-rotate"></i> Sync History</h4>
+      <h4 class="mb-0"><i class="fa-solid fa-arrows-rotate"></i> Sync </h4>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#exportModal">
           <i class="fa-solid fa-upload"></i> Export
@@ -30,15 +30,14 @@
               <th scope="col">Shop</th>
               <th scope="col">Data Type</th>
               <th scope="col">Timestamp</th>
-              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for event in sync_events %}
-            <tr>
+            <tr onclick="window.location='{% if event.type == 'Export' %}{% url 'manager:export_details' event.id %}{% elif event.type == 'Import' %}{% url 'manager:import_details' event.id %}{% endif %}'" style="cursor:pointer;">
               <td>
                 <span class="badge {{ event.badge_class }}">
-                  <i class="fa-solid {{ event.icon }}"></i> {{ event.type_label }}
+                    <i class="fa-solid {{ event.icon }}"></i> {{ event.type_label }}
                 </span>
               </td>
               <td>
@@ -52,17 +51,6 @@
               </td>
               <td>
                 <small>{{ event.timestamp|date:"Y-m-d H:i:s" }}</small>
-              </td>
-              <td>
-                {% if event.type == 'Export' %}
-                  <a href="{% url 'manager:export_details' event.id %}" class="btn btn-sm btn-outline-success" title="View Export Details">
-                    <i class="fa-solid fa-eye"></i> Details
-                  </a>
-                {% elif event.type == 'Import' %}
-                  <a href="{% url 'manager:import_details' event.id %}" class="btn btn-sm btn-outline-info" title="View Import Details">
-                    <i class="fa-solid fa-eye"></i> Details
-                  </a>
-                {% endif %}
               </td>
             </tr>
             {% empty %}
@@ -113,9 +101,9 @@
             </label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="radio" name="transaction_type" id="transDateRange" value="date_range">
-            <label class="form-check-label" for="transDateRange">
-              <strong>Date Range</strong> - Export transactions for a specific date range
+            <input class="form-check-input" type="radio" name="transaction_type" id="transExportFrom" value="export_from">
+            <label class="form-check-label" for="transExportFrom">
+              <strong>Export From</strong> - Export transactions since a specific date
             </label>
           </div>
           <div class="form-check">
@@ -138,6 +126,12 @@
               </div>
             </div>
           </div>
+
+          <!-- Export From Date Field (hidden by default) -->
+          <div id="exportFromField" style="display: none; margin-top: 15px;">
+            <label for="exportFromDate" class="form-label">Export From Date:</label>
+            <input type="date" class="form-control" id="exportFromDate" name="export_from_date">
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -153,14 +147,26 @@
   document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
     radio.addEventListener('change', function() {
       const dateRangeFields = document.getElementById('dateRangeFields');
+      const exportFromField = document.getElementById('exportFromField');
+      
       if (this.value === 'date_range') {
         dateRangeFields.style.display = 'block';
+        exportFromField.style.display = 'none';
         document.getElementById('fromDate').required = true;
         document.getElementById('toDate').required = true;
-      } else {
+        document.getElementById('exportFromDate').required = false;
+      } else if (this.value === 'export_from') {
         dateRangeFields.style.display = 'none';
+        exportFromField.style.display = 'block';
         document.getElementById('fromDate').required = false;
         document.getElementById('toDate').required = false;
+        document.getElementById('exportFromDate').required = true;
+      } else {
+        dateRangeFields.style.display = 'none';
+        exportFromField.style.display = 'none';
+        document.getElementById('fromDate').required = false;
+        document.getElementById('toDate').required = false;
+        document.getElementById('exportFromDate').required = false;
       }
     });
   });
@@ -188,6 +194,13 @@
       
       if (new Date(fromDate) > new Date(toDate)) {
         alert('From Date must be before To Date');
+        return;
+      }
+    } else if (transactionType === 'export_from') {
+      const exportFromDate = document.getElementById('exportFromDate').value;
+      
+      if (!exportFromDate) {
+        alert('Please select an Export From Date');
         return;
       }
     }
@@ -246,6 +259,12 @@
       toInput.name = 'to_date';
       toInput.value = document.getElementById('toDate').value;
       form.appendChild(toInput);
+    } else if (transactionType === 'export_from') {
+      const exportFromInput = document.createElement('input');
+      exportFromInput.type = 'hidden';
+      exportFromInput.name = 'export_from_date';
+      exportFromInput.value = document.getElementById('exportFromDate').value;
+      form.appendChild(exportFromInput);
     }
     
     document.body.appendChild(form);

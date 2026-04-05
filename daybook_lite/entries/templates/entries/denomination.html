@@ -29,8 +29,6 @@
             <div class="row mb-3 align-items-center">
               <div class="col-md-3">
                 <label class="form-label mb-0" for="{{ form.shop.id_for_label }}">{{ form.shop.label }}</label>
-              </div>
-              <div class="col-md-4">
                 {% if is_edit_mode or is_view_mode %}
                   <input type="text" class="form-control" value="{{ shop.name|default:'—' }}" disabled>
                   {% if is_edit_mode %}
@@ -43,14 +41,8 @@
                   <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
                 {% endif %}
               </div>
-            </div>
-
-            <!-- Time Period -->
-            <div class="row mb-4 align-items-center">
               <div class="col-md-3">
                 <label class="form-label mb-0" for="{{ form.time_period.id_for_label }}">{{ form.time_period.label }}</label>
-              </div>
-              <div class="col-md-4">
                 {% if is_edit_mode or is_view_mode %}
                   <input type="text" class="form-control" value="{{ time_period|title }}" disabled>
                   {% if is_edit_mode %}
@@ -63,6 +55,28 @@
                   <div class="text-danger small">{{ form.time_period.errors|striptags }}</div>
                 {% endif %}
               </div>
+              <div class="col-md-6">
+                <label class="form-label mb-0" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+                {% if is_view_mode %}
+                  <input type="text" class="form-control" value="{% if denomination_dt %}{{ denomination_dt|date:'d-m-Y' }}{% elif form.date.value %}{{ form.date.value|date:'d-m-Y' }}{% endif %}" disabled>
+                {% else %}
+                  {{ form.date }}
+                {% endif %}
+                {% if form.date.errors %}
+                  <div class="text-danger small">{{ form.date.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3" style="display: none;">
+                <label class="form-label mb-0" for="{{ form.time.id_for_label }}">{{ form.time.label }}</label>
+                {% if is_view_mode %}
+                  <input type="text" class="form-control" value="{% if denomination_dt %}{{ denomination_dt|time:'H:i:s' }}{% elif form.time.value %}{{ form.time.value }}{% endif %}" disabled>
+                {% else %}
+                  {{ form.time }}
+                {% endif %}
+                {% if form.time.errors %}
+                  <div class="text-danger small">{{ form.time.errors|striptags }}</div>
+                {% endif %}
+              </div>
             </div>
 
             <hr class="my-4">
@@ -71,8 +85,6 @@
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
                 <label class="form-label mb-0" for="{{ form.note_2000.id_for_label }}">{{ form.note_2000.label }}</label>
-              </div>
-              <div class="col-md-2">
                 {{ form.note_2000 }}
                 {% if form.note_2000.errors %}
                   <div class="text-danger small">{{ form.note_2000.errors|striptags }}</div>
@@ -81,142 +93,9 @@
               <div class="col-md-3 text-end">
                 <span id="calc_2000" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
               </div>
-            </div>
-
-            <!-- 500 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_500.id_for_label }}">{{ form.note_500.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_500 }}
-                {% if form.note_500.errors %}
-                  <div class="text-danger small">{{ form.note_500.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- 200 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_200.id_for_label }}">{{ form.note_200.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_200 }}
-                {% if form.note_200.errors %}
-                  <div class="text-danger small">{{ form.note_200.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- 100 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_100.id_for_label }}">{{ form.note_100.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_100 }}
-                {% if form.note_100.errors %}
-                  <div class="text-danger small">{{ form.note_100.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- 50 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_50.id_for_label }}">{{ form.note_50.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_50 }}
-                {% if form.note_50.errors %}
-                  <div class="text-danger small">{{ form.note_50.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- 20 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_20 }}
-                {% if form.note_20.errors %}
-                  <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- 10 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_10.id_for_label }}">{{ form.note_10.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.note_10 }}
-                {% if form.note_10.errors %}
-                  <div class="text-danger small">{{ form.note_10.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- Coins -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.coins.id_for_label }}">{{ form.coins.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.coins }}
-                {% if form.coins.errors %}
-                  <div class="text-danger small">{{ form.coins.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_coins" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- Damage -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.damage.id_for_label }}">{{ form.damage.label }}</label>
-              </div>
-              <div class="col-md-2">
-                {{ form.damage }}
-                {% if form.damage.errors %}
-                  <div class="text-danger small">{{ form.damage.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_damage" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
-
-            <!-- Inside -->
-            <div class="row mb-3 align-items-center">
+              <div class="col-md-1"></div>
               <div class="col-md-2">
                 <label class="form-label mb-0" for="{{ form.inside.id_for_label }}">{{ form.inside.label }}</label>
-              </div>
-              <div class="col-md-2">
                 {{ form.inside }}
                 {% if form.inside.errors %}
                   <div class="text-danger small">{{ form.inside.errors|striptags }}</div>
@@ -230,9 +109,18 @@
             <!-- 500 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_500.id_for_label }}">{{ form.bundle_500.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_500.id_for_label }}">{{ form.note_500.label }}</label>
+                {{ form.note_500 }}
+                {% if form.note_500.errors %}
+                  <div class="text-danger small">{{ form.note_500.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_500.id_for_label }}">{{ form.bundle_500.label }}</label>
                 {{ form.bundle_500 }}
                 {% if form.bundle_500.errors %}
                   <div class="text-danger small">{{ form.bundle_500.errors|striptags }}</div>
@@ -246,9 +134,18 @@
             <!-- 200 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_200.id_for_label }}">{{ form.bundle_200.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_200.id_for_label }}">{{ form.note_200.label }}</label>
+                {{ form.note_200 }}
+                {% if form.note_200.errors %}
+                  <div class="text-danger small">{{ form.note_200.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_200.id_for_label }}">{{ form.bundle_200.label }}</label>
                 {{ form.bundle_200 }}
                 {% if form.bundle_200.errors %}
                   <div class="text-danger small">{{ form.bundle_200.errors|striptags }}</div>
@@ -262,9 +159,18 @@
             <!-- 100 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_100.id_for_label }}">{{ form.bundle_100.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_100.id_for_label }}">{{ form.note_100.label }}</label>
+                {{ form.note_100 }}
+                {% if form.note_100.errors %}
+                  <div class="text-danger small">{{ form.note_100.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_100.id_for_label }}">{{ form.bundle_100.label }}</label>
                 {{ form.bundle_100 }}
                 {% if form.bundle_100.errors %}
                   <div class="text-danger small">{{ form.bundle_100.errors|striptags }}</div>
@@ -278,9 +184,18 @@
             <!-- 50 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_50.id_for_label }}">{{ form.note_50.label }}</label>
+                {{ form.note_50 }}
+                {% if form.note_50.errors %}
+                  <div class="text-danger small">{{ form.note_50.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
                 {{ form.bundle_50 }}
                 {% if form.bundle_50.errors %}
                   <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
@@ -294,9 +209,18 @@
             <!-- 20 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_20.id_for_label }}">{{ form.bundle_20.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
+                {{ form.note_20 }}
+                {% if form.note_20.errors %}
+                  <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_20.id_for_label }}">{{ form.bundle_20.label }}</label>
                 {{ form.bundle_20 }}
                 {% if form.bundle_20.errors %}
                   <div class="text-danger small">{{ form.bundle_20.errors|striptags }}</div>
@@ -310,9 +234,18 @@
             <!-- 10 -->
             <div class="row mb-3 align-items-center">
               <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_10.id_for_label }}">{{ form.bundle_10.label }}</label>
+                <label class="form-label mb-0" for="{{ form.note_10.id_for_label }}">{{ form.note_10.label }}</label>
+                {{ form.note_10 }}
+                {% if form.note_10.errors %}
+                  <div class="text-danger small">{{ form.note_10.errors|striptags }}</div>
+                {% endif %}
               </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
               <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.bundle_10.id_for_label }}">{{ form.bundle_10.label }}</label>
                 {{ form.bundle_10 }}
                 {% if form.bundle_10.errors %}
                   <div class="text-danger small">{{ form.bundle_10.errors|striptags }}</div>
@@ -320,6 +253,31 @@
               </div>
               <div class="col-md-3 text-end">
                 <span id="bundle_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+            </div>
+
+            <!-- Coins -->
+            <div class="row mb-3 align-items-center">
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.coins.id_for_label }}">{{ form.coins.label }}</label>
+                {{ form.coins }}
+                {% if form.coins.errors %}
+                  <div class="text-danger small">{{ form.coins.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_coins" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              </div>
+              <div class="col-md-1"></div>
+              <div class="col-md-2">
+                <label class="form-label mb-0" for="{{ form.damage.id_for_label }}">{{ form.damage.label }}</label>
+                {{ form.damage }}
+                {% if form.damage.errors %}
+                  <div class="text-danger small">{{ form.damage.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-3 text-end">
+                <span id="calc_damage" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
               </div>
             </div>
 
@@ -404,51 +362,55 @@ document.addEventListener('DOMContentLoaded', function() {
   {% endif %}
   
   // Function to extract numeric value from text with INR symbol
-  function getNumericValue(text) {
-    return parseFloat(text.replace('₹', '').trim()) || 0;
-  }
+function getNumericValue(text) {
+    return parseFloat(text.replace('₹', '').replace(/,/g, '').trim()) || 0;
+}
   
   // Function to calculate total
   function updateTotal() {
-    const calc2000 = getNumericValue(document.getElementById('calc_2000').textContent);
-    const calc500 = getNumericValue(document.getElementById('calc_500').textContent);
-    const calc200 = getNumericValue(document.getElementById('calc_200').textContent);
-    const calc100 = getNumericValue(document.getElementById('calc_100').textContent);
-    const calc50 = getNumericValue(document.getElementById('calc_50').textContent);
-    const calc20 = getNumericValue(document.getElementById('calc_20').textContent);
-    const calc10 = getNumericValue(document.getElementById('calc_10').textContent);
-    const calcCoins = getNumericValue(document.getElementById('calc_coins').textContent);
-    const calcDamage = getNumericValue(document.getElementById('calc_damage').textContent);
-    const calcInside = getNumericValue(document.getElementById('calc_inside').textContent);
-    const bundle500 = getNumericValue(document.getElementById('bundle_500').textContent);
-    const bundle200 = getNumericValue(document.getElementById('bundle_200').textContent);
-    const bundle100 = getNumericValue(document.getElementById('bundle_100').textContent);
-    const bundle50 = getNumericValue(document.getElementById('bundle_50').textContent);
-    const bundle20 = getNumericValue(document.getElementById('bundle_20').textContent);
-    const bundle10 = getNumericValue(document.getElementById('bundle_10').textContent);
+      const calc2000   = getNumericValue(document.getElementById('calc_2000').textContent);
+      const calc500    = getNumericValue(document.getElementById('calc_500').textContent);
+      const calc200    = getNumericValue(document.getElementById('calc_200').textContent);
+      const calc100    = getNumericValue(document.getElementById('calc_100').textContent);
+      const calc50     = getNumericValue(document.getElementById('calc_50').textContent);
+      const calc20     = getNumericValue(document.getElementById('calc_20').textContent);
+      const calc10     = getNumericValue(document.getElementById('calc_10').textContent);
+      const calcCoins  = getNumericValue(document.getElementById('calc_coins').textContent);
+      const calcDamage = getNumericValue(document.getElementById('calc_damage').textContent);
+      const calcInside = getNumericValue(document.getElementById('calc_inside').textContent);
+      const bundle500  = getNumericValue(document.getElementById('bundle_500').textContent);
+      const bundle200  = getNumericValue(document.getElementById('bundle_200').textContent);
+      const bundle100  = getNumericValue(document.getElementById('bundle_100').textContent);
+      const bundle50   = getNumericValue(document.getElementById('bundle_50').textContent);
+      const bundle20   = getNumericValue(document.getElementById('bundle_20').textContent);
+      const bundle10   = getNumericValue(document.getElementById('bundle_10').textContent);
 
-    const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10 + calcCoins + calcDamage + calcInside + bundle500 + bundle200 + bundle100 + bundle50 + bundle20 + bundle10;
-    document.getElementById('calc_total').textContent = '₹ ' + total.toFixed(2);
+      const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10
+                  + calcCoins + calcDamage + calcInside
+                  + bundle500 + bundle200 + bundle100 + bundle50 + bundle20 + bundle10;
+
+      document.getElementById('calc_total').textContent = '₹ ' + indianFormat(total);  // ← was toFixed(2)
   }
   
   // Function to calculate and display denomination values
-  function calculateDenomination(inputId, denomination, displayId) {
+// Replace existing calculateDenomination
+function calculateDenomination(inputId, denomination, displayId) {
     const input = document.getElementById(inputId);
     const display = document.getElementById(displayId);
     
     if (input && display) {
-      const updateValue = function() {
-        const value = parseFloat(input.value) || 0;
-        const result = value * denomination;
-        display.textContent = '₹ ' + result.toFixed(2);
-        updateTotal();
-      };
-      
-      input.addEventListener('keyup', updateValue);
-      input.addEventListener('input', updateValue);
-      input.addEventListener('change', updateValue);
+        const updateValue = function() {
+            const value = parseFloat(input.value) || 0;
+            const result = value * denomination;
+            display.textContent = '₹ ' + indianFormat(result);  // ← fixed typo indianformat → indianFormat
+            updateTotal();
+        };
+        
+        input.addEventListener('keyup', updateValue);
+        input.addEventListener('input', updateValue);
+        input.addEventListener('change', updateValue);
     }
-  }
+}
 
   // Function to calculate and display denomination values
   function calculateBundle(inputId, denomination, displayId) {
@@ -459,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const updateValue = function() {
         const value = parseFloat(input.value) || 0;
         const result = value * denomination * 100; // Assuming bundle means 100 notes of that denomination
-        display.textContent = '₹ ' + result.toFixed(2);
+        display.textContent = '₹ ' + indianFormat(result);
         updateTotal();
       };
       
@@ -469,23 +431,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Function to display same value for coins and damage
-  function displaySameValue(inputId, displayId) {
+  // Replace existing displaySameValue
+function displaySameValue(inputId, displayId) {
     const input = document.getElementById(inputId);
     const display = document.getElementById(displayId);
     
     if (input && display) {
-      const updateValue = function() {
-        const value = parseFloat(input.value) || 0;
-        display.textContent = '₹ ' + value.toFixed(2);
-        updateTotal();
-      };
-      
-      input.addEventListener('keyup', updateValue);
-      input.addEventListener('input', updateValue);
-      input.addEventListener('change', updateValue);
+        const updateValue = function() {
+            const value = parseFloat(input.value) || 0;
+            display.textContent = '₹ ' + indianFormat(value);  // ← was value.toFixed(2)
+            updateTotal();
+        };
+        
+        input.addEventListener('keyup', updateValue);
+        input.addEventListener('input', updateValue);
+        input.addEventListener('change', updateValue);
     }
-  }
+}
   
   // Setup calculations for note denominations
   calculateDenomination('id_note_2000', 2000, 'calc_2000');
@@ -592,6 +554,30 @@ function searchDenominationEdit() {
   if (key) {
     window.location.href = `{% url 'entries:denomination' %}edit/${key}/`;
   }
+}
+
+// Indian number format function
+function indianFormat(value) {
+    let isNegative = value < 0;
+    value = Math.abs(value);
+
+    let [intPart, decPart] = value.toFixed(2).split('.');
+
+    // Indian formatting: last 3 digits, then groups of 2
+    if (intPart.length > 3) {
+        let last3 = intPart.slice(-3);
+        let remaining = intPart.slice(0, -3);
+        let pairs = [];
+        while (remaining.length > 2) {
+            pairs.unshift(remaining.slice(-2));
+            remaining = remaining.slice(0, -2);
+        }
+        if (remaining) pairs.unshift(remaining);
+        intPart = pairs.join(',') + ',' + last3;
+    }
+
+    let formatted = intPart + '.' + decPart;
+    return (isNegative ? '-' : '') + formatted;
 }
 </script>
 

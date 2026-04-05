@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+
 
 /* Primary	#4A7766	Deep Garnet	#774A4B */
 /* Click/Active	#006440	Crimson Punch	#640001 */
@@ -20,6 +21,17 @@
   --daybook-red-click: #fd4444;
   --daybook-teal: #f5c55f;
   --daybook-teal-click: #dcb155;
+}
+
+.text-end, .text-start{
+  font-family: "Google Sans Code", monospace;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.text-start{
+  margin-right: 12px;
 }
 
 h5{
@@ -399,7 +411,7 @@ input[type="radio"].form-check-input:checked {
     display:inline-flex;
     flex-direction: column;
     background-color: #FFF;
-    width: 15rem;
+    width: auto;
     height: max-content;
     margin-top: 8px; 
     margin-left: 0px;

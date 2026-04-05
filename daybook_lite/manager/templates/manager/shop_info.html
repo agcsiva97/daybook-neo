@@ -111,7 +111,7 @@
         </div>
         <div class="col-md-6">
           <h5>Balance</h5>
-          <p class="display-6 text-primary">{{ balance }}</p>
+          <p class="display-6 text-primary">{{ balance|indian_format }}</p>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <h5 class="mb-0">Linked Ledgers</h5>
             {% if is_admin %}
@@ -164,7 +164,7 @@
               <th>English Name</th>
               <th>Account Type</th>
               <th>Account Group</th>
-              <th>Balance</th>
+              <th class="text-center">Balance</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -175,10 +175,10 @@
               <td><a href="{% url 'manager:account_info' account.pk %}" style="cursor:pointer; text-decoration: none; color: inherit;">{{account.e_name}}</a></td>
               <td>{{account.acc_type.t_name}}</td>
               <td>{{account.acc_type.group.t_name}}</td>
-              {% if account.balance > 0.00 %}
-                <td class="text-success fw-bold">{{ account.balance }} CR</td>
+              {% if account.balance >= 0.00 %}
+                <td class="text-success fw-bold text-end">{{ account.balance|indian_format }} CR</td>
               {% else %}
-                <td class="text-danger fw-bold">{{ account.balance }} DB</td>
+                <td class="text-danger fw-bold text-end">{{ account.balance|indian_format }} DB</td>
               {% endif %}
               <td>
                 <div class="d-flex gap-1">

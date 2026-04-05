@@ -84,7 +84,7 @@ def sync_history(request):
             'shop_full_name': export.shop.name,
             'data_type': export.export_type.capitalize(),
             'timestamp': export.exported_at,
-            'icon': 'fa-arrow-up-from-bracket',
+            'icon': 'fa-upload',
             'badge_class': 'bg-success',
         })
     
@@ -98,7 +98,7 @@ def sync_history(request):
             'shop_full_name': import_record.shop.name,
             'data_type': import_record.import_type.capitalize(),
             'timestamp': import_record.imported_at,
-            'icon': 'fa-arrow-down-to-bracket',
+            'icon': 'fa-download',
             'badge_class': 'bg-info',
         })
     
@@ -458,7 +458,7 @@ def export_shop(request, pk):
         from django.http import HttpResponse
         
         # Create export history record
-        ExportHistory.objects.create(shop=shop, export_type='shop')
+        # ExportHistory.objects.create(shop=shop, export_type='shop')
         
         response = HttpResponse(
             json.dumps(export_data, indent=2, default=str),
@@ -765,15 +765,192 @@ def export_transactions(request, pk):
                     },
                 })
             
+            elif export_mode == 'export_from':
+                # Export changes since user-specified date using activity log
+                export_from_date_str = request.POST.get('export_from_date')
+                
+                if not export_from_date_str:
+                    return JsonResponse({'error': 'Export From Date is required for export_from mode'}, status=400)
+                
+                try:
+                    export_from_date = datetime.strptime(export_from_date_str, '%Y-%m-%d').date()
+                    export_from_dt = timezone.make_aware(datetime.combine(export_from_date, datetime.min.time()))
+                except (ValueError, AttributeError) as e:
+                    return JsonResponse({'error': f'Invalid date format for export_from_date. Expected YYYY-MM-DD: {str(e)}'}, status=400)
+                
+                # Get activity logs after the specified export_from date for relevant models
+                activity_logs = ActivityLog.objects.filter(
+                    shop=shop,
+                    created_at__gte=export_from_dt,
+                    model_name__in=['Type', 'Accounts', 'Transaction'],
+                    action__in=['CREATE', 'UPDATE', 'DELETE']
+                ).order_by('created_at')
+                
+                # Process activity logs and collect changes by entity type and action
+                types_created = []
+                types_updated = []
+                types_deleted = []
+                accounts_created = []
+                accounts_updated = []
+                accounts_deleted = []
+                transactions_created = []
+                transactions_updated = []
+                transactions_deleted = []
+                
+                for log in activity_logs:
+                    try:
+                        if log.model_name.lower() == 'type':
+                            if log.action == 'CREATE':
+                                try:
+                                    type_obj = Type.objects.get(id=log.object_id, shop=shop)
+                                    types_created.append({
+                                        'id': type_obj.id,
+                                        'e_name': type_obj.e_name or '',
+                                        't_name': type_obj.t_name or '',
+                                        'shop_id': type_obj.shop_id,
+                                        'group_id': type_obj.group_id,
+                                    })
+                                except Type.DoesNotExist:
+                                    pass
+                            elif log.action == 'UPDATE':
+                                try:
+                                    type_obj = Type.objects.get(id=log.object_id, shop=shop)
+                                    types_updated.append({
+                                        'id': type_obj.id,
+                                        'e_name': type_obj.e_name or '',
+                                        't_name': type_obj.t_name or '',
+                                        'shop_id': type_obj.shop_id,
+                                        'group_id': type_obj.group_id,
+                                    })
+                                except Type.DoesNotExist:
+                                    pass
+                            elif log.action == 'DELETE':
+                                types_deleted.append({
+                                    'id': log.object_id,
+                                    'description': log.description,
+                                    'deleted_at': log.created_at.isoformat(),
+                                })
+                                
+                        elif log.model_name.lower() == 'accounts':
+                            if log.action == 'CREATE':
+                                try:
+                                    account = Accounts.objects.get(id=log.object_id, shop=shop)
+                                    accounts_created.append({
+                                        'id': account.id,
+                                        'e_name': account.e_name or '',
+                                        't_name': account.t_name or '',
+                                        'shop_id': account.shop_id,
+                                        'acc_type_id': account.acc_type_id,
+                                        'priority': account.priority,
+                                        'is_admin_only': account.is_admin_only,
+                                    })
+                                except Accounts.DoesNotExist:
+                                    pass
+                            elif log.action == 'UPDATE':
+                                try:
+                                    account = Accounts.objects.get(id=log.object_id, shop=shop)
+                                    accounts_updated.append({
+                                        'id': account.id,
+                                        'e_name': account.e_name or '',
+                                        't_name': account.t_name or '',
+                                        'shop_id': account.shop_id,
+                                        'acc_type_id': account.acc_type_id,
+                                        'priority': account.priority,
+                                        'is_admin_only': account.is_admin_only,
+                                    })
+                                except Accounts.DoesNotExist:
+                                    pass
+                            elif log.action == 'DELETE':
+                                accounts_deleted.append({
+                                    'id': log.object_id,
+                                    'description': log.description,
+                                    'deleted_at': log.created_at.isoformat(),
+                                })
+                                
+                        elif log.model_name.lower() == 'transaction':
+                            if log.action == 'CREATE':
+                                try:
+                                    print(f"Processing CREATE log for transaction ID: {log.object_id}")
+                                    trans = Transactions.objects.get(id=log.object_id)
+                                    transactions_created.append({
+                                        'id': trans.id,
+                                        'shop_id': trans.shop_id,
+                                        'account_id': trans.acc_id,
+                                        'account_name': trans.acc.t_name if trans.acc else '',
+                                        'transaction_dt': trans.transaction_dt.isoformat(),
+                                        'amount': str(trans.amount),
+                                        'tr_type': trans.tr_type,
+                                        'remarks': trans.remarks or '',
+                                        'name': trans.name or '',
+                                        'is_tally': trans.is_tally,
+                                        'created_at': trans.created_at.isoformat(),
+                                        'created_by': trans.created_by.username if trans.created_by else '',
+                                    })
+                                except Transactions.DoesNotExist:
+                                    pass
+                            elif log.action == 'UPDATE':
+                                try:
+                                    trans = Transactions.objects.get(id=log.object_id)
+                                    transactions_updated.append({
+                                        'id': trans.id,
+                                        'shop_id': trans.shop_id,
+                                        'account_id': trans.acc_id,
+                                        'account_name': trans.acc.t_name if trans.acc else '',
+                                        'transaction_dt': trans.transaction_dt.isoformat(),
+                                        'amount': str(trans.amount),
+                                        'tr_type': trans.tr_type,
+                                        'remarks': trans.remarks or '',
+                                        'name': trans.name or '',
+                                        'is_tally': trans.is_tally,
+                                        'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
+                                        'updated_by': trans.updated_by.username if trans.updated_by else '',
+                                    })
+                                except Transactions.DoesNotExist:
+                                    pass
+                            elif log.action == 'DELETE':
+                                transactions_deleted.append({
+                                    'id': log.object_id,
+                                    'description': log.description,
+                                    'deleted_at': log.created_at.isoformat(),
+                                })
+                    except Exception as e:
+                        logger.warning(f"Error processing activity log {log.id}: {str(e)}")
+                        continue
+                
+                export_data.update({
+                    'export_from_date': export_from_date_str,
+                    'types': {
+                        'created': types_created,
+                        'updated': types_updated,
+                        'deleted': types_deleted,
+                    },
+                    'accounts': {
+                        'created': accounts_created,
+                        'updated': accounts_updated,
+                        'deleted': accounts_deleted,
+                    },
+                    'transactions': {
+                        'created': transactions_created,
+                        'updated': transactions_updated,
+                        'deleted': transactions_deleted,
+                    },
+                })
+            
             # Update last export timestamp (use the time captured at the start for consistency)
-            if export_mode == 'after_last_export':
+            if export_mode == 'after_last_export' or export_mode == 'export_from':
                 shop.last_transaction_exported_at = current_export_time
             else:
                 shop.last_transaction_exported_at = timezone.now()
             shop.save(update_fields=['last_transaction_exported_at'])
+
+            exp_type = {
+                'all': 'All Data Export',
+                'after_last_export': 'Changes Since Last Export',
+                'export_from': 'Changes Since Specified Date',
+            }.get(export_mode, 'Transactions Export')
             
             # Create export history record
-            export_history = ExportHistory.objects.create(shop=shop, export_type='transactions')
+            export_history = ExportHistory.objects.create(shop=shop, export_type=exp_type)
             
             # Create ExportDetails for each exported record
             try:
@@ -812,6 +989,80 @@ def export_transactions(request, pk):
                         )
                 elif export_mode == 'after_last_export':
                     # Create details for all changed records
+                    for type_data in export_data.get('types', {}).get('created', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=type_data['id'],
+                            record_type='Type',
+                            status='success',
+                            message='Created'
+                        )
+                    for type_data in export_data.get('types', {}).get('updated', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=type_data['id'],
+                            record_type='Type',
+                            status='success',
+                            message='Updated'
+                        )
+                    for type_data in export_data.get('types', {}).get('deleted', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=type_data['id'],
+                            record_type='Type',
+                            status='success',
+                            message='Deleted'
+                        )
+                    for account_data in export_data.get('accounts', {}).get('created', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=account_data['id'],
+                            record_type='Account',
+                            status='success',
+                            message='Created'
+                        )
+                    for account_data in export_data.get('accounts', {}).get('updated', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=account_data['id'],
+                            record_type='Account',
+                            status='success',
+                            message='Updated'
+                        )
+                    for account_data in export_data.get('accounts', {}).get('deleted', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=account_data['id'],
+                            record_type='Account',
+                            status='success',
+                            message='Deleted'
+                        )
+                    for trans_data in export_data.get('transactions', {}).get('created', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=trans_data['id'],
+                            record_type='Transaction',
+                            status='success',
+                            message='Created'
+                        )
+                    for trans_data in export_data.get('transactions', {}).get('updated', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=trans_data['id'],
+                            record_type='Transaction',
+                            status='success',
+                            message='Updated'
+                        )
+                    for trans_data in export_data.get('transactions', {}).get('deleted', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=trans_data['id'],
+                            record_type='Transaction',
+                            status='success',
+                            message='Deleted'
+                        )
+                elif export_mode == 'export_from':
+                    # Create details for all changed records (same pattern as after_last_export)
                     for type_data in export_data.get('types', {}).get('created', []):
                         ExportDetails.objects.create(
                             export_history=export_history,
@@ -1128,16 +1379,27 @@ def import_transactions(request):
                 )
                 logger.info("Created system user for import tracking")
             
+            # Ensure system_user was created/found successfully
+            if not system_user:
+                return JsonResponse({'error': 'Could not create or find system user for import tracking'}, status=500)
+            
+            logger.info(f"Import will use system user: {system_user.username} (ID: {system_user.id})")
+            
             shop_id = import_data.get('shop_id')
             shop = get_object_or_404(Shop, pk=shop_id) if shop_id else None
             
             if not shop:
                 return JsonResponse({'error': 'Shop ID not found in import file'}, status=400)
-            
+            imp_type = {
+                'all': 'All Data Import',
+                'after_last_export': 'Changes Since Last Import',
+                'export_from': 'Changes Since Specified Date',
+            }.get(import_data.get('export_mode', None), 'Transactions Import')
+
             with db_transaction.atomic():
                 import_history = ImportHistory.objects.create(
                     shop=shop,
-                    import_type='transactions'
+                    import_type=imp_type
                 )
                 
                 types_created = 0
@@ -1182,13 +1444,13 @@ def import_transactions(request):
                             group = None
                         
                         if type_id and Type.objects.filter(id=type_id).exists():
-                            # Update existing
-                            Type.objects.filter(id=type_id).update(
-                                e_name=type_data.get('e_name', ''),
-                                t_name=type_data.get('t_name', ''),
-                                shop=shop,
-                                group=group
-                            )
+                            # Update existing - use model instance to trigger history tracking
+                            type_obj = Type.objects.get(id=type_id)
+                            type_obj.e_name = type_data.get('e_name', '')
+                            type_obj.t_name = type_data.get('t_name', '')
+                            type_obj.shop = shop
+                            type_obj.group = group
+                            type_obj.save()
                             types_updated += 1
                             ImportDetails.objects.create(
                                 import_history=import_history,
@@ -1236,15 +1498,15 @@ def import_transactions(request):
                             acc_type = None
                         
                         if account_id and Accounts.objects.filter(id=account_id).exists():
-                            # Update existing
-                            Accounts.objects.filter(id=account_id).update(
-                                e_name=account_data.get('e_name', ''),
-                                t_name=account_data.get('t_name', ''),
-                                shop=shop,
-                                acc_type=acc_type,
-                                priority=account_data.get('priority', 0),
-                                is_admin_only=account_data.get('is_admin_only', False)
-                            )
+                            # Update existing - use model instance to trigger history tracking
+                            account = Accounts.objects.get(id=account_id)
+                            account.e_name = account_data.get('e_name', '')
+                            account.t_name = account_data.get('t_name', '')
+                            account.shop = shop
+                            account.acc_type = acc_type
+                            account.priority = account_data.get('priority', 0)
+                            account.is_admin_only = account_data.get('is_admin_only', False)
+                            account.save()
                             accounts_updated += 1
                             ImportDetails.objects.create(
                                 import_history=import_history,
@@ -1288,13 +1550,25 @@ def import_transactions(request):
                         trans_id = trans_data.get('id', '').strip()
                         account_id = trans_data.get('account_id')
                         
+                        # For updates: try to get the account, but fall back to existing if not found
+                        account = None
                         try:
                             account = Accounts.objects.get(id=account_id, shop=shop) if account_id else None
                         except Accounts.DoesNotExist:
-                            account = None
+                            # If it's an update and account not found, try to use existing account
+                            if trans_id and Transactions.objects.filter(id=trans_id).exists():
+                                existing_trans = Transactions.objects.get(id=trans_id)
+                                account = existing_trans.acc
+                                logger.warning(
+                                    f"Account {account_id} not found for transaction {trans_id}. "
+                                    f"Using existing account {existing_trans.acc_id}"
+                                )
+                            else:
+                                account = None
                         
-                        if not account:
-                            raise ValueError(f"Account {account_id} not found")
+                        # Only raise error for new transactions without an account
+                        if not account and not (trans_id and Transactions.objects.filter(id=trans_id).exists()):
+                            raise ValueError(f"Account {account_id} not found for new transaction {trans_id}")
                         
                         # Parse datetime
                         trans_dt = trans_data.get('transaction_dt')
@@ -1305,19 +1579,22 @@ def import_transactions(request):
                         amount = Decimal(str(trans_data.get('amount', 0)))
                         
                         if trans_id and Transactions.objects.filter(id=trans_id).exists():
-                            # Update existing
-                            Transactions.objects.filter(id=trans_id).update(
-                                acc=account,
-                                transaction_dt=trans_dt,
-                                amount=amount,
-                                tr_type=trans_data.get('tr_type', 'DEBIT'),
-                                remarks=trans_data.get('remarks', ''),
-                                name=trans_data.get('name', ''),
-                                is_tally=trans_data.get('is_tally', False),
-                                shop=shop,
-                                updated_by=system_user,
-                                updated_at=timezone.now()
-                            )
+                            # Update existing - use model instance to trigger history tracking
+                            trans = Transactions.objects.get(id=trans_id)
+                            # Preserve created_by, only update modified fields and set updated_by to system_user
+                            if account:  # Only update account if we have one
+                                trans.acc = account
+                            trans.transaction_dt = trans_dt
+                            trans.amount = amount
+                            trans.tr_type = trans_data.get('tr_type', 'DEBIT')
+                            trans.remarks = trans_data.get('remarks', '')
+                            trans.name = trans_data.get('name', '')
+                            trans.is_tally = trans_data.get('is_tally', False)
+                            trans.shop = shop
+                            # Always set updated_by to system_user, ignore any user data from import
+                            trans.updated_by = system_user
+                            trans.save()
+                            logger.info(f"Updated transaction {trans_id}: updated_by set to {system_user.username}")
                             transactions_updated += 1
                             ImportDetails.objects.create(
                                 import_history=import_history,
@@ -1328,6 +1605,9 @@ def import_transactions(request):
                             )
                         else:
                             # Create new
+                            if not account:
+                                raise ValueError(f"Cannot create transaction {trans_id}: Account {account_id} not found")
+                            # For new transactions, always use system_user for both created_by and updated_by
                             Transactions.objects.create(
                                 id=trans_id if trans_id else None,
                                 acc=account,
@@ -1341,6 +1621,7 @@ def import_transactions(request):
                                 created_by=system_user,
                                 updated_by=system_user
                             )
+                            logger.info(f"Created transaction {trans_id}: created_by and updated_by set to {system_user.username}")
                             transactions_created += 1
                             ImportDetails.objects.create(
                                 import_history=import_history,
@@ -1463,23 +1744,79 @@ def account_info(request, pk):
         fy = date_helper.get_current_fy_string()
     
     start_date, end_date = date_helper.get_fy_dates(fy)
-    transactions = Transactions.objects.filter(
+    
+    # Get transactions for pagination
+    transactions_qs = Transactions.objects.filter(
         acc=account,
         transaction_dt__date__gte=start_date,
         transaction_dt__date__lte=end_date,
     ).order_by('-transaction_dt')
+    
+    # Calculate total debit and credit
+    trans_stats = transactions_qs.aggregate(
+        total_debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+        total_credit=Sum('amount', filter=Q(tr_type='CREDIT'))
+    )
+    
+    total_debit = trans_stats['total_debit'] or Decimal('0')
+    total_credit = trans_stats['total_credit'] or Decimal('0')
+    
+    # Paginate transactions (10 per page)
+    paginator = Paginator(transactions_qs, 10)
+    page_number = request.GET.get('page', 1)
+    transactions = paginator.get_page(page_number)
+    
     balance = transaction_helper.get_account_balance(account)  # Calculate balance for this account
     shop_accounts = Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name')
+    
     return render(request, 'manager/account_info.html', {
         'nav_title': 'Shops',
         'account': account,
         'balance': balance,
         'transactions': transactions,
-        'shop_accounts': shop_accounts,
+        'total_debit': total_debit,
+        'total_credit': total_credit,
+        'shopping_accounts': shop_accounts,
+        'fy': fy,
+        'start_date': start_date,
+        'end_date': end_date,
         'app_name': 'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
     })
+
+
+@login_required
+@admin_required
+def account_info_transactions(request, pk):
+    """AJAX endpoint for HTMX to load more transactions"""
+    account = get_object_or_404(Accounts, pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+    
+    start_date, end_date = date_helper.get_fy_dates(fy)
+    
+    transactions_qs = Transactions.objects.filter(
+        acc=account,
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    ).order_by('-transaction_dt')
+    
+    # Paginate transactions (10 per page)
+    paginator = Paginator(transactions_qs, 10)
+    page_number = request.GET.get('page', 1)
+    transactions = paginator.get_page(page_number)
+    shop_accounts = Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name')
+    
+    return render(request, 'manager/account_transactions_partial.html', {
+        'transactions': transactions,
+        'account': account,
+        'shop_accounts': shop_accounts,
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+    })
+
 
 def account_edit(request, pk):
     account = get_object_or_404(Accounts, pk=pk)

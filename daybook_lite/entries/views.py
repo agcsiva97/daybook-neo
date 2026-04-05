@@ -433,6 +433,7 @@ def transactions(request):
         'name_search_query': name_search_query,
         'debit_total': totals['debit_total'],
         'credit_total': totals['credit_total'],
+        'net_balance': totals['credit_total'] - totals['debit_total'],
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
         'is_admin_user': is_admin(request.user) or request.user.is_superuser,
@@ -1013,12 +1014,30 @@ def report(request):
     for shop in shops_to_process.order_by('name'):
         data = transaction_helper.get_opening_balance(shop, report_date)
         
+        # Get denominations for this shop on this date
+        all_denoms = Denomination.objects.filter(
+            shop=shop,
+            denomination_dt=report_date
+        )
+        
+        # Find the single latest denomination group by (denomination_group_order DESC, created_at DESC)
+        latest_denom = all_denoms.order_by('-denomination_group_order', '-created_at').first()
+        
+        if latest_denom:
+            # Sum only amounts belonging to that latest key
+            denom_total = all_denoms.filter(key=latest_denom.key).aggregate(
+                total=Coalesce(Sum('amount'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2))
+            )['total']
+        else:
+            denom_total = Decimal('0.00')
+        
         shop_summaries.append({
             'shop': shop,
             'opening_balance': data['opening_balance'],
             'closing_balance': data['closing_balance'],
             'debit_total': data['day_total_debit'],
             'credit_total': data['day_total_credit'],
+            'denomination_total': denom_total,
         })
     
     all_shops = Shop.objects.all().order_by('name')
@@ -1052,46 +1071,60 @@ def report(request):
         total_interest=Coalesce(Sum('interest'), Value(0), output_field=DecimalField(max_digits=12, decimal_places=2))
     )
     
-    # Fetch denominations for the current user on the report date, grouped by time period
-    TIME_PERIOD_ORDER = {'MORNING': 1, 'AFTERNOON': 2, 'EVENING': 3, 'NIGHT': 4}
+    # Fetch denominations for the report date, grouped by key and ordered by denomination_group_order and denomination_order
     if is_admin(request.user) or is_super_admin(request.user):
-        denom_filter = {'created_at__date': report_date}
+        denom_filter = {'denomination_dt': report_date}
     else:
-        denom_filter = {'created_by': request.user, 'created_at__date': report_date}
+        denom_filter = {'created_by': request.user, 'denomination_dt': report_date}
     
     if shop_id:
         denom_filter['shop_id'] = shop_id
+    
+    # Query all denominations for the date and group them by key
     denomination_entries_qs = (
         Denomination.objects
         .filter(**denom_filter)
-        .values('time_period', 'denomination', 'count', 'amount', 'shop__name','created_by__first_name','created_by__last_name')
-        .order_by('time_period', 'denomination')
+        .select_related('shop', 'created_by')
+        .order_by('key', 'denomination_group_order', 'denomination_order')
     )
-    # Group denominations by time_period
-    denomination_by_period = {}
+    
+    # Group denominations by key, maintaining order of denomination_group_order and denomination_order
+    denomination_by_key = {}
     for entry in denomination_entries_qs:
-        period    = entry['time_period']
-        user_name = f"{entry.get('created_by__first_name') or ''} {entry.get('created_by__last_name') or ''}".strip()
-        shop_name = entry.get('shop__name') or ''
-
-        # Use (period, user, shop) as key to avoid mixing different users' same period
-        group_key = (period, user_name, shop_name)
-
-        if group_key not in denomination_by_period:
-            denomination_by_period[group_key] = {
-                'period':    period,
-                'rows':      [],
-                'total':     Decimal('0.00'),
-                'shop_name': shop_name,
-                'user':      user_name,
+        key = entry.key
+        
+        if key not in denomination_by_key:
+            denomination_by_key[key] = {
+                'key': key,
+                'time_period': entry.time_period,
+                'shop_name': entry.shop.name if entry.shop else '',
+                'user': f"{entry.created_by.first_name or ''} {entry.created_by.last_name or ''}".strip() if entry.created_by else '',
+                'groups': {},  # Dictionary to hold groups by denomination_group_order
+                'total': Decimal('0.00'),
             }
-        denomination_by_period[group_key]['rows'].append(entry)
-        denomination_by_period[group_key]['total'] += entry['amount']
-    # Sort periods by natural order
-    denomination_periods = sorted(
-        denomination_by_period.items(),
-        key=lambda x: TIME_PERIOD_ORDER.get(x[0], 99)
-    )
+        
+        # Group within key by denomination_group_order
+        group_order = entry.denomination_group_order
+        if group_order not in denomination_by_key[key]['groups']:
+            denomination_by_key[key]['groups'][group_order] = []
+        
+        # Add denomination entry to the group
+        denomination_by_key[key]['groups'][group_order].append({
+            'denomination': entry.denomination,
+            'count': entry.count,
+            'amount': entry.amount,
+            'denomination_order': entry.denomination_order,
+        })
+        denomination_by_key[key]['total'] += entry.amount
+    
+    # Convert to a sorted list structure for template rendering
+    # Sort by key, then groups by denomination_group_order
+    denomination_periods = []
+    for key, key_data in sorted(denomination_by_key.items()):
+        # Convert groups dict to sorted list of (group_order, rows) tuples
+        sorted_groups = sorted(key_data['groups'].items(), key=lambda x: x[0])
+        key_data['groups'] = sorted_groups
+        denomination_periods.append((key, key_data))
     
     configs={}
     for config in all_configs:
@@ -1461,25 +1494,27 @@ def denomination(request):
         if form.is_valid():
             # Get form data
             time_period = form.cleaned_data.get('time_period')
+            chosen_date = form.cleaned_data.get('date') or timezone.localdate()
+            chosen_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
+            denomination_dt = timezone.make_aware(
+                datetime.combine(chosen_date, chosen_time)
+            )
             
             # Generate key: DDMMYYYY-XX-Username
-            from datetime import datetime
             shop = form.cleaned_data.get('shop')
             print(shop)
-            current_date = datetime.now().strftime('%d%m%Y')
             time_period_code = {
                 'MORNING': '01',
                 'AFTERNOON': '02',
                 'EVENING': '03',
                 'NIGHT': '04'
             }.get(time_period, '00')
-            key = f"{shop.short_name}-{current_date}-{time_period_code}-{request.user.username}"
+            key = f"{shop.short_name}-{denomination_dt.strftime('%d%m%Y')}-{time_period_code}-{request.user.username}"
             
             # Check if key already exists
             if Denomination.objects.filter(key=key).exists():
-                messages.error(request, f'Denomination for {time_period.title()} on {datetime.now().strftime("%d-%m-%Y")} already exists!')
+                messages.error(request, f'Denomination for {time_period.title()} on {denomination_dt.strftime("%d-%m-%Y")} already exists!')
                 return render(request, 'entries/denomination.html', {'form': form})
-            
             
             note_2000 = form.cleaned_data.get('note_2000') or 0
             note_500 = form.cleaned_data.get('note_500') or 0
@@ -1501,27 +1536,28 @@ def denomination(request):
             try:
                 # Calculate amounts and create denomination records
                 denominations = [
-                    ('2000', note_2000, note_2000 * 2000),
-                    ('500', note_500, note_500 * 500),
-                    ('200', note_200, note_200 * 200),
-                    ('100', note_100, note_100 * 100),
-                    ('50', note_50, note_50 * 50),
-                    ('20', note_20, note_20 * 20),
-                    ('10', note_10, note_10 * 10),
-                    ('Coins', 1, coins),
-                    ('Damage', 1, damage),
-                    ('Inside', 1, inside),
-                    ('500 Bundle', bundle_500, bundle_500 * 500 * 100),
-                    ('200 Bundle', bundle_200, bundle_200 * 200 * 100),
-                    ('100 Bundle', bundle_100, bundle_100 * 100 * 100),
-                    ('50 Bundle', bundle_50, bundle_50 * 50 * 100),
-                    ('20 Bundle', bundle_20, bundle_20 * 20 * 100),
-                    ('10 Bundle', bundle_10, bundle_10 * 10 * 100),
+                    ('2000', note_2000, note_2000 * 2000,1),
+                    ('500', note_500, note_500 * 500,2),
+                    ('200', note_200, note_200 * 200,3),
+                    ('100', note_100, note_100 * 100,4),
+                    ('50', note_50, note_50 * 50,5),
+                    ('20', note_20, note_20 * 20,6),
+                    ('10', note_10, note_10 * 10,7),
+                    ('Coins', 1 if coins > 0 else 0, coins,8),
+                    ('Damage', 1 if damage > 0 else 0, damage,9),
+                    ('Inside', 1 if inside > 0 else 0, inside,10),
+                    ('500 Bundle', bundle_500, bundle_500 * 500 * 100,11),
+                    ('200 Bundle', bundle_200, bundle_200 * 200 * 100,12),
+                    ('100 Bundle', bundle_100, bundle_100 * 100 * 100,13),
+                    ('50 Bundle', bundle_50, bundle_50 * 50 * 100,14),
+                    ('20 Bundle', bundle_20, bundle_20 * 20 * 100,15),
+                    ('10 Bundle', bundle_10, bundle_10 * 10 * 100,16),
                 ]
                 
-                for denom_name, count, amount in denominations:
+                for denom_name, count, amount, order in denominations:
                     if count > 0 or amount > 0:
                         Denomination.objects.create(
+                            denomination_dt = denomination_dt,
                             denomination=denom_name,
                             count=count,
                             amount=Decimal(str(amount)),
@@ -1530,6 +1566,8 @@ def denomination(request):
                             shop=shop,
                             created_by=request.user,
                             updated_by=request.user,
+                            denomination_order=order,
+                            denomination_group_order=time_period_code,
                         )
                 
                 log_activity(request, 'CREATE', 'Denomination', key, f'Denomination created: {key}', shop=shop)
@@ -1576,9 +1614,10 @@ def denominations(request):
             'created_by__last_name',
             'created_by__username',
             'shop__name',
+            'denomination_dt'
         )
         .annotate(
-            date=Min('created_at'),
+            date=Min('denomination_dt'),
             total=Coalesce(
                 Sum('amount'),
                 Value(0),
@@ -1671,6 +1710,53 @@ def edit_denomination(request, key):
         form = DenominationForm(post_data)
         if form.is_valid():
             try:
+                # Get form data including new date/time
+                new_date = form.cleaned_data.get('date') or first_denom.denomination_dt
+                new_time = form.cleaned_data.get('time') or timezone.localtime(timezone.now()).time()
+                
+                # Handle both datetime and date objects
+                if hasattr(new_date, 'date'):
+                    new_date = new_date.date()
+                
+                new_denomination_dt = timezone.make_aware(
+                    datetime.combine(new_date, new_time)
+                )
+                
+                shop = form.cleaned_data.get('shop')
+                
+                # Generate new key based on potentially new date
+                time_period_code = {
+                    'MORNING': '01',
+                    'AFTERNOON': '02',
+                    'EVENING': '03',
+                    'NIGHT': '04'
+                }.get(time_period, '00')
+                new_key = f"{shop.short_name}-{new_denomination_dt.strftime('%d%m%Y')}-{time_period_code}-{request.user.username}"
+                
+                # Check if date has changed
+                if new_key != key:
+                    # Check if new date+timeperiod combination already exists
+                    if Denomination.objects.filter(key=new_key).exists():
+                        messages.error(request, f'Denomination for {time_period.title()} on {new_denomination_dt.strftime("%d-%m-%Y")} already exists!')
+                        return render(request, 'entries/denomination.html', {
+                            'form': form,
+                            'key': key,
+                            'time_period': time_period,
+                            'shop': first_denom.shop,
+                            'created_by': created_by,
+                            'created_at': created_at,
+                            'updated_at': denominations.order_by('-updated_at').first().updated_at,
+                            'denomination_dt': first_denom.denomination_dt,
+                            'is_edit_mode': True,
+                            'is_super_admin': request.user.is_superuser,
+                            'is_admin': is_admin(request.user),
+                        })
+                    
+                    # Date changed, delete old records and create new ones with new key
+                    old_denominations = Denomination.objects.filter(key=key)
+                    old_denominations.delete()
+                    key = new_key
+                
                 # Get form data
                 note_2000 = form.cleaned_data.get('note_2000') or 0
                 note_500 = form.cleaned_data.get('note_500') or 0
@@ -1681,10 +1767,6 @@ def edit_denomination(request, key):
                 note_10 = form.cleaned_data.get('note_10') or 0
                 coins = form.cleaned_data.get('coins') or Decimal('0.00')
                 damage = form.cleaned_data.get('damage') or Decimal('0.00')
-                
-                shop = form.cleaned_data.get('shop')
-
-                # Get inside value
                 inside = form.cleaned_data.get('inside') or Decimal('0.00')
                 bundle_500 = form.cleaned_data.get('bundle_500') or 0
                 bundle_200 = form.cleaned_data.get('bundle_200') or 0
@@ -1713,7 +1795,7 @@ def edit_denomination(request, key):
                     '10 Bundle': (bundle_10, bundle_10 * 10 * 100),
                 }
                 
-                # Update or create denominations
+                # Update or create denominations with new key and date
                 for denom_name, (count, amount) in denomination_updates.items():
                     Denomination.objects.update_or_create(
                         key=key,
@@ -1721,6 +1803,7 @@ def edit_denomination(request, key):
                         defaults={
                             'count': count,
                             'amount': Decimal(str(amount)),
+                            'denomination_dt': new_denomination_dt,
                             'time_period': time_period,
                             'shop': shop,
                             'updated_by': request.user,
@@ -1777,6 +1860,12 @@ def edit_denomination(request, key):
                 initial_data['bundle_10'] = denom.count
         
         initial_data['shop'] = first_denom.shop
+        # Handle both datetime and date objects
+        if hasattr(first_denom.denomination_dt, 'date'):
+            initial_data['date'] = first_denom.denomination_dt.date()
+            initial_data['time'] = first_denom.denomination_dt.time()
+        else:
+            initial_data['date'] = first_denom.denomination_dt
         form = DenominationForm(initial=initial_data)
     
     # Calculate total
@@ -1795,6 +1884,7 @@ def edit_denomination(request, key):
         'created_at': created_at,
         'updated_at': updated_at,
         'total': total,
+        'denomination_dt': first_denom.denomination_dt,
         'is_edit_mode': True,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
@@ -1861,6 +1951,12 @@ def view_denomination(request, key):
             initial_data['bundle_10'] = denom.count
     
     initial_data['shop'] = first_denom.shop
+    # Handle both datetime and date objects
+    if hasattr(first_denom.denomination_dt, 'date'):
+        initial_data['date'] = first_denom.denomination_dt.date()
+        initial_data['time'] = first_denom.denomination_dt.time()
+    else:
+        initial_data['date'] = first_denom.denomination_dt
     form = DenominationForm(initial=initial_data)
     
     # Calculate total
@@ -1879,6 +1975,7 @@ def view_denomination(request, key):
         'created_by': created_by,
         'created_at': created_at,
         'updated_at': updated_at,
+        'denomination_dt': first_denom.denomination_dt,
         'is_view_mode': True,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin,

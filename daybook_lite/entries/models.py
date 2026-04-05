@@ -80,6 +80,7 @@ class Transactions(models.Model):
 
 class Denomination(models.Model):
     id = models.CharField(max_length=30, primary_key=True, editable=False)
+    denomination_dt = models.DateField(default=timezone.now)
     TIME_PERIOD_CHOICES = [
         ('MORNING', 'Morning'),
         ('AFTERNOON', 'Afternoon'),
@@ -113,6 +114,8 @@ class Denomination(models.Model):
         blank=True,
         related_name='updated_denominations',
     )
+    denomination_order = models.IntegerField(default=0)
+    denomination_group_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

@@ -245,6 +245,17 @@ class TransferForm(forms.Form):
         return cleaned_data
 
 class DenominationForm(forms.Form):
+    date = forms.DateField(
+        required=True,
+        initial=datetime.date.today,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'id': 'denomination_dt'}),
+        label='Denomination Date',
+    )
+    time = forms.TimeField(
+        required=False,
+        widget=forms.TimeInput(format='%H:%M:%S', attrs={'class': 'form-control', 'type': 'time', 'id': 'denomination_time','step': '1'}),
+        label='Time',
+    )
     shop = forms.ModelChoiceField(
         queryset=Shop.objects.all().order_by('name'),
         required=True,

@@ -213,7 +213,7 @@
             <option value="lesser" {% if amount_operator == 'lesser' %}selected{% endif %}>&lt;</option>
           </select>
         </div>
-        <div class="col-md-1">
+        <div class="col-md-2">
           <label for="amount_value" class="form-label">&nbsp;</label>
           <input type="number" class="form-control" id="amount_value" name="amount_value" value="{{ amount_value }}" placeholder="Amount" step="0.01">
         </div>
@@ -253,6 +253,28 @@
         </div>
       </div>
 
+      <!-- Financial Summary Card -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Total Debits</h6>
+            <p class="h5 text-danger mb-0 text-end">₹ {{ debit_total|default:"0.00"|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Total Credits</h6>
+            <p class="h5 text-success mb-0 text-end">₹ {{ credit_total|default:"0.00"|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Net Balance</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ net_balance|default:"0.00"|indian_format }}</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Transactions Table -->
       <div class="table-responsive">
         <!-- Screen version with pagination -->
@@ -262,7 +284,7 @@
               <th scope="col">Date</th>
               <th scope="col">Time</th>
               <th scope="col">Shop</th>
-              <th scope="col">Name</th>
+              <th scope="col">Account Name</th>
               <th scope="col">Remarks</th>
               <th scope="col" class="text-end">DEBIT</th>
               <th scope="col" class="text-end">CREDIT</th>

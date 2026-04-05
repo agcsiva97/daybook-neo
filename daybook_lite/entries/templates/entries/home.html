@@ -34,13 +34,13 @@
               {% endif %}
             </div>
             <div class="d-flex justify-content-between mt-2">
-              <div class="ledger-card-balance-title">
+              <div class="ledger-card-balance-title text-start">
                 <small class="text-muted">Opening Balance:</small>
-                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.opening_balance }}</div>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.opening_balance|indian_format }}</div>
               </div>
               <div class="ledger-card-balance-title text-end">
                 <small class="text-muted">Closing Balance:</small>
-                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.closing_balance }}</div>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.closing_balance|indian_format }}</div>
               </div>
             </div>
           </div>
@@ -73,11 +73,11 @@
                 <td>{{ transaction.name|default:"-" }}</td>
                 <td>{{ transaction.remarks|default:"-" }}</td>
               {% if transaction.tr_type == 'DEBIT' %}
-                <td class="text-end">{{transaction.amount}}</td>
+                <td class="text-end">{{transaction.amount|indian_format }}</td>
                 <td class="text-end"></td>
               {% else %}
                 <td class="text-end"></td>
-                <td class="text-end">{{transaction.amount}}</td>
+                <td class="text-end">{{transaction.amount|indian_format }}</td>
             {% endif %}
                 <td>{{ transaction.created_at|time:"H:i:s" }}</td>
                 <td>{{ transaction.updated_at|time:"H:i:s" }}</td>
