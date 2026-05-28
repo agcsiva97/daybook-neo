@@ -98,68 +98,19 @@
     <div class="card-header">
       <h4 class="mb-0"><i class="fa-solid fa-list"></i> All Transactions</h4>
     </div>
-          <!-- Filter Information for Print -->
-      <div class="print-filters" style="display: none;">
-        <h6>Applied Filters:</h6>
-        {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query %}
-          <div style="margin: 0; padding-left: 20px;">
-            {% if from_date %}
-            <strong><i class="fa-solid fa-calendar"></i> From Date:</strong> {{ from_date }} |
-            {% endif %}
-            {% if to_date %}
-            <strong><i class="fa-solid fa-calendar"></i> To Date:</strong> {{ to_date }} |
-            {% endif %}
-            {% if shop_filter %}
-            <strong><i class="fa-solid fa-store"></i> Shop:</strong> 
-              {% for shop in all_shops %}
-                {% if shop.id|stringformat:"s" == shop_filter %}
-                  {{ shop.name }} |
-                {% endif %}
-              {% endfor %}
-            {% endif %}
-            {% if type_filter %}
-            <strong><i class="fa-solid fa-list"></i> Type:</strong> {{ type_filter }} |
-            {% endif %}
-            {% if account_filter %}
-            <strong><i class="fa-solid fa-user"></i> Account:</strong>
-              {% for account in all_accounts %}
-                {% if account.id|stringformat:"s" == account_filter %}
-                  {{ account.e_name }} |
-                {% endif %}
-              {% endfor %}
-            {% endif %}
-            {% if account_type_filter %}
-            <strong><i class="fa-solid fa-id-card"></i> Account Type:</strong>
-              {% for acc_type in all_account_types %}
-                {% if acc_type.id|stringformat:"s" == account_type_filter %}
-                  {{ acc_type.e_name }} |
-                {% endif %}
-              {% endfor %}
-            {% endif %}
-            {% if amount_value %}
-            <strong><i class="fa-solid fa-rupee-sign"></i> Amount:</strong> {{ amount_operator }} {{ amount_value }} |
-            {% endif %}
-            {% if search_query %}
-            <strong><i class="fa-solid fa-comment"></i> Remarks:</strong> {{ search_query }} |
-            {% endif %}
-          </div>
-        {% else %}
-          <p style="margin: 0;">No filters applied - showing all transactions</p>
-        {% endif %}
-      </div>
     <div class="card-body">
       <!-- Filters -->
       <form method="get" class="row g-3 mb-4">
         <div class="col-md-2">
-          <label for="from_date" class="form-label"><i class="fa-solid fa-calendar"></i> From Date</label>
+          <label for="from_date" class="form-label">From Date</label>
           <input type="date" class="form-control" id="from_date" name="from_date" value="{{ from_date }}">
         </div>
         <div class="col-md-2">
-          <label for="to_date" class="form-label"><i class="fa-solid fa-calendar"></i> To Date</label>
+          <label for="to_date" class="form-label">To Date</label>
           <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
         </div>
         <div class="col-md-2">
-          <label for="shop" class="form-label"><i class="fa-solid fa-store"></i> Shop</label>
+          <label for="shop" class="form-label">Shop</label>
           <select class="form-select" id="shop" name="shop">
             <option value="">All Shops</option>
             {% for shop in all_shops %}
@@ -170,7 +121,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="type" class="form-label"><i class="fa-solid fa-list"></i> Transaction Type</label>
+          <label for="type" class="form-label">Transaction Type</label>
           <select class="form-select" id="type" name="type">
             <option value="">All Types</option>
             <option value="DEBIT" {% if type_filter == 'DEBIT' %}selected{% endif %}>DEBIT</option>
@@ -178,7 +129,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="account" class="form-label"><i class="fa-solid fa-user"></i> Account</label>
+          <label for="account" class="form-label">Account</label>
           <select class="form-select" id="account" name="account">
             <option value="">All Accounts</option>
             {% for account in all_accounts %}
@@ -189,7 +140,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="account_type" class="form-label"><i class="fa-solid fa-id-card"></i> Account Type</label>
+          <label for="account_type" class="form-label">Account Type</label>
           <select class="form-select" id="account_type" name="account_type">
             <option value="">All Types</option>
             {% for acc_type in all_account_types %}
@@ -200,11 +151,11 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="search" class="form-label"><i class="fa-solid fa-comment"></i> Search Remarks</label>
+          <label for="search" class="form-label">Search Remarks</label>
           <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search remarks...">
         </div>
         <div class="col-md-1">
-          <label for="amount_operator" class="form-label"><i class="fa-solid fa-indian-rupee-sign"></i> Amount</label>
+          <label for="amount_operator" class="form-label">Amount</label>
           <select class="form-select" id="amount_operator" name="amount_operator">
             <option value="equals" {% if amount_operator == 'equals' %}selected{% endif %}>=</option>
             <option value="greater" {% if amount_operator == 'greater' %} selected{% endif %}>&gt;</option>
@@ -216,7 +167,7 @@
           <input type="number" class="form-control" id="amount_value" name="amount_value" value="{{ amount_value }}" placeholder="Amount" step="0.01">
         </div>
         <div class="col-md-2">
-          <label for="sort" class="form-label"><i class="fa-solid fa-sort"></i> Sort By</label>
+          <label for="sort" class="form-label">Sort By</label>
           <select class="form-select" id="sort" name="sort">
             <option value="date_desc" {% if sort == 'date_desc' or not sort %}selected{% endif %}>Date (Newest First)</option>
             <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Oldest First)</option>

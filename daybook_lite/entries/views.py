@@ -389,6 +389,7 @@ def transactions(request):
             'is_admin_user': is_admin(request.user) or request.user.is_superuser,
             'filter_query': filter_query,
             'sort': sort_option,
+            'shop_filter': shop_filter,
         })
     
     configs={}

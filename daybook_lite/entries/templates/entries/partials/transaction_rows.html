@@ -1,7 +1,7 @@
 {% for transaction in page_obj %}
 <tr>
     <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
-    {% if shop is None %} <td>{{ transaction.shop.name }}</td> {% endif %}
+    {% if not shop_filter %}<td>{{ transaction.shop.name }}</td>{% endif %}
     <td>{{ transaction.acc.t_name|default:"-" }}</td>
     <td>{{ transaction.remarks|default:"-" }}</td>
     {% if transaction.tr_type == 'DEBIT' %}
