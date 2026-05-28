@@ -41,14 +41,8 @@ class TransactionForm(forms.ModelForm):
         label='Transaction Type',
     )
 
-    name = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter name'}),
-        label='Name',
-    )
-
     remarks = forms.CharField(
-        required=False,
+        required=True,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter remarks'}),
         label='Remarks',
     )
@@ -68,27 +62,13 @@ class TransactionForm(forms.ModelForm):
 
     class Meta:
         model = Transactions
-        fields = ['amount', 'name', 'shop', 'acc', 'tr_type', 'remarks']
+        fields = ['amount', 'shop', 'acc', 'tr_type', 'remarks']
         labels = {
             'amount': 'Amount',
         }
         widgets = {
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Enter amount'}),
         }
-    
-    def clean_name(self):
-        name = self.cleaned_data.get('name')
-        # Make name required for new transactions
-        if not self.instance.pk and not name:
-            raise forms.ValidationError('This field is required.')
-        return name
-    
-    def clean_remarks(self):
-        remarks = self.cleaned_data.get('remarks')
-        # Make remarks required for new transactions
-        if not self.instance.pk and not remarks:
-            raise forms.ValidationError('This field is required.')
-        return remarks
 
 
 class TransactionEditForm(forms.ModelForm):
@@ -159,12 +139,6 @@ class TransactionEditForm(forms.ModelForm):
         label='Transaction Type',
     )
 
-    name = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter name'}),
-        label='Name',
-    )
-
     remarks = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter remarks'}),
@@ -185,7 +159,7 @@ class TransactionEditForm(forms.ModelForm):
 
     class Meta:
         model = Transactions
-        fields = ['amount', 'name', 'shop', 'acc', 'tr_type', 'remarks']
+        fields = ['amount', 'shop', 'acc', 'tr_type', 'remarks']
         labels = {
             'amount': 'Amount',
         }

@@ -50,14 +50,6 @@
             <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
           {% endif %}
         </div>
-
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.name.id_for_label }}"><u>N</u>ame</label>
-          {{ form.name }}
-          {% if form.name.errors %}
-            <div class="text-danger small">{{ form.name.errors|striptags }}</div>
-          {% endif %}
-        </div>
         <div class="mb-3">
           <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
           {{ form.remarks }}
@@ -128,18 +120,22 @@
             {% endif %}
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.principal.id_for_label }}"><u>P</u>rincipal</label>
-            {{ loan_form.principal }}
-            {% if loan_form.principal.errors %}
-              <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.interest.id_for_label }}"><u>I</u>ntrest</label>
-            {{ loan_form.interest }}
-            {% if loan_form.interest.errors %}
-              <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
-            {% endif %}
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.principal.id_for_label }}"><u>P</u>rincipal</label>
+                {{ loan_form.principal }}
+                {% if loan_form.principal.errors %}
+                  <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.interest.id_for_label }}"><u>I</u>ntrest</label>
+                {{ loan_form.interest }}
+                {% if loan_form.interest.errors %}
+                  <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
+                {% endif %}
+              </div>
+            </div>
           </div>
         </div>
         {% if loan_form.non_field_errors %}
@@ -163,7 +159,6 @@ const shortcuts = {
     't': 'id_date',
     's': 'id_shop',
     'a': 'id_amount',
-    'n': 'id_name',
     'm': 'id_remarks',
 
     'l': 'loan_date',
@@ -282,7 +277,6 @@ function submitTransaction(transactionType) {
     const amount = document.getElementById('id_amount').value.trim();
     const shop = document.getElementById('id_shop').value;
     const account = document.getElementById('id_account').value;
-    const name = document.getElementById('id_name').value.trim();
     const remarks = document.getElementById('id_remarks').value.trim();
     const date = document.getElementById('id_date').value;
     const time = document.getElementById('id_time').value;
@@ -320,7 +314,6 @@ function submitTransaction(transactionType) {
         <input type="hidden" name="shop" value="${shop}">
         <input type="hidden" name="acc" value="${account}">
         <input type="hidden" name="tr_type" value="${transactionType}">
-        <input type="hidden" name="name" value="${name}">
         <input type="hidden" name="remarks" value="${remarks}">
         <input type="hidden" name="date" value="${date}">
         <input type="hidden" name="time" value="${time}">

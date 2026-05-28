@@ -190,7 +190,6 @@
           <thead>
             <tr>
               <th scope="col">Date</th>
-              <th scope="col">Time</th>
               <th scope="col">Pawn No</th>
               <th scope="col">Ledger</th>
               <th scope="col">Type</th>
@@ -204,8 +203,7 @@
           <tbody>
             {% for loan in page_obj %}
             <tr>
-              <td>{{ loan.transaction_dt|date:"Y-m-d" }}</td>
-              <td>{{ loan.transaction_dt|time:"H:i:s" }}</td>
+              <td>{{ loan.transaction_dt|date:"d-m-Y" }}</td>
               <td>{{ loan.pawn_no }}</td>
               <td>{{ loan.ledger.name }}</td>
               <td>

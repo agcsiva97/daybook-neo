@@ -33,7 +33,7 @@ def indian_format(value):
             result = ','.join(pairs) + ',' + last3
 
         formatted = f'{result}{decimal_str}'
-        return f'-{formatted}' if is_negative else formatted
+        return f'{formatted}' if is_negative else formatted
 
     except (ValueError, TypeError):
         return value

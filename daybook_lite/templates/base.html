@@ -19,9 +19,9 @@
     <!-- For desktop shortcut / PWA on mobile -->
     <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,200&icon_names=apps" />
     <style>
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
   font-variation-settings:
   'FILL' 0,
   'wght' 400,
@@ -156,7 +156,11 @@
 
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'js/htmx.min.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <script>
+      if (typeof htmx === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"><\/script>');
+      }
+    </script>
     <script>
       // Auto-show toasts on page load
       document.addEventListener('DOMContentLoaded', function() {

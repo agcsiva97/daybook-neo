@@ -1,0 +1,60 @@
+{% extends "base-report.html" %}
+{% load static %}
+{% load indian_format %}
+
+{% block title %}Networth Summary{% endblock %}
+
+{% block report_title %}Networth Summary{% endblock %}
+
+{% block report_subtitle %}
+  <p class="report-meta">Closing balance per shop per financial year</p>
+{% endblock %}
+
+{% block report_content %}
+  <div class="table-responsive">
+    <table class="table table-sm table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>Year</th>
+          {% for shop in shops %}
+          <th class="text-end">{{ shop.short_name }}</th>
+          {% endfor %}
+          <th class="text-end fw-bold">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="fw-bold">{{ row.fy_label }}</td>
+          {% for closing in row.closings %}
+          <td class="text-end">
+            {% if closing > 0 %}
+                <span class="text-end text-success">
+                  &#8377; {{ closing|indian_format }}CR </span>
+            {% elif closing < 0 %}
+                <span class="text-end text-danger">
+                    &#8377; {{ closing|indian_format }}DB </span>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          {% if row.total >= 0 %}
+          <td class="text-end fw-bold" style="color:#1a7a42;">
+            &#8377; {{ row.total|indian_format }}CR
+          </td>
+          {% else %}
+          <td class="text-end fw-bold" style="color:#d9534f;">
+            &#8377; {{ row.total|indian_format }}DB
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ shops|length|add:2 }}" class="text-center text-muted py-4">No data available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

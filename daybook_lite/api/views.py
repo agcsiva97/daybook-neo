@@ -4,6 +4,8 @@ import logging
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 
+from manager.helper import manager_helper, date_helper
+
 
 def _is_admin(user):
     return user.is_superuser or user.groups.filter(name='Admin').exists()
@@ -20,9 +22,9 @@ from rest_framework.response import Response
 from entries.models import Ledger, Loan, Transactions, Shop
 from django.db.models import Sum
 
-from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer, AccountSerializer
+from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer, AccountSerializer, TypeSerializer
 from django.db import transaction as db_transaction
-from manager.models import Configuration, Accounts
+from manager.models import Configuration, Accounts, Type
 from entries.helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
 
@@ -171,6 +173,19 @@ def shop_account_list(request, pk):
         serializer = AccountSerializer(accounts, many=True)
         return Response(serializer.data)
 
+@api_view(['GET'])
+@login_required
+def shop_type_list(request, pk):
+    """GET - List all account types (Type) for a shop."""
+    try:
+        shop = Shop.objects.get(pk=pk)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    types = Type.objects.filter(shop_id=pk).order_by('e_name')
+    serializer = TypeSerializer(types, many=True)
+    return Response(serializer.data)
+
 @login_required
 @user_passes_test(_is_admin, login_url='/accounts/login/')
 def transaction_pie_data(request):
@@ -230,13 +245,10 @@ def _parse_date_range(request):
 
 
 def _parse_shop_id(request):
-    """Helper: parse optional shop query param. Returns int or None."""
-    shop_str = request.GET.get('shop', '')
+    """Helper: parse optional shop query param. Returns str (shop ID) or None."""
+    shop_str = request.GET.get('shop', '').strip()
     if shop_str:
-        try:
-            return int(shop_str)
-        except (ValueError, TypeError):
-            pass
+        return shop_str
     return None
 
 
@@ -424,7 +436,6 @@ def get_transactions(request):
         shop_filter = request.GET.get('shop')
         type_filter = request.GET.get('type')
         search_query = request.GET.get('search', '')
-        name_search_query = request.GET.get('name_search', '')   
 
         # Apply filters
         if from_date:
@@ -446,9 +457,6 @@ def get_transactions(request):
         
         if type_filter and type_filter in ['DEBIT', 'CREDIT']:
             transactions_list = transactions_list.filter(tr_type=type_filter)
-        
-        if name_search_query:
-            transactions_list = transactions_list.filter(name__icontains=name_search_query)
         
         if search_query:
             transactions_list = transactions_list.filter(remarks__icontains=search_query)
@@ -468,7 +476,6 @@ def get_shop_transactions(request,pk=None):
         shop_filter = request.GET.get('shop')
         type_filter = request.GET.get('type')
         search_query = request.GET.get('search', '')
-        name_search_query = request.GET.get('name_search', '')   
 
         # Apply filters
         if from_date:
@@ -491,11 +498,57 @@ def get_shop_transactions(request,pk=None):
         if type_filter and type_filter in ['DEBIT', 'CREDIT']:
             transactions_list = transactions_list.filter(tr_type=type_filter)
         
-        if name_search_query:
-            transactions_list = transactions_list.filter(name__icontains=name_search_query)
-        
         if search_query:
             transactions_list = transactions_list.filter(remarks__icontains=search_query)
 
         serializer = TransactionSerializer(transactions_list, many=True)
         return Response(serializer.data)
+    
+def networth_chart_data(request):
+    """Returns net worth per financial year as a line chart dataset."""
+    groups = manager_helper.get_groups()
+    fys = date_helper.get_available_fy_years()
+
+    labels = []
+    networth_values = []
+
+    for fy in fys:
+        # Build a map of group_id -> closing for this FY
+        group_closing = {}
+        for group in groups:
+            summary = transaction_helper.get_group_summary(group, fy)
+            group_closing[group[0]] = float(summary['closing'])
+
+        # Same formula as balance_sheet view:
+        # net_worth_closing = PL(2) + Purchases(3) + Liabilities(4)
+        net_worth = (
+            group_closing.get(3, 0.0) +
+            group_closing.get(4, 0.0) +
+            group_closing.get(5, 0.0)
+        )
+        fy_int = int(fy)
+        labels.append(f'FY {fy_int}-{str(fy_int + 1)[2:]}')
+        networth_values.append(abs(net_worth))
+
+    return JsonResponse({
+        'labels': labels,
+        'series': [{'name': 'Net Worth', 'data': networth_values}],
+    })
+
+def get_gold_price(request):
+    """Returns current gold price from manager_helper as JSON."""
+    try:
+        data = manager_helper.get_gold_price()
+        return JsonResponse({'gold_price': data['price'], 'updated_at': data['updated_at']})
+    except Exception as e:
+        logger.error(f"Error fetching gold price: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'Unable to fetch gold price'}, status=500)
+    
+def update_gold_price(request):
+    """Fetches live gold price and updates the database."""
+    try:
+        manager_helper.update_gold_price()
+        return JsonResponse({'message': 'Gold price updated successfully'})
+    except Exception as e:
+        logger.error(f"Error updating gold price: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'Unable to update gold price'}, status=500)

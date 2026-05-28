@@ -41,7 +41,7 @@
             </tr>
             <tr>
               <td class="fw-bold">Account Group</td>
-              <td>{{ account.acc_type.group.t_name }}</td>
+              <td>{{ account_group_name }}</td>
             </tr>
           </table>
         </div>
@@ -86,22 +86,34 @@
     <!-- Financial Summary Card -->
     <div class="container-fluid px-3 py-3 border-bottom">
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Opening Balance (FY)</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ opening_balance|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
           <div class="p-3 bg-light rounded">
             <h6 class="text-muted mb-2 text-end">Total Debits (FY)</h6>
             <p class="h5 text-danger mb-0 text-end">₹ {{ total_debit|indian_format }}</p>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md">
           <div class="p-3 bg-light rounded">
             <h6 class="text-muted mb-2 text-end">Total Credits (FY)</h6>
             <p class="h5 text-success mb-0 text-end">₹ {{ total_credit|indian_format }}</p>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md">
           <div class="p-3 bg-light rounded">
             <h6 class="text-muted mb-2 text-end">Net Balance (FY)</h6>
-            <p class="h5 text-end {% if total_credit >= total_debit %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ total_credit|add:total_debit|indian_format }}</p>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ net_balance|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Closing Balance (FY)</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ closing_balance|indian_format }}</p>
           </div>
         </div>
       </div>
@@ -116,7 +128,6 @@
                   <input type="checkbox" id="selectAll" class="form-check-input" title="Select all">
                 </th>
                 <th scope="col">Date</th>
-                <th scope="col">Name</th>
                 <th scope="col">Remarks</th>
                 <th scope="col" class="text-end">DEBIT</th>
                 <th scope="col" class="text-end">CREDIT</th>
@@ -154,7 +165,7 @@
           <select class="form-select" id="accountSelect">
             <option value="">-- Select an Account --</option>
             {% for shop_account in shop_accounts %}
-            <option value="{{ shop_account.id }}" data-name="{{ shop_account.t_name }}" data-ename="{{ shop_account.e_name }}" data-group="{{ shop_account.acc_type.group.t_name }}">{{ shop_account.t_name }} ({{ shop_account.e_name }})</option>
+            <option value="{{ shop_account.id }}" data-name="{{ shop_account.t_name }}" data-ename="{{ shop_account.e_name }}" data-group="{{ shop_account.group_name }}">{{ shop_account.t_name }} ({{ shop_account.e_name }})</option>
             {% endfor %}
           </select>
         </div>

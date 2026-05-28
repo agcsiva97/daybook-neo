@@ -5,7 +5,7 @@
   <div class='row'>
     <div class="col">
       <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fa-solid fa-shop"></i> Shops</h5>
+        <h5 class="mb-0"><i class="fa-solid fa-tag"></i> Prices</h5>
         {% if is_super_admin %}
         <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
           <i class="fa-solid fa-plus"></i> Add Shop
@@ -13,6 +13,44 @@
         {% endif %}
       </div>
       <div class="ledger-cards">
+          <div class="ledger-card" style="cursor: pointer; position: relative;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="ledger-card-ledgername hanuman-600">
+                Gold Price
+              </div>
+              <div onclick="window.location.href='{% url 'entries:update_gold_price' %}'">
+                <button class="btn btn-sm btn-link text-dark p-0" type="button" aria-expanded="false">
+                  <i class="fa-solid fa-arrow-rotate-right"></i>
+                </button>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <div class="ledger-card-balance-title text-start">
+                <small class="text-muted">Current Price:</small>
+                <div class="ledger-card-balance">{{ gold_price.price|indian_format }}</div>
+                <small class="text-muted">Updated: {{ gold_price.updated_at|date:"d/m/Y" }}</small>
+              </div>
+            </div>
+          </div>
+          <div class="ledger-card" style="cursor: pointer; position: relative;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="ledger-card-ledgername hanuman-600">
+                Silver Price
+              </div>
+              <div onclick="window.location.href='{% url 'entries:update_silver_price' %}'">
+                <button class="btn btn-sm btn-link text-dark p-0" type="button" aria-expanded="false">
+                  <i class="fa-solid fa-arrow-rotate-right"></i>
+                </button>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <div class="ledger-card-balance-title text-start">
+                <small class="text-muted">Current Price:</small>
+                <div class="ledger-card-balance">{{ silver_price.price|indian_format }}</div>
+                <small class="text-muted">Updated: {{ silver_price.updated_at|date:"d/m/Y" }}</small>
+              </div>
+            </div>
+          </div>
           {% for item in shop_balances %}
           <div class="ledger-card" {% if is_admin or is_super_admin %} onclick="window.location.href='{% url 'manager:shop_info' item.shop.pk %}'" {% endif %} style="cursor: pointer; position: relative;">
             <div class="d-flex justify-content-between align-items-start">
@@ -58,7 +96,7 @@
           <thead>
             <tr>
               <th scope="col">Shop</th>
-              <th scope="col">Name</th>
+              <th scope="col">Account Name</th>
               <th scope="col">Remarks</th>
               <th scope="col" class="text-end">DEBIT</th>
               <th scope="col" class="text-end">CREDIT</th>
@@ -70,7 +108,7 @@
             {% for transaction in transactions %}
             <tr>
                 <td>{{transaction.shop.short_name}}</td>
-                <td>{{ transaction.name|default:"-" }}</td>
+                <td>{{ transaction.acc.t_name|default:"-" }}</td>
                 <td>{{ transaction.remarks|default:"-" }}</td>
               {% if transaction.tr_type == 'DEBIT' %}
                 <td class="text-end">{{transaction.amount|indian_format }}</td>

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Configuration, ActivityLog
+from .models import BT_Ledger_Accounts, Configuration, ActivityLog, Type, Accounts
 
 # Register your models here.
 @admin.register(Configuration)
@@ -28,3 +28,21 @@ class ActivityLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser   # ← only superuser can delete
+    
+@admin.register(BT_Ledger_Accounts)
+class BT_Ledger_AccountsAdmin(admin.ModelAdmin):
+    list_display = ['account', 'rel_type', 'ledger']
+    search_fields = ['account__e_name', 'account__t_name', 'rel_type', 'ledger__name']
+    ordering = ['account__e_name']
+
+@admin.register(Type)
+class TypeAdmin(admin.ModelAdmin):
+    list_display = ['e_name', 't_name','shop__name']
+    search_fields = ['e_name', 't_name']
+    ordering = ['e_name']
+
+@admin.register(Accounts)
+class AccountsAdmin(admin.ModelAdmin):
+    list_display = ['e_name', 't_name', 'acc_type','shop__name']
+    search_fields = ['e_name', 't_name', 'acc_type__e_name', 'acc_type__t_name']
+    ordering = ['e_name']

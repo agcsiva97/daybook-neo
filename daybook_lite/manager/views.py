@@ -3,6 +3,7 @@ import json
 import logging
 from pyexpat.errors import messages
 from decimal import Decimal, ROUND_HALF_UP
+from urllib import response
 
 
 from django.shortcuts import render
@@ -12,15 +13,15 @@ from django.db import transaction as db_transaction
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.db.models import Q, Sum 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 
-from .helper import manager_helper, date_helper
+from .helper import manager_helper, date_helper, report_helper
 from .forms import LedgerForm, ShopForm, ShopEditForm, AccountsForm, AccountsEditForm
 from django.core.paginator import Paginator
 from django.contrib.auth import  get_user_model
 
 from entries.views import admin_required, super_admin_required, is_admin
-from .models import Configuration, Shop, ActivityLog, Ledger, Accounts, Type, Group, ExportHistory, ImportHistory, ExportDetails, ImportDetails
+from .models import Configuration, Shop, ActivityLog, Ledger, Accounts, Type, ExportHistory, ImportHistory, ExportDetails, ImportDetails, BT_Ledger_Accounts
 from entries.models import Transactions, Loan
 from entries.helpers import transactions as transaction_helper
 
@@ -240,19 +241,14 @@ def import_shop(request):
                 type_count = 0
                 for type_data in import_data.get('types', []):
                     type_id = type_data.get('id', '').strip()
-                    group_id = type_data.get('group_id')
-                    
-                    try:
-                        group = Group.objects.get(id=group_id) if group_id else None
-                    except Group.DoesNotExist:
-                        group = None
+                    group_order = type_data.get('group_order') or type_data.get('group_id', 0)
                     
                     if not type_id:
                         type_obj = Type.objects.create(
                             e_name=type_data.get('e_name', ''),
                             t_name=type_data.get('t_name', ''),
                             shop=shop,
-                            group=group
+                            group_order=group_order
                         )
                     else:
                         type_obj, created = Type.objects.update_or_create(
@@ -261,7 +257,7 @@ def import_shop(request):
                                 'e_name': type_data.get('e_name', ''),
                                 't_name': type_data.get('t_name', ''),
                                 'shop': shop,
-                                'group': group
+                                'group_order': group_order
                             }
                         )
                     type_count += 1
@@ -300,6 +296,44 @@ def import_shop(request):
                         )
                     account_count += 1
                 
+                # Import Linked Accounts (BT_Ledger_Accounts)
+                linked_account_count = 0
+                for linked_acc_data in import_data.get('linked_accounts', []):
+                    try:
+                        ledger_id = linked_acc_data.get('ledger_id')
+                        account_id = linked_acc_data.get('account_id')
+                        rel_type = linked_acc_data.get('rel_type')
+                        
+                        try:
+                            ledger = Ledger.objects.get(id=ledger_id)
+                            account = Accounts.objects.get(id=account_id)
+                        except (Ledger.DoesNotExist, Accounts.DoesNotExist):
+                            logger.warning(f"Skipping linked account import: ledger {ledger_id} or account {account_id} not found")
+                            continue
+                        
+                        linked_acc_id = linked_acc_data.get('id', '').strip()
+                        
+                        if linked_acc_id and BT_Ledger_Accounts.objects.filter(id=linked_acc_id).exists():
+                            # Update existing
+                            BT_Ledger_Accounts.objects.filter(id=linked_acc_id).update(
+                                ledger=ledger,
+                                account=account,
+                                rel_type=rel_type,
+                                shop=shop,
+                            )
+                        else:
+                            # Create new
+                            BT_Ledger_Accounts.objects.create(
+                                ledger=ledger,
+                                account=account,
+                                rel_type=rel_type,
+                                shop=shop,
+                            )
+                        linked_account_count += 1
+                    except Exception as e:
+                        logger.warning(f"Error importing linked account: {str(e)}")
+                        continue
+                
                 # Update last import timestamp
                 shop.last_transaction_imported_at = timezone.now()
                 shop.save(update_fields=['last_transaction_imported_at'])
@@ -307,8 +341,8 @@ def import_shop(request):
                 # Create import history record
                 ImportHistory.objects.create(shop=shop, import_type='shop')
                 
-                messages.success(request, f'Shop imported successfully! Shop: {shop.short_name}, Ledgers: {ledger_count}, Types: {type_count}, Accounts: {account_count}')
-                logger.info(f"Shop import completed: {shop.id} - Ledgers: {ledger_count}, Types: {type_count}, Accounts: {account_count}")
+                messages.success(request, f'Shop imported successfully! Shop: {shop.short_name}, Ledgers: {ledger_count}, Types: {type_count}, Accounts: {account_count}, Linked Accounts: {linked_account_count}')
+                logger.info(f"Shop import completed: {shop.id} - Ledgers: {ledger_count}, Types: {type_count}, Accounts: {account_count}, Linked Accounts: {linked_account_count}")
                 return redirect('manager:shops_list')
                 
         except json.JSONDecodeError:
@@ -346,7 +380,7 @@ def add_shop(request):
                         manager_helper.create_ledger(shop.short_name, "", shop)
                         # logger.info(f"Shop created by {request.user.username}: {shop.id}")
                         messages.success(request, f'Shop "{shop.short_name}" created successfully!')
-                        manager_helper.sync_groups_and_types(request, shop)
+                        manager_helper.sync_types(request, shop)
                         return redirect('manager:home')
             except Exception as e:
                 logger.error(f"Error creating shop by {request.user.username}: {str(e)}", exc_info=True)
@@ -375,8 +409,10 @@ def shop_info(request, pk):
     accounts_list = Accounts.objects.filter(shop=shop)
     for account in accounts_list:
         account.balance = transaction_helper.get_account_balance(account)  # Add balance attribute to each account
-    
-    
+        account.group_name = manager_helper.get_group(account.acc_type.group_order)[2]
+        account.group_order = account.acc_type.group_order
+
+    accounts_list = sorted(accounts_list, key=lambda x: (x.group_order, x.priority, x.t_name))  # Sort by group order, then priority, then name
     return render(request, 'manager/shop_info.html', {
         'nav_title': 'Shops',
         'shop': shop,
@@ -429,7 +465,7 @@ def export_shop(request, pk):
                 'e_name': type_obj.e_name or '',
                 't_name': type_obj.t_name or '',
                 'shop_id': type_obj.shop_id,
-                'group_id': type_obj.group_id,
+                'group_order': type_obj.group_order,
             })
         
         # Get related accounts
@@ -445,12 +481,24 @@ def export_shop(request, pk):
                 'is_admin_only': account.is_admin_only,
             })
         
+        # Get related ledger accounts (linked accounts)
+        linked_accounts_data = []
+        for ledger_account in BT_Ledger_Accounts.objects.filter(shop=shop).select_related('ledger', 'account'):
+            linked_accounts_data.append({
+                'id': ledger_account.id,
+                'ledger_id': ledger_account.ledger_id,
+                'shop_id': ledger_account.shop_id,
+                'rel_type': ledger_account.rel_type,
+                'account_id': ledger_account.account_id,
+            })
+        
         # Build export data
         export_data = {
             'shop': shop_data,
             'ledgers': ledgers_data,
             'types': types_data,
             'accounts': accounts_data,
+            'linked_accounts': linked_accounts_data,
             'export_date': timezone.now().isoformat(),
         }
         
@@ -461,7 +509,7 @@ def export_shop(request, pk):
         # ExportHistory.objects.create(shop=shop, export_type='shop')
         
         response = HttpResponse(
-            json.dumps(export_data, indent=2, default=str),
+            json.dumps(export_data, indent=2, default=str,ensure_ascii=False),
             content_type='application/json'
         )
         response['Content-Disposition'] = f'attachment; filename="shop_{shop.short_name}_export.json"'
@@ -503,7 +551,7 @@ def export_transactions(request, pk):
                         'e_name': type_obj.e_name or '',
                         't_name': type_obj.t_name or '',
                         'shop_id': type_obj.shop_id,
-                        'group_id': type_obj.group_id,
+                        'group_order': type_obj.group_order,
                     })
                 
                 # Get all accounts associated with shop
@@ -541,6 +589,18 @@ def export_transactions(request, pk):
                         'updated_by': trans.updated_by.username if trans.updated_by else '',
                     })
                 
+                # Get all linked accounts associated with shop
+                linked_accounts_qs = BT_Ledger_Accounts.objects.filter(shop=shop).select_related('ledger', 'account')
+                linked_accounts_data = []
+                for linked_acc in linked_accounts_qs:
+                    linked_accounts_data.append({
+                        'id': linked_acc.id,
+                        'ledger_id': linked_acc.ledger_id,
+                        'shop_id': linked_acc.shop_id,
+                        'rel_type': linked_acc.rel_type,
+                        'account_id': linked_acc.account_id,
+                    })
+                
                 export_data.update({
                     'types_count': len(types_data),
                     'types': types_data,
@@ -548,6 +608,8 @@ def export_transactions(request, pk):
                     'accounts': accounts_data,
                     'transactions_count': len(transactions_data),
                     'transactions': transactions_data,
+                    'linked_accounts_count': len(linked_accounts_data),
+                    'linked_accounts': linked_accounts_data,
                 })
                 
             elif export_mode == 'date_range':
@@ -585,11 +647,25 @@ def export_transactions(request, pk):
                         'updated_by': trans.updated_by.username if trans.updated_by else '',
                     })
                 
+                # Get all linked accounts for this shop (always export current state)
+                linked_accounts_qs = BT_Ledger_Accounts.objects.filter(shop=shop).select_related('ledger', 'account')
+                linked_accounts_data = []
+                for linked_acc in linked_accounts_qs:
+                    linked_accounts_data.append({
+                        'id': linked_acc.id,
+                        'ledger_id': linked_acc.ledger_id,
+                        'shop_id': linked_acc.shop_id,
+                        'rel_type': linked_acc.rel_type,
+                        'account_id': linked_acc.account_id,
+                    })
+                
                 export_data.update({
                     'date_from': from_date,
                     'date_to': to_date,
                     'transactions_count': len(transactions_data),
                     'transactions': transactions_data,
+                    'linked_accounts_count': len(linked_accounts_data),
+                    'linked_accounts': linked_accounts_data,
                 })
                 
             elif export_mode == 'after_last_export':
@@ -637,7 +713,7 @@ def export_transactions(request, pk):
                                         'e_name': type_obj.e_name or '',
                                         't_name': type_obj.t_name or '',
                                         'shop_id': type_obj.shop_id,
-                                        'group_id': type_obj.group_id,
+                                        'group_order': type_obj.group_order,
                                     })
                                 except Type.DoesNotExist:
                                     pass
@@ -649,7 +725,7 @@ def export_transactions(request, pk):
                                         'e_name': type_obj.e_name or '',
                                         't_name': type_obj.t_name or '',
                                         'shop_id': type_obj.shop_id,
-                                        'group_id': type_obj.group_id,
+                                        'group_id': type_obj.group_order,
                                     })
                                 except Type.DoesNotExist:
                                     pass
@@ -746,6 +822,18 @@ def export_transactions(request, pk):
                         logger.warning(f"Error processing activity log {log.id}: {str(e)}")
                         continue
                 
+                # Always export current state of all linked accounts for this shop
+                linked_accounts_qs = BT_Ledger_Accounts.objects.filter(shop=shop).select_related('ledger', 'account')
+                linked_accounts_data = []
+                for linked_acc in linked_accounts_qs:
+                    linked_accounts_data.append({
+                        'id': linked_acc.id,
+                        'ledger_id': linked_acc.ledger_id,
+                        'shop_id': linked_acc.shop_id,
+                        'rel_type': linked_acc.rel_type,
+                        'account_id': linked_acc.account_id,
+                    })
+                
                 export_data.update({
                     'last_export_time': last_export_time.isoformat() if last_export_time else None,
                     'types': {
@@ -763,6 +851,8 @@ def export_transactions(request, pk):
                         'updated': transactions_updated,
                         'deleted': transactions_deleted,
                     },
+                    'linked_accounts_count': len(linked_accounts_data),
+                    'linked_accounts': linked_accounts_data,
                 })
             
             elif export_mode == 'export_from':
@@ -808,7 +898,7 @@ def export_transactions(request, pk):
                                         'e_name': type_obj.e_name or '',
                                         't_name': type_obj.t_name or '',
                                         'shop_id': type_obj.shop_id,
-                                        'group_id': type_obj.group_id,
+                                        'group_id': type_obj.group_order,
                                     })
                                 except Type.DoesNotExist:
                                     pass
@@ -820,7 +910,7 @@ def export_transactions(request, pk):
                                         'e_name': type_obj.e_name or '',
                                         't_name': type_obj.t_name or '',
                                         'shop_id': type_obj.shop_id,
-                                        'group_id': type_obj.group_id,
+                                        'group_id': type_obj.group_order,
                                     })
                                 except Type.DoesNotExist:
                                     pass
@@ -917,6 +1007,18 @@ def export_transactions(request, pk):
                         logger.warning(f"Error processing activity log {log.id}: {str(e)}")
                         continue
                 
+                # Always export current state of all linked accounts for this shop
+                linked_accounts_qs = BT_Ledger_Accounts.objects.filter(shop=shop).select_related('ledger', 'account')
+                linked_accounts_data = []
+                for linked_acc in linked_accounts_qs:
+                    linked_accounts_data.append({
+                        'id': linked_acc.id,
+                        'ledger_id': linked_acc.ledger_id,
+                        'shop_id': linked_acc.shop_id,
+                        'rel_type': linked_acc.rel_type,
+                        'account_id': linked_acc.account_id,
+                    })
+                
                 export_data.update({
                     'export_from_date': export_from_date_str,
                     'types': {
@@ -934,6 +1036,8 @@ def export_transactions(request, pk):
                         'updated': transactions_updated,
                         'deleted': transactions_deleted,
                     },
+                    'linked_accounts_count': len(linked_accounts_data),
+                    'linked_accounts': linked_accounts_data,
                 })
             
             # Update last export timestamp (use the time captured at the start for consistency)
@@ -978,6 +1082,13 @@ def export_transactions(request, pk):
                             record_type='Transaction',
                             status='success'
                         )
+                    for linked_acc_data in export_data.get('linked_accounts', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=linked_acc_data['id'],
+                            record_type='BT_Ledger_Accounts',
+                            status='success'
+                        )
                 elif export_mode == 'date_range':
                     # Create details for transactions in date range
                     for trans_data in export_data.get('transactions', []):
@@ -985,6 +1096,13 @@ def export_transactions(request, pk):
                             export_history=export_history,
                             record_id=trans_data['id'],
                             record_type='Transaction',
+                            status='success'
+                        )
+                    for linked_acc_data in export_data.get('linked_accounts', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=linked_acc_data['id'],
+                            record_type='BT_Ledger_Accounts',
                             status='success'
                         )
                 elif export_mode == 'after_last_export':
@@ -1061,6 +1179,13 @@ def export_transactions(request, pk):
                             status='success',
                             message='Deleted'
                         )
+                    for linked_acc_data in export_data.get('linked_accounts', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=linked_acc_data['id'],
+                            record_type='BT_Ledger_Accounts',
+                            status='success'
+                        )
                 elif export_mode == 'export_from':
                     # Create details for all changed records (same pattern as after_last_export)
                     for type_data in export_data.get('types', {}).get('created', []):
@@ -1135,13 +1260,20 @@ def export_transactions(request, pk):
                             status='success',
                             message='Deleted'
                         )
+                    for linked_acc_data in export_data.get('linked_accounts', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=linked_acc_data['id'],
+                            record_type='BT_Ledger_Accounts',
+                            status='success'
+                        )
             except Exception as e:
                 logger.error(f"Error creating export details for export history {export_history.id}: {str(e)}", exc_info=True)
             
             # Return JSON with download headers
             from django.http import HttpResponse
             response = HttpResponse(
-                json.dumps(export_data, indent=2, default=str),
+                json.dumps(export_data, indent=2, default=str, ensure_ascii=False),
                 content_type='application/json'
             )
             response['Content-Disposition'] = f'attachment; filename="transactions_{shop.short_name}_{export_mode}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
@@ -1232,6 +1364,9 @@ def add_shop_ledger(request, shop_pk):
 @admin_required
 def ledger_info(request, pk):
     ledger = get_object_or_404(Ledger, pk=pk)
+    shop_accounts = Accounts.objects.filter(shop=ledger.shop).order_by('e_name')
+    linked_accounts = BT_Ledger_Accounts.objects.filter(ledger=ledger).select_related('account')
+    linked_accounts_dict = {acc.rel_type: acc.account for acc in linked_accounts}
     
     # Get all loan transactions for this ledger
     loans_list = Loan.objects.filter(ledger=ledger).order_by('-transaction_dt')
@@ -1253,6 +1388,9 @@ def ledger_info(request, pk):
         'release_count': release_count,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'shop_accounts': shop_accounts,
+        'linked_accounts':linked_accounts,
+        'linked_accounts_dict': linked_accounts_dict,
         'app_name': 'manager',
     }
     return render(request, 'manager/ledger_info.html', context)
@@ -1436,12 +1574,7 @@ def import_transactions(request):
                 for type_data in types_data:
                     try:
                         type_id = type_data.get('id', '').strip()
-                        group_id = type_data.get('group_id')
-                        
-                        try:
-                            group = Group.objects.get(id=group_id) if group_id else None
-                        except Group.DoesNotExist:
-                            group = None
+                        group_order = type_data.get('group_order')
                         
                         if type_id and Type.objects.filter(id=type_id).exists():
                             # Update existing - use model instance to trigger history tracking
@@ -1449,7 +1582,7 @@ def import_transactions(request):
                             type_obj.e_name = type_data.get('e_name', '')
                             type_obj.t_name = type_data.get('t_name', '')
                             type_obj.shop = shop
-                            type_obj.group = group
+                            type_obj.group_order = group_order
                             type_obj.save()
                             types_updated += 1
                             ImportDetails.objects.create(
@@ -1466,7 +1599,7 @@ def import_transactions(request):
                                 e_name=type_data.get('e_name', ''),
                                 t_name=type_data.get('t_name', ''),
                                 shop=shop,
-                                group=group
+                                group_order=group_order
                             )
                             types_created += 1
                             ImportDetails.objects.create(
@@ -1489,15 +1622,17 @@ def import_transactions(request):
                 # Import Accounts
                 for account_data in accounts_data:
                     try:
-                        account_id = account_data.get('id', '').strip()
+                        account_id = account_data.get('id')
                         acc_type_id = account_data.get('acc_type_id')
-                        
                         try:
                             acc_type = Type.objects.get(id=acc_type_id, shop=shop) if acc_type_id else None
                         except Type.DoesNotExist:
                             acc_type = None
                         
                         if account_id and Accounts.objects.filter(id=account_id).exists():
+                            account_id = account_data.get('id', '').strip()
+                            
+
                             # Update existing - use model instance to trigger history tracking
                             account = Accounts.objects.get(id=account_id)
                             account.e_name = account_data.get('e_name', '')
@@ -1544,10 +1679,96 @@ def import_transactions(request):
                             message=f'Error: {str(e)}'
                         )
                 
+                # Import Linked Accounts (BT_Ledger_Accounts) - After accounts are created/updated
+                linked_accounts_created = 0
+                linked_accounts_updated = 0
+                linked_accounts_data = import_data.get('linked_accounts', [])
+                
+                for linked_acc_data in linked_accounts_data:
+                    try:
+                        ledger_id = linked_acc_data.get('ledger_id')
+                        account_id = linked_acc_data.get('account_id')
+                        rel_type = linked_acc_data.get('rel_type')
+                        
+                        try:
+                            ledger = Ledger.objects.get(id=ledger_id)
+                        except Ledger.DoesNotExist:
+                            logger.warning(f"Ledger {ledger_id} not found, skipping linked account import")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=linked_acc_data.get('id', 'unknown'),
+                                record_type='BT_Ledger_Accounts',
+                                status='failed',
+                                message=f'Ledger {ledger_id} not found'
+                            )
+                            continue
+                        
+                        try:
+                            account = Accounts.objects.get(id=account_id)
+                        except Accounts.DoesNotExist:
+                            logger.warning(f"Account {account_id} not found, skipping linked account import")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=linked_acc_data.get('id', 'unknown'),
+                                record_type='BT_Ledger_Accounts',
+                                status='failed',
+                                message=f'Account {account_id} not found'
+                            )
+                            continue
+                        
+                        linked_acc_id = linked_acc_data.get('id', '').strip()
+                        
+                        if linked_acc_id and BT_Ledger_Accounts.objects.filter(id=linked_acc_id).exists():
+                            # Update existing
+                            linked_acc = BT_Ledger_Accounts.objects.get(id=linked_acc_id)
+                            linked_acc.ledger = ledger
+                            linked_acc.account = account
+                            linked_acc.rel_type = rel_type
+                            linked_acc.shop = shop
+                            linked_acc.updated_by = system_user
+                            linked_acc.save()
+                            linked_accounts_updated += 1
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=linked_acc_id,
+                                record_type='BT_Ledger_Accounts',
+                                status='success',
+                                message='Updated'
+                            )
+                        else:
+                            # Create new
+                            BT_Ledger_Accounts.objects.create(
+                                ledger=ledger,
+                                account=account,
+                                rel_type=rel_type,
+                                shop=shop,
+                                created_by=system_user,
+                                updated_by=system_user,
+                            )
+                            linked_accounts_created += 1
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=linked_acc_id if linked_acc_id else 'auto',
+                                record_type='BT_Ledger_Accounts',
+                                status='success',
+                                message='Created'
+                            )
+                    except Exception as e:
+                        logger.error(f"Error importing linked account: {str(e)}")
+                        ImportDetails.objects.create(
+                            import_history=import_history,
+                            record_id=linked_acc_data.get('id', 'unknown'),
+                            record_type='BT_Ledger_Accounts',
+                            status='failed',
+                            message=f'Error: {str(e)}'
+                        )
+                
                 # Import Transactions
                 for trans_data in transactions_data:
                     try:
-                        trans_id = trans_data.get('id', '').strip()
+                        trans_id = trans_data.get('id', '')
+                        if trans_id is not None:
+                            trans_id = trans_data.get('id', '').strip()
                         account_id = trans_data.get('account_id')
                         
                         # For updates: try to get the account, but fall back to existing if not found
@@ -1623,6 +1844,7 @@ def import_transactions(request):
                             )
                             logger.info(f"Created transaction {trans_id}: created_by and updated_by set to {system_user.username}")
                             transactions_created += 1
+                            manager_helper.update_account_priority(account)
                             ImportDetails.objects.create(
                                 import_history=import_history,
                                 record_id=trans_id if trans_id else 'auto',
@@ -1648,6 +1870,7 @@ def import_transactions(request):
                     f"Import completed for shop {shop.id}: "
                     f"Types(C:{types_created}/U:{types_updated}), "
                     f"Accounts(C:{accounts_created}/U:{accounts_updated}), "
+                    f"Linked Accounts(C:{linked_accounts_created}/U:{linked_accounts_updated}), "
                     f"Transactions(C:{transactions_created}/U:{transactions_updated})"
                 )
                 
@@ -1657,6 +1880,7 @@ def import_transactions(request):
                     'summary': {
                         'types': {'created': types_created, 'updated': types_updated},
                         'accounts': {'created': accounts_created, 'updated': accounts_updated},
+                        'linked_accounts': {'created': linked_accounts_created, 'updated': linked_accounts_updated},
                         'transactions': {'created': transactions_created, 'updated': transactions_updated},
                     }
                 })
@@ -1694,7 +1918,7 @@ def activity_logs(request):
 
 def sync_grp_typ(request,pk):
     shop = Shop.objects.get(pk=pk)
-    manager_helper.sync_groups_and_types(request,shop)
+    manager_helper.sync_types(request,shop)
     return redirect('manager:shop_info', pk=shop.id)
 
 def add_account(request, pk):
@@ -1744,7 +1968,7 @@ def account_info(request, pk):
         fy = date_helper.get_current_fy_string()
     
     start_date, end_date = date_helper.get_fy_dates(fy)
-    
+    openning_balance = transaction_helper.get_account_balance(account, start_date)
     # Get transactions for pagination
     transactions_qs = Transactions.objects.filter(
         acc=account,
@@ -1760,15 +1984,27 @@ def account_info(request, pk):
     
     total_debit = trans_stats['total_debit'] or Decimal('0')
     total_credit = trans_stats['total_credit'] or Decimal('0')
-    
+    closing_balance = openning_balance + total_credit - total_debit
     # Paginate transactions (10 per page)
     paginator = Paginator(transactions_qs, 10)
     page_number = request.GET.get('page', 1)
     transactions = paginator.get_page(page_number)
     
     balance = transaction_helper.get_account_balance(account)  # Calculate balance for this account
-    shop_accounts = Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name')
-    
+    shop_accounts = []
+    for shop_account in Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name'):
+        group_name = 'Unknown'
+        if shop_account.acc_type:
+            group = manager_helper.get_group(shop_account.acc_type.group_order)
+            group_name = group[2] if group else 'Unknown'
+        shop_accounts.append({
+            'id': shop_account.id,
+            't_name': shop_account.t_name,
+            'e_name': shop_account.e_name,
+            'group_name': group_name,
+        })
+    account_group_name = manager_helper.get_group(account.acc_type.group_order)[2] if account.acc_type else 'Unknown'
+    net_balance = total_credit - total_debit
     return render(request, 'manager/account_info.html', {
         'nav_title': 'Shops',
         'account': account,
@@ -1776,11 +2012,15 @@ def account_info(request, pk):
         'transactions': transactions,
         'total_debit': total_debit,
         'total_credit': total_credit,
-        'shopping_accounts': shop_accounts,
+        'shop_accounts': shop_accounts,
         'fy': fy,
+        'account_group_name': account_group_name,
         'start_date': start_date,
         'end_date': end_date,
         'app_name': 'manager',
+        'net_balance': net_balance,
+        'opening_balance': openning_balance,
+        'closing_balance': closing_balance,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
     })
@@ -1792,7 +2032,7 @@ def account_info_transactions(request, pk):
     """AJAX endpoint for HTMX to load more transactions"""
     account = get_object_or_404(Accounts, pk=pk)
     fy = request.GET.get('fy')
-    if fy is None:
+    if not fy:
         fy = date_helper.get_current_fy_string()
     
     start_date, end_date = date_helper.get_fy_dates(fy)
@@ -1808,11 +2048,12 @@ def account_info_transactions(request, pk):
     page_number = request.GET.get('page', 1)
     transactions = paginator.get_page(page_number)
     shop_accounts = Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name')
-    
+    print(shop_accounts)
     return render(request, 'manager/account_transactions_partial.html', {
         'transactions': transactions,
         'account': account,
         'shop_accounts': shop_accounts,
+        'fy': fy,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
     })
@@ -1847,7 +2088,7 @@ def delete_account(request, pk):
         # Check if account has transactions
         if Transactions.objects.filter(acc=account).exists():
             messages.error(request, f'Cannot delete account "{account.t_name}" because it has associated transactions.')
-            logger.warning(f"Account deletion blocked by {request.user.username}: {account.t_name} has associated transactions")
+            logger.warning(f"Account deletion blocked by {request.user.username}: {account.e_name} has associated transactions")
             return redirect('manager:account_info', pk=account.pk)
         
         account_name = account.e_name
@@ -1943,7 +2184,7 @@ def balance_sheet(request):
         fy = date_helper.get_current_fy_string()
     
     # Fetch all groups ordered by their order field
-    groups = Group.objects.all().order_by('order')
+    groups = manager_helper.get_groups()
     
     group_summaries = []
     
@@ -1951,20 +2192,21 @@ def balance_sheet(request):
         summary = transaction_helper.get_group_summary(group, fy)
         # Calculate net balance (closing - opening = credits - debits)
         net_balance = summary['closing'] - summary['opening']
-        
+        if group[0] == 2:
+            summary['opening'] = Decimal('0')
         group_summaries.append({
-            'id': group.id,
-            'order': group.order,
-            'name': group.t_name,
+            'id': group[0],
+            'order': group[0],
+            'name': group[2],
             'opening': summary['opening'],
             'closing': summary['closing'],
         })
     
     # print(group_summaries)
     net_worth_opening = group_summaries[3]['opening'] + group_summaries[4]['opening'] + group_summaries[5]['opening']
-    net_worth_closing = group_summaries[2]['closing'] + group_summaries[3]['closing'] + group_summaries[4]['closing']
-    cash_in_hand_opening = group_summaries[0]['opening'] + group_summaries[1]['opening'] + group_summaries[2]['opening'] + group_summaries[3]['opening'] + group_summaries[4]['opening'] + group_summaries[5]['opening']
-    cash_in_hand_closing = group_summaries[0]['closing'] + group_summaries[1]['closing'] + group_summaries[2]['closing'] + group_summaries[3]['closing'] + group_summaries[4]['closing'] + group_summaries[5]['closing']
+    net_worth_closing = group_summaries[3]['closing'] + group_summaries[4]['closing'] + group_summaries[5]['closing']
+    cash_in_hand_opening = group_summaries[0]['opening'] + group_summaries[1]['opening'] + group_summaries[3]['opening'] + group_summaries[4]['opening'] + group_summaries[5]['opening']
+    cash_in_hand_closing = group_summaries[0]['closing'] + group_summaries[1]['closing'] + group_summaries[3]['closing'] + group_summaries[4]['closing'] + group_summaries[5]['closing']
 
     
     return render(request, 'manager/balance_sheet.html', {
@@ -1987,13 +2229,13 @@ def type_balance_sheet(request, pk):
         fy = date_helper.get_current_fy_string()
 
     # ✅ Fetch all groups ordered by their order field
-    groups = Group.objects.all().order_by('order')
+    groups = manager_helper.get_groups()
 
     grouped_list = []
 
     for group in groups:
         # ✅ Only types belonging to this shop AND this group
-        types = Type.objects.filter(shop=shop, group=group).order_by('e_name')
+        types = Type.objects.filter(shop=shop, group_order=group[0]).order_by('e_name')
 
         if not types.exists():
             continue  # ✅ Skip groups with no types for this shop
@@ -2002,9 +2244,26 @@ def type_balance_sheet(request, pk):
 
         for acc_type in types:
             summary = transaction_helper.get_type_summary(acc_type, fy)
+            print(f"Summary for {acc_type.e_name} (Group {group[2]}):", summary)
+            if group[0] == 2:
+                summary['opening'] = Decimal('0')
+                summary['net_balance'] = summary['credits'] - summary['debits']
+            elif group[0] == 1:
+                pl_types = Type.objects.filter(shop=shop, group_order=2).order_by('e_name')
+                pl_opening = Decimal('0')
+                for pl_type in pl_types:
+                    pl_summary = transaction_helper.get_type_summary(pl_type, str(int(fy)-1))
+                    pl_opening += pl_summary['closing']
+                summary['opening'] += pl_opening
+                # ✅ Recompute closing AFTER opening is finalised
+                summary['closing']     = summary['opening'] + summary['credits'] - summary['debits']
+                summary['cur_balance'] = summary['credits'] - summary['debits']
+                summary['net_balance'] = summary['opening'] + summary['cur_balance']
+                
             type_entries.append({
                 'id':          acc_type.id,
                 'name':        acc_type.t_name,
+                'e_name':      acc_type.e_name,
                 'opening':     summary['opening'],
                 'credits':     summary['credits'],
                 'debits':      summary['debits'],
@@ -2014,12 +2273,12 @@ def type_balance_sheet(request, pk):
             })
 
         grouped_list.append({
-            'group_id':          group.id,
-            'group_name':        group.t_name,
-            'group_order':       group.order,
+            'group_id':          group[0],
+            'group_name':        group[2],
+            'group_order':       group[0],
             'types':             type_entries,
         })
-
+    cash_in_hand = transaction_helper.get_opening_balance(shop)
     return render(request, 'manager/summary_types.html', {
         'nav_title':      'Shops',
         'fy':             fy,
@@ -2028,6 +2287,7 @@ def type_balance_sheet(request, pk):
         'app_name':       'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin':       is_admin(request.user),
+        'cash_in_hand': cash_in_hand['closing_balance'],
     })
 
 def account_balance_sheet(request, pk, type_pk):
@@ -2059,9 +2319,650 @@ def account_balance_sheet(request, pk, type_pk):
         'nav_title': 'Shops',
         'fy': fy,
         'shop': shop,
+        'type_e_name': type_obj.e_name,
+        'type_t_name': type_obj.t_name,
         'items': account_balances,
         'item_type': 'Account',
         'app_name': 'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
     })
+
+@login_required
+@admin_required
+def link_ledger_accounts(request, pk):
+    """Handle linking accounts to a ledger via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        ledger = get_object_or_404(Ledger, pk=pk)
+        
+        # Define the account types to process
+        account_types = {
+            'Loan Principal Account': 'LOAN_PRINCIPAL',
+            'Loan Interest Account': 'LOAN_INTEREST',
+            'Release Principal Account': 'RELEASE_PRINCIPAL',
+            'Release Interest Account': 'RELEASE_INTEREST',
+        }
+        
+        created_count = 0
+        updated_count = 0
+        
+        for display_name, rel_type in account_types.items():
+            account_id = data.get(rel_type)
+            
+            # Skip if no account selected for this type
+            if not account_id:
+                continue
+            
+            account = get_object_or_404(Accounts, pk=account_id)
+            
+            # Check if record exists
+            bt_ledger_account = BT_Ledger_Accounts.objects.filter(
+                ledger=ledger,
+                rel_type=rel_type
+            ).first()
+            
+            if bt_ledger_account:
+                # Update existing record
+                old_account = bt_ledger_account.account
+                bt_ledger_account.account = account
+                bt_ledger_account.updated_by = request.user
+                bt_ledger_account.save()
+                updated_count += 1
+                
+                # Log the update
+                manager_helper.log_activity(
+                    request, 
+                    'UPDATE', 
+                    'BT_Ledger_Accounts', 
+                    bt_ledger_account.id, 
+                    f'Updated {display_name} from {old_account.e_name} to {account.e_name} for ledger {ledger.name}',
+                    ledger.shop
+                )
+            else:
+                # Create new record
+                bt_ledger_account = BT_Ledger_Accounts.objects.create(
+                    ledger=ledger,
+                    shop=ledger.shop,
+                    rel_type=rel_type,
+                    account=account,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+                created_count += 1
+                
+                # Log the creation
+                manager_helper.log_activity(
+                    request, 
+                    'CREATE', 
+                    'BT_Ledger_Accounts', 
+                    bt_ledger_account.id, 
+                    f'Created {display_name} ({account.e_name}) for ledger {ledger.name}',
+                    ledger.shop
+                )
+        
+        message = f'Linked accounts saved successfully! ({created_count} created, {updated_count} updated)'
+        logger.info(f"Ledger accounts linked by {request.user.username}: {ledger.name}, created: {created_count}, updated: {updated_count}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'created': created_count,
+            'updated': updated_count,
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+    except Ledger.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Ledger not found'}, status=404)
+    except Accounts.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'One or more selected accounts not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error linking ledger accounts by {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': 'An error occurred while saving linked accounts'}, status=500)
+
+def trial_balance_pdf(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    types = Type.objects.filter(shop=shop)
+    rows = []
+    total_debit = Decimal('0')
+    total_credit = Decimal('0')
+    for acc_type in types:
+        summary = transaction_helper.get_type_summary(acc_type, fy)
+        closing = summary['closing']
+        opening = summary['opening']
+        if acc_type.group_order == 2:  # For PL accounts, opening balance is considered as zero
+            opening = Decimal('0.00')
+        if closing > 0:
+            rows.append({'name': acc_type.t_name, 'debit': '', 'credit': closing})
+            total_credit += closing
+        elif closing < 0:
+            rows.append({'name': acc_type.t_name, 'debit': opening, 'credit': ''})
+            total_debit += opening
+
+    context = {
+        'shop': shop,
+        'fy': fy,
+        'rows': rows,
+        'total_debit': total_debit,
+        'total_credit': total_credit,
+        'nav_title': f'Trial Balance - {shop.short_name}',
+        'app_name': 'manager',
+    }
+    return render(request, 'manager/trial_balance_print.html', context)
+
+def trial_balance_wopl_pdf(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    types = Type.objects.filter(shop=shop)
+    rows = []
+    total_debit = Decimal('0')
+    total_credit = Decimal('0')
+    for acc_type in types:
+        if acc_type.group_order == 2:  # Skip Loan Accounts
+            continue
+        summary = transaction_helper.get_type_summary(acc_type, fy)
+        closing = summary['closing']
+        opening = summary['opening']
+        if acc_type.group_order == 2:  # For PL accounts, opening balance is considered as zero
+            opening = Decimal('0.00')
+        if closing > 0:
+            rows.append({'name': acc_type.t_name, 'debit': '', 'credit': closing})
+            total_credit += closing
+        elif closing < 0:
+            rows.append({'name': acc_type.t_name, 'debit': opening, 'credit': ''})
+            total_debit += opening
+
+    context = {
+        'shop': shop,
+        'fy': fy,
+        'rows': rows,
+        'total_debit': total_debit,
+        'total_credit': total_credit,
+        'nav_title': f'Trial Balance - {shop.short_name}',
+        'app_name': 'manager',
+    }
+    return render(request, 'manager/trial_balance_print.html', context)
+
+def _zero_pl_openings(group_fy_data):
+    """Zero out opening balances for all types/accounts in group_order 2 (PL)."""
+    for group in group_fy_data:
+        if group['id'] == 2:
+            for acc_type in group['types']:
+                acc_type['opening'] = 0
+                for acc in acc_type['accounts']:
+                    acc['opening'] = 0
+            group['opening'] = 0
+
+def _filter_empty(group_fy_data):
+    """Remove zero-closing accounts from all groups, then remove types with no accounts."""
+    for group in group_fy_data:
+        for acc_type in group['types']:
+            acc_type['accounts'] = [a for a in acc_type['accounts'] if a['closing'] != 0]
+        group['types'] = [t for t in group['types'] if t['accounts']]
+
+def bs_shop_pdf(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty(group_fy_data)
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+
+    context = {
+        'shop': shop,
+        'fy': fy,
+        'group_fy_data': group_fy_data,
+        'total_opening': total_opening,
+        'total_closing': total_closing,
+        'nav_title': f'Balance Sheet - {shop.short_name}',
+    }
+    return render(request, 'manager/bs_shop_print.html', context)
+
+def bs_shop_wo_pl_pdf(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _filter_empty(group_fy_data)
+    # Exclude group_order 2 (PL)
+    group_fy_data = [g for g in group_fy_data if g['id'] != 2]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+
+    context = {
+        'shop': shop,
+        'fy': fy,
+        'group_fy_data': group_fy_data,
+        'total_opening': total_opening,
+        'total_closing': total_closing,
+        'nav_title': f'Balance Sheet (W/O P&L) - {shop.short_name}',
+        'app_name': 'manager',
+    }
+    return render(request, 'manager/bs_shop_print.html', context)
+
+
+def _filter_empty_types(group_fy_data):
+    """Remove zero-closing types from all groups."""
+    for group in group_fy_data:
+        group['types'] = [t for t in group['types'] if t['closing'] != 0]
+
+
+def group_type_summary_pdf(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty_types(group_fy_data)
+    # Remove groups with no types after filtering
+    group_fy_data = [g for g in group_fy_data if g['types']]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+
+    context = {
+        'shop': shop,
+        'fy': fy,
+        'group_fy_data': group_fy_data,
+        'total_opening': total_opening,
+        'total_closing': total_closing,
+        'nav_title': f'Group & Type Summary - {shop.short_name}',
+        'app_name': 'manager',
+    }
+    return render(request, 'manager/group_type_summary_print.html', context)
+
+
+@login_required
+@admin_required
+def shops_yearly_summary_pdf(request):
+    """
+    Pivot report: rows = available FY years, columns = each shop + Total.
+    Net worth per cell = group_closing[2] + group_closing[3] + group_closing[4]
+    (same formula as networth_chart_data in api/views.py, scoped per shop).
+    """
+    NETWORTH_GROUPS = [3, 4, 5]  # PL, Purchases, Liabilities
+
+    shops = list(Shop.objects.all().order_by('short_name'))
+    fys = date_helper.get_available_fy_years()
+
+    decimal_mask = Decimal('0.01')
+
+    def _shop_group_closing(shop, group_order, start_date, end_date):
+        """Closing balance for one shop + group_order in a given FY."""
+        opening_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__lt=start_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        opening = (opening_agg['c'] or Decimal('0')) - (opening_agg['d'] or Decimal('0'))
+        if group_order == 2:
+            opening = Decimal('0')  # PL opening always zero
+
+        fy_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        credits = fy_agg['c'] or Decimal('0')
+        debits  = fy_agg['d'] or Decimal('0')
+        return opening + credits - debits
+
+    rows = []
+    col_totals = [Decimal('0.00')] * len(shops)
+    grand_total = Decimal('0.00')
+
+    for fy in fys:
+        start_date, end_date = date_helper.get_fy_dates(fy)
+        fy_int = int(fy)
+        fy_label = f'{fy_int}-{str(fy_int + 1)[2:]}'
+
+        shop_networths = []
+        row_total = Decimal('0.00')
+
+        for idx, shop in enumerate(shops):
+            net_worth = sum(
+                _shop_group_closing(shop, g, start_date, end_date)
+                for g in NETWORTH_GROUPS
+            ).quantize(decimal_mask, rounding=ROUND_HALF_UP)
+            shop_networths.append(net_worth)
+            row_total += net_worth
+            col_totals[idx] += net_worth
+
+        row_total = row_total.quantize(decimal_mask, rounding=ROUND_HALF_UP)
+        grand_total += row_total
+        rows.append({'fy_label': fy_label, 'closings': shop_networths, 'total': row_total})
+
+    col_totals = [v.quantize(decimal_mask, rounding=ROUND_HALF_UP) for v in col_totals]
+    grand_total = grand_total.quantize(decimal_mask, rounding=ROUND_HALF_UP)
+
+    context = {
+        'shops': shops,
+        'rows': rows,
+        'col_totals': col_totals,
+        'grand_total': grand_total,
+        'nav_title': 'Networth Summary',
+        'app_name': 'manager',
+    }
+    return render(request, 'manager/networth_summary.html', context)
+
+
+# ──────────────────────────────────────────────────────────────
+# Excel / CSV exports
+# ──────────────────────────────────────────────────────────────
+
+def _build_trial_balance_rows(shop, fy, skip_pl=False):
+    """Shared data preparation for trial-balance export views."""
+    types = Type.objects.filter(shop=shop)
+    rows = []
+    total_debit = Decimal('0')
+    total_credit = Decimal('0')
+    for acc_type in types:
+        if skip_pl and acc_type.group_order == 2:
+            continue
+        summary = transaction_helper.get_type_summary(acc_type, fy)
+        closing = summary['closing']
+        opening = summary['opening']
+        if acc_type.group_order == 2:  # For PL accounts, opening balance is considered as zero
+            opening = Decimal('0.00')
+        if closing > 0:
+            rows.append({'name': acc_type.t_name, 'debit': '', 'credit': closing})
+            total_credit += closing
+        elif closing < 0:
+            rows.append({'name': acc_type.t_name, 'debit': opening, 'credit': ''})
+            total_debit += opening
+    return rows, total_debit, total_credit
+
+
+def trial_balance_excel(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    rows, total_debit, total_credit = _build_trial_balance_rows(shop, fy, skip_pl=False)
+    title = f'Trial Balance - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_trial_balance_table(rows, total_debit, total_credit)
+    excel_buffer = report_helper.generate_excel_report(title, table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="trial_balance_{shop.short_name}_{fy}.xlsx"'
+    return response
+
+
+def trial_balance_csv(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    rows, total_debit, total_credit = _build_trial_balance_rows(shop, fy, skip_pl=False)
+    title = f'Trial Balance - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_trial_balance_table(rows, total_debit, total_credit)
+    csv_buffer = report_helper.generate_csv_report(title, table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="trial_balance_{shop.short_name}_{fy}.csv"'
+    return response
+
+
+def trial_balance_wopl_excel(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    rows, total_debit, total_credit = _build_trial_balance_rows(shop, fy, skip_pl=True)
+    title = f'Trial Balance (W/O P&L) - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_trial_balance_table(rows, total_debit, total_credit)
+    excel_buffer = report_helper.generate_excel_report(title, table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="trial_balance_wopl_{shop.short_name}_{fy}.xlsx"'
+    return response
+
+
+def trial_balance_wopl_csv(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    rows, total_debit, total_credit = _build_trial_balance_rows(shop, fy, skip_pl=True)
+    title = f'Trial Balance (W/O P&L) - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_trial_balance_table(rows, total_debit, total_credit)
+    csv_buffer = report_helper.generate_csv_report(title, table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="trial_balance_wopl_{shop.short_name}_{fy}.csv"'
+    return response
+
+
+def bs_shop_excel(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty(group_fy_data)
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Balance Sheet - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_bs_shop_table(group_fy_data, total_opening, total_closing)
+    excel_buffer = report_helper.generate_excel_report(title, table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="balance_sheet_{shop.short_name}_{fy}.xlsx"'
+    return response
+
+
+def bs_shop_csv(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty(group_fy_data)
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Balance Sheet - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_bs_shop_table(group_fy_data, total_opening, total_closing)
+    csv_buffer = report_helper.generate_csv_report(title, table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="balance_sheet_{shop.short_name}_{fy}.csv"'
+    return response
+
+
+def bs_shop_wo_pl_excel(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _filter_empty(group_fy_data)
+    group_fy_data = [g for g in group_fy_data if g['id'] != 2]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Balance Sheet (W/O P&L) - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_bs_shop_table(group_fy_data, total_opening, total_closing)
+    excel_buffer = report_helper.generate_excel_report(title, table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="balance_sheet_wopl_{shop.short_name}_{fy}.xlsx"'
+    return response
+
+
+def bs_shop_wo_pl_csv(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _filter_empty(group_fy_data)
+    group_fy_data = [g for g in group_fy_data if g['id'] != 2]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Balance Sheet (W/O P&L) - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_bs_shop_table(group_fy_data, total_opening, total_closing)
+    csv_buffer = report_helper.generate_csv_report(title, table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="balance_sheet_wopl_{shop.short_name}_{fy}.csv"'
+    return response
+
+
+def group_type_summary_excel(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty_types(group_fy_data)
+    group_fy_data = [g for g in group_fy_data if g['types']]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Group & Type Summary - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_group_type_summary_table(group_fy_data, total_opening, total_closing)
+    excel_buffer = report_helper.generate_excel_report(title, table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="group_type_summary_{shop.short_name}_{fy}.xlsx"'
+    return response
+
+
+def group_type_summary_csv(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy') or date_helper.get_current_fy_string()
+    group_fy_data = transaction_helper.group_fy_data(shop, fy)
+    _zero_pl_openings(group_fy_data)
+    _filter_empty_types(group_fy_data)
+    group_fy_data = [g for g in group_fy_data if g['types']]
+    total_opening = sum(g['opening'] for g in group_fy_data)
+    total_closing = sum(g['closing'] for g in group_fy_data)
+    title = f'Group & Type Summary - {shop.short_name} - FY{fy}'
+    table_data = report_helper.build_group_type_summary_table(group_fy_data, total_opening, total_closing)
+    csv_buffer = report_helper.generate_csv_report(title, table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="group_type_summary_{shop.short_name}_{fy}.csv"'
+    return response
+
+
+@login_required
+@admin_required
+def shops_yearly_summary_excel(request):
+    NETWORTH_GROUPS = [2, 3, 4]
+    shops = list(Shop.objects.all().order_by('short_name'))
+    fys = date_helper.get_available_fy_years()
+    decimal_mask = Decimal('0.01')
+
+    def _shop_group_closing(shop, group_order, start_date, end_date):
+        opening_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__lt=start_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        opening = (opening_agg['c'] or Decimal('0')) - (opening_agg['d'] or Decimal('0'))
+        if group_order == 2:
+            opening = Decimal('0')
+        fy_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        credits = fy_agg['c'] or Decimal('0')
+        debits  = fy_agg['d'] or Decimal('0')
+        return opening + credits - debits
+
+    rows = []
+    col_totals = [Decimal('0.00')] * len(shops)
+    grand_total = Decimal('0.00')
+    for fy in fys:
+        start_date, end_date = date_helper.get_fy_dates(fy)
+        fy_int = int(fy)
+        fy_label = f'{fy_int}-{str(fy_int + 1)[2:]}'
+        shop_networths = []
+        row_total = Decimal('0.00')
+        for idx, shop in enumerate(shops):
+            net_worth = sum(
+                _shop_group_closing(shop, g, start_date, end_date)
+                for g in NETWORTH_GROUPS
+            ).quantize(decimal_mask, rounding=ROUND_HALF_UP)
+            shop_networths.append(net_worth)
+            row_total += net_worth
+            col_totals[idx] += net_worth
+        row_total = row_total.quantize(decimal_mask, rounding=ROUND_HALF_UP)
+        grand_total += row_total
+        rows.append({'fy_label': fy_label, 'closings': shop_networths, 'total': row_total})
+    col_totals = [v.quantize(decimal_mask, rounding=ROUND_HALF_UP) for v in col_totals]
+    grand_total = grand_total.quantize(decimal_mask, rounding=ROUND_HALF_UP)
+
+    table_data = report_helper.build_networth_summary_table(shops, rows)
+    excel_buffer = report_helper.generate_excel_report('Networth Summary', table_data)
+    response = HttpResponse(excel_buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="networth_summary.xlsx"'
+    return response
+
+
+@login_required
+@admin_required
+def shops_yearly_summary_csv(request):
+    NETWORTH_GROUPS = [2, 3, 4]
+    shops = list(Shop.objects.all().order_by('short_name'))
+    fys = date_helper.get_available_fy_years()
+    decimal_mask = Decimal('0.01')
+
+    def _shop_group_closing(shop, group_order, start_date, end_date):
+        opening_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__lt=start_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        opening = (opening_agg['c'] or Decimal('0')) - (opening_agg['d'] or Decimal('0'))
+        if group_order == 2:
+            opening = Decimal('0')
+        fy_agg = Transactions.objects.filter(
+            shop=shop,
+            acc__acc_type__group_order=group_order,
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).aggregate(
+            c=Sum('amount', filter=Q(tr_type='CREDIT')),
+            d=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+        credits = fy_agg['c'] or Decimal('0')
+        debits  = fy_agg['d'] or Decimal('0')
+        return opening + credits - debits
+
+    rows = []
+    col_totals = [Decimal('0.00')] * len(shops)
+    grand_total = Decimal('0.00')
+    for fy in fys:
+        start_date, end_date = date_helper.get_fy_dates(fy)
+        fy_int = int(fy)
+        fy_label = f'{fy_int}-{str(fy_int + 1)[2:]}'
+        shop_networths = []
+        row_total = Decimal('0.00')
+        for idx, shop in enumerate(shops):
+            net_worth = sum(
+                _shop_group_closing(shop, g, start_date, end_date)
+                for g in NETWORTH_GROUPS
+            ).quantize(decimal_mask, rounding=ROUND_HALF_UP)
+            shop_networths.append(net_worth)
+            row_total += net_worth
+            col_totals[idx] += net_worth
+        row_total = row_total.quantize(decimal_mask, rounding=ROUND_HALF_UP)
+        grand_total += row_total
+        rows.append({'fy_label': fy_label, 'closings': shop_networths, 'total': row_total})
+
+    table_data = report_helper.build_networth_summary_table(shops, rows)
+    csv_buffer = report_helper.generate_csv_report('Networth Summary', table_data)
+    response = HttpResponse(csv_buffer.read(), content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="networth_summary.csv"'
+    return response

@@ -1,5 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans/GoogleSans-VariableFont_GRAD,opsz,wght.ttf') format('truetype-variations');
+}
 
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans/GoogleSans-Italic-VariableFont_GRAD,opsz,wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Google Sans Code';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans_Code/GoogleSansCode-VariableFont_wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Google Sans Code';
+  font-style: italic;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans_Code/GoogleSansCode-Italic-VariableFont_wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../webfonts/NotoSans_Tamil/NotoSansTamil-VariableFont.ttf') format('truetype-variations');
+}
 
 /* Primary	#4A7766	Deep Garnet	#774A4B */
 /* Click/Active	#006440	Crimson Punch	#640001 */
@@ -21,6 +58,13 @@
   --daybook-red-click: #fd4444;
   --daybook-teal: #f5c55f;
   --daybook-teal-click: #dcb155;
+}
+
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  src: url('../webfonts/MaterialSymbolsOutlined[FILL\,GRAD\,opsz\,wght].woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
 }
 
 .text-end, .text-start{

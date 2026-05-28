@@ -12,19 +12,20 @@
       </div>
       <!-- RIGHT SIDE (buttons) -->
       <div class="d-flex gap-2">
-          <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="btn btn-sm btn-outline-primary">
+          <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-file-invoice-dollar"></i> <span class="d-none d-md-inline">Types Summary</span>
           </a>
-          <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-outline-primary">
+          <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-arrows-rotate"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
           </a>
+
         {% if is_admin %}
-          <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-outline-primary">
+          <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-teal">
             <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
           </a>
         {% endif %}
         {% if is_super_admin %}
-          <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-outline-danger">
+          <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-red">
             <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
           </a>
         {% endif %}
@@ -35,82 +36,27 @@
     </div>
     <div class="card-body">
       <div class="row">
-        <div class="col-md-6">
-          <table class="table table-sm">
-            <tr>
-              <td class="fw-bold">Shop ID</td>
-              <td>{{ shop.id }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Short Name</td>
-              <td>{{ shop.short_name }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Name</td>
-              <td>{{ shop.name }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Proprietor</td>
-              <td>{{ shop.proprietor|default:"-" }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">God Name</td>
-              <td>{{ shop.god|default:"-" }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">PAN Number</td>
-              <td>{{ shop.pan|default:"-" }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">D.No</td>
-              <td>{{ shop.d_no }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Address Line 1</td>
-              <td>{{ shop.addressline1 }}</td>
-            </tr>
-            {% if shop.addressline2 %}
-            <tr>
-              <td class="fw-bold">Address Line 2</td>
-              <td>{{ shop.addressline2 }}</td>
-            </tr>
-            {% endif %}
-            <tr>
-              <td class="fw-bold">Place</td>
-              <td>{{ shop.place }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Pincode</td>
-              <td>{{ shop.pincode }}</td>
-            </tr>
-            {% if shop.last_transaction_exported_at %}
-            <tr>
-              <td class="fw-bold">Last Transactions Exported</td>
-              <td>{{ shop.last_transaction_exported_at|date:"Y-m-d H:i:s" }}</td>
-            </tr>
-            {% endif %}
-            {% if shop.last_transaction_imported_at %}
-            <tr>
-              <td class="fw-bold">Last Transactions Imported</td>
-              <td>{{ shop.last_transaction_imported_at|date:"Y-m-d H:i:s" }}</td>
-            </tr>
-            {% endif %}
-            {% if shop.last_loans_exported_at %}
-            <tr>
-              <td class="fw-bold">Last Loans Exported</td>
-              <td>{{ shop.last_loans_exported_at|date:"Y-m-d H:i:s" }}</td>
-            </tr>
-            {% endif %}
-            {% if shop.last_loans_imported_at %}
-            <tr>
-              <td class="fw-bold">Last Loans Imported</td>
-              <td>{{ shop.last_loans_imported_at|date:"Y-m-d H:i:s" }}</td>
-            </tr>
-            {% endif %}
-          </table>
+        <div class="col-md-3">
+          {% comment %} <center><img src="{{ shop.logo.url if shop.logo else '/static/images/default_shop_logo.png' }}" alt="Shop Logo" class="img-fluid rounded mb-2" style="max-height: 150px;"></center> {% endcomment %}
         </div>
         <div class="col-md-6">
-          <h5>Balance</h5>
+          <center><h6>{{shop.god|default:"-"}}</h6></center>
+          <center><h3>{{shop.name}}</h3></center>
+          <center><h5>
+          {% if shop.d_no %}{{shop.d_no}}, {% endif %}
+          {% if shop.addressline1 %}{{shop.addressline1}}, {% endif %}
+          {% if shop.addressline2 %}{{shop.addressline2}},{% endif %}
+          {% if shop.place %}{{shop.place}} - {{shop.pincode}}{% endif %}
+          </h5></center>
+        </div>
+        <div class="col-md-3">
+
+          <h5 style="text-align: right;">{{shop.proprietor}}</h5>
+          <h5 style="text-align: right;">{{shop.pan|default:"-"}}</h5>
+        </div>
+      </div>
+      <div>
+                  <h5>Balance</h5>
           <p class="display-6 text-primary">{{ balance|indian_format }}</p>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <h5 class="mb-0">Linked Ledgers</h5>
@@ -141,7 +87,6 @@
           {% else %}
           <p class="text-muted mt-2">No ledgers linked to this shop.</p>
           {% endif %}
-        </div>
       </div>
     </div>
   </div>
@@ -174,7 +119,7 @@
               <td><a href="{% url 'manager:account_info' account.pk %}" style="cursor:pointer; text-decoration: none; color: inherit;">{{account.t_name}}</a></td>
               <td><a href="{% url 'manager:account_info' account.pk %}" style="cursor:pointer; text-decoration: none; color: inherit;">{{account.e_name}}</a></td>
               <td>{{account.acc_type.t_name}}</td>
-              <td>{{account.acc_type.group.t_name}}</td>
+              <td>{{account.group_name}}</td>
               {% if account.balance >= 0.00 %}
                 <td class="text-success fw-bold text-end">{{ account.balance|indian_format }} CR</td>
               {% else %}
@@ -267,5 +212,41 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* Nested dropdown styling */
+  .dropend .dropdown-menu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 0.125rem;
+  }
+
+  .dropend > .dropdown-toggle::after {
+    content: '';
+    display: inline-block;
+    margin-left: 0.5rem;
+    vertical-align: 0.255em;
+    border-left: 0.25em solid;
+    border-right: 0;
+    border-top: 0.25em solid transparent;
+    border-bottom: 0.25em solid transparent;
+  }
+
+  /* Show dropdown on hover for desktop, on click for mobile */
+  @media (hover: hover) {
+    .dropend:hover > .dropdown-menu {
+      display: block;
+    }
+  }
+
+  .dropdown-menu.show {
+    display: block;
+  }
+
+  .dropend > .dropdown-toggle[aria-expanded="true"] ~ .dropdown-menu {
+    display: block;
+  }
+</style>
 
 {% endblock %}

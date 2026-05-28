@@ -1,0 +1,216 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Daybook Reporting{% endblock %}</title>
+  <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+  <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
+  <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
+  <style>
+    /* ── Report-specific overrides ── */
+
+    body {
+      background-color: #f5f5f5;
+    }
+
+    /* Screen toolbar */
+    .report-toolbar {
+      background-color: var(--daybook-primary);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .report-toolbar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f7f4f1;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+
+    .report-toolbar .brand img {
+      height: 28px;
+      width: auto;
+    }
+
+    .report-toolbar .brand-subtitle {
+      font-size: 0.7rem;
+      font-weight: 300;
+      color: rgba(247,244,241,0.75);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .report-toolbar .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .report-toolbar .btn-toolbar-print {
+      background-color: #ffffff;
+      color: var(--daybook-primary);
+      border: 1px solid #ffffff;
+      font-weight: 600;
+      transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+    }
+
+    .report-toolbar .btn-toolbar-print:hover,
+    .report-toolbar .btn-toolbar-print:focus {
+      background-color: var(--daybook-accent);
+      color: var(--daybook-primary-click);
+      border-color: var(--daybook-accent);
+    }
+
+    .report-toolbar .btn-toolbar-print:active {
+      background-color: #c8dbd4;
+      color: var(--daybook-primary-click);
+      border-color: #c8dbd4;
+    }
+
+    /* Print container */
+    .report-page {
+      max-width: 900px;
+      margin: 28px auto;
+      padding: 0 16px 40px;
+    }
+
+    /* Report card */
+    .report-card {
+      background: var(--daybook-surface);
+      border: 1px solid var(--daybook-border);
+      border-radius: 5px;
+      box-shadow: var(--daybook-shadow);
+      overflow: hidden;
+    }
+
+    .report-card-header {
+      background-color: rgba(74, 119, 102, 0.08);
+      border-bottom: 1px solid var(--daybook-border);
+      padding: 18px 24px 14px;
+      text-align: center;
+    }
+
+    .report-card-header .report-app-name {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--daybook-muted);
+      margin-bottom: 4px;
+    }
+
+    .report-card-header h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--daybook-primary);
+      margin-bottom: 4px;
+    }
+
+    .report-card-header .report-meta {
+      font-size: 0.82rem;
+      color: var(--daybook-muted);
+      margin: 0;
+    }
+
+    .report-card-body {
+      padding: 20px 24px;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      body {
+        background: #fff !important;
+      }
+
+      .report-toolbar {
+        display: none !important;
+      }
+
+      .report-page {
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .report-card {
+        border: none;
+        box-shadow: none;
+      }
+
+      /* NOTE: transactions_print.html overrides .report-card-header { display:none }
+         via the .transactions-report scoped rule. Do NOT add display:none here
+         as it would hide the header for all other reports too. */
+      .report-card-header {
+        border-bottom: 2px solid #333;
+        background: #fff !important;
+        /* padding is intentionally kept — other reports need it.
+           transactions_print.html hides this element entirely on print. */
+      }
+
+      .table tbody tr:hover {
+        background-color: transparent !important;
+      }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Toolbar (hidden on print) ── -->
+  <div class="report-toolbar">
+    <div class="brand">
+      <img src="{% static 'img/daybook-logo.png' %}" alt="Daybook">
+      <div>
+        <div>
+          <i class="fa-solid fa-book"></i>
+        <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span> | Reporting
+        </div>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      {% block toolbar_actions %}
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left me-1"></i>
+          <span class="d-none d-sm-inline">Back</span>
+        </button>
+        <button class="btn btn-sm btn-toolbar-print" onclick="window.print()">
+          <i class="fa-solid fa-print me-1"></i>
+          <span class="d-none d-sm-inline">Print</span>
+        </button>
+      {% endblock %}
+    </div>
+  </div>
+
+  <!-- ── Report content ── -->
+  <div class="report-page">
+    <div class="report-card">
+      <div class="report-card-header">
+        <p class="report-app-name">Daybook Reporting</p>
+        <h2>{% block report_title %}Report{% endblock %}</h2>
+        {% block report_subtitle %}{% endblock %}
+      </div>
+      <div class="report-card-body">
+        {% block report_content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+  <script>
+    // Auto-trigger print dialog on page load
+    window.onload = function () {
+      window.print();
+    };
+    </script>
+</body>
+</html>

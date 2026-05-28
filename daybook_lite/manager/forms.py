@@ -126,8 +126,8 @@ class AccountsForm(forms.ModelForm):
         shop = kwargs.pop('shop', None)
         super().__init__(*args, **kwargs)
         
-        # Customize labels
-        self.fields['acc_type'].label_from_instance = lambda obj: obj.t_name
+        # Customize labels - display t_name with e_name in brackets
+        self.fields['acc_type'].label_from_instance = lambda obj: f"{obj.t_name} ({obj.e_name})"
         
         # 2. Update the queryset if a shop is provided
         if shop:
@@ -184,8 +184,8 @@ class AccountsEditForm(forms.ModelForm):
         shop = kwargs.pop('shop', None)
         super().__init__(*args, **kwargs)
         
-        # Customize labels
-        self.fields['acc_type'].label_from_instance = lambda obj: obj.t_name
+        # Customize labels - display t_name with e_name in brackets
+        self.fields['acc_type'].label_from_instance = lambda obj: f"{obj.t_name} ({obj.e_name})"
         
         # 2. Update the queryset if a shop is provided
         if shop:

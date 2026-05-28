@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 
 from django.conf import settings
@@ -24,6 +25,10 @@ def _generate_type_id():
 def _generate_accounts_id():
     """Generate a unique 8-char accounts ID: ACC + 5 random alphanumeric chars."""
     return 'ACC' + uuid.uuid4().hex[:5].upper()
+
+def _generate_bt_id():
+    """Generate a unique 8-char BT ID: BT + 5 random alphanumeric chars."""
+    return 'BT' + uuid.uuid4().hex[:5].upper()
 
 # Create your models here.
 class Shop(models.Model):
@@ -56,20 +61,13 @@ class Ledger(models.Model):
     def __str__(self):
         return self.name
 
-class Group(models.Model):
-    order = models.PositiveIntegerField(unique=True, validators=[MinValueValidator(0), MaxValueValidator(6)])
-    e_name = models.CharField(max_length=50, blank=True, default='')
-    t_name = models.CharField(max_length=50, blank=True, default='')
-
-    def __str__(self):
-        return self.e_name
 
 class Type(models.Model):
     id = models.CharField(max_length=10, primary_key=True, default=_generate_type_id, editable=False)
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='types')
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True, related_name='types')
     e_name = models.CharField(max_length=50, blank=True, default='')
     t_name = models.CharField(max_length=50, blank=True, default='')
+    group_order = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(6)])
 
     def __str__(self):
         return self.e_name
@@ -243,3 +241,35 @@ class ImportDetails(models.Model):
 
     def __str__(self):
         return f"{self.import_history.shop.short_name} | {self.record_type} | {self.record_id} | {self.status}"
+    
+class BT_Ledger_Accounts(models.Model):
+    id = models.CharField(max_length=30, primary_key=True, editable=False, default=_generate_bt_id)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='bt_ledger_accounts')
+    ledger = models.ForeignKey(Ledger, on_delete=models.CASCADE)
+    rel_type = models.CharField(max_length=25, blank=False)  # e.g. 'PRIMARY', 'SECONDARY', etc.
+    account = models.ForeignKey(Accounts, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_bt_ledger_accounts',
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_bt_ledger_accounts',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.shop.short_name} - {self.ledger.name} - {self.account.e_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            shop_name = self.shop.short_name if self.shop_id and self.shop else 'BTL'
+            self.id = _generate_bt_id(shop_name)
+        super().save(*args, **kwargs)    

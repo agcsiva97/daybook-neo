@@ -3,8 +3,7 @@
     <td>
       <input type="checkbox" class="form-check-input transaction-checkbox" value="{{ transaction.pk }}" data-transaction-id="{{ transaction.pk }}">
     </td>
-    <td>{{ transaction.transaction_dt }}</td>
-    <td>{{ transaction.name|default:"-" }}</td>
+    <td>{{ transaction.transaction_dt |date:"d-m-Y" }}</td>
     <td>{{ transaction.remarks|default:"-" }}</td>
     {% if transaction.tr_type == 'DEBIT' %}
     <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>
@@ -48,7 +47,6 @@
             <div class="card">
             <div class="card-body">
                 <p class="mb-1"><strong>Shop:</strong> {{ transaction.shop.name }}</p>
-                <p class="mb-1"><strong>Name:</strong> {{ transaction.name|default:"N/A" }}</p>
                 <p class="mb-1"><strong>Type:</strong> {{ transaction.tr_type }}</p>
                 <p class="mb-1"><strong>Amount:</strong> {{ transaction.amount|indian_format }}</p>
                 <p class="mb-0"><strong>Remarks:</strong> {{ transaction.remarks|default:"N/A" }}</p>
@@ -59,6 +57,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <form method="post" action="{% url 'entries:delete_transaction' transaction.pk %}" class="d-inline">
             {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'manager:account_info' account.pk %}?fy={{ fy }}">
             <button type="submit" class="btn btn-danger">Delete Transaction</button>
             </form>
         </div>
@@ -70,6 +69,17 @@
 {% endfor %}
 
 {% if transactions.has_next %}
+<tr id="sentinel-row"
+    hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&fy={{ fy }}"
+    hx-trigger="intersect once"
+    hx-target="#sentinel-row"
+    hx-swap="outerHTML"
+    hx-indicator="#hx-loading">
+    <td colspan="10" class="text-center py-3">
+        <span class="text-muted">Scroll to load more transactions...</span>
+    </td>
+</tr>
+
 <!-- Loading Indicator Row - appears at bottom -->
 <tr id="hx-loading" class="htmx-indicator" style="display: none;">
     <td colspan="10" class="text-center py-4">
@@ -79,20 +89,6 @@
             </div>
             <span class="text-muted">Loading more transactions...</span>
         </div>
-    </td>
-</tr>
-
-<!-- Load More Button Row -->
-<tr id="hx-load-more">
-    <td colspan="10" class="text-center py-3">
-        <button class="btn btn-sm btn-outline-secondary" 
-                hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&fy={{ fy }}"
-                hx-target="#transaction-tbody"
-                hx-swap="beforeend"
-                hx-indicator="#hx-loading"
-                hx-on="htmx:afterSwap: this.closest('tr').remove()">
-            <i class="fa-solid fa-chevron-down"></i> Load More
-        </button>
     </td>
 </tr>
 {% endif %}

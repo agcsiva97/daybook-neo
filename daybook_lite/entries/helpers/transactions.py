@@ -4,71 +4,32 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib import messages
 
-from ..models import Transactions, Denomination, Loan, Shop
+from ..models import Transactions, Denomination, Loan
 from django.db.models.functions import Coalesce
 from django.db.models import Case, DecimalField, F, Min, Sum, Value, When, Q
-from manager.helper import date_helper
+from manager.helper import date_helper, manager_helper
+from manager.models import BT_Ledger_Accounts, Shop, Type, Accounts
 
 logger = logging.getLogger(__name__)
-
-
-# ──────────────────────────────────────────────────────────────
-# Balance lookup helpers
-# ──────────────────────────────────────────────────────────────
-
-def get_previous_balance(shop, reference_dt):
-    """
-    Get the new_balance of the most recent transaction for *shop*
-    that was created strictly before *reference_dt*.
-    Returns 0 if no earlier transaction exists.
-    This is used as old_balance when inserting a transaction at an older date.
-    """
-    prev_transaction = (
-        Transactions.objects
-        .filter(shop=shop, created_at__lt=reference_dt)
-        .order_by('-created_at')
-        .first()
-    )
-    if prev_transaction and prev_transaction.new_balance is not None:
-        logger.info(
-            f"Previous transaction found for {shop.name} before {reference_dt}: "
-            f"new_balance=[{prev_transaction.new_balance}]"
-        )
-        return prev_transaction.new_balance
-    # No earlier transaction – return 0 (no balance)
-    logger.info(f"No previous transaction for {shop.name} before {reference_dt}, returning 0")
-    return Decimal('0.00')
-
-
-def calculate_new_balance(old_balance, amount, tr_type):
-    """
-    Calculate new_balance given old_balance, amount and transaction type.
-    DEBIT subtracts; CREDIT adds.
-    """
-    if tr_type.upper() == 'DEBIT':
-        return old_balance - amount
-    return old_balance + amount
 
 
 # ──────────────────────────────────────────────────────────────
 # Transaction create / update helpers
 # ──────────────────────────────────────────────────────────────
 
-def create_transaction(shop, amount, name, tr_type, remarks, old_balance, chosen_dt, user):
+def create_transaction(shop, amount, tr_type, remarks, old_balance, chosen_dt, user, account=None):
     """
     Create a new Transactions record and force its created_at to *chosen_dt*.
     Returns the created transaction instance (with refreshed created_at).
     """
-    new_balance = calculate_new_balance(old_balance, amount, tr_type)
+
     txn = Transactions.objects.create(
         amount=amount,
-        name=name,
         shop=shop,
         tr_type=tr_type,
         remarks=remarks,
-        old_balance=old_balance,
-        new_balance=new_balance,
         transaction_dt=chosen_dt,
+        acc=account,
         created_by=user,
         updated_by=user,
     )
@@ -76,122 +37,20 @@ def create_transaction(shop, amount, name, tr_type, remarks, old_balance, chosen
     Transactions.objects.filter(pk=txn.pk).update(transaction_dt=chosen_dt)
     txn.refresh_from_db()
     logger.info(
-        f"Created transaction [{txn.id}]: name=[{name}] | tr_type=[{tr_type}] | "
-        f"amount=[{amount}] | old_bal=[{old_balance}] | new_bal=[{new_balance}]"
+        f"Created transaction [{txn.id}]: tr_type=[{tr_type}] | "
+        f"amount=[{amount}]"
     )
     return 1
 
-
-def update_transaction_amount(txn, additional_amount, tr_type, user, new_old_balance=None):
-    """
-    Add *additional_amount* to an existing transaction and recalculate its
-    new_balance.  Optionally update old_balance when it has shifted (e.g. the
-    preceding principal changed).
-    Returns the updated transaction.
-    """
-    logger.info(
-        f"Before update [{txn.id}]: amount=[{txn.amount}] | old_bal=[{txn.old_balance}] | new_bal=[{txn.new_balance}]"
-    )
-    txn.amount += additional_amount
-    if new_old_balance is not None:
-        txn.old_balance = new_old_balance
-    txn.new_balance = calculate_new_balance(txn.old_balance, txn.amount, tr_type)
-    txn.updated_by = user
-    txn.save()
-    logger.info(
-        f"After update  [{txn.id}]: amount=[{txn.amount}] | old_bal=[{txn.old_balance}] | new_bal=[{txn.new_balance}]"
-    )
-    return txn
-
-
-# ──────────────────────────────────────────────────────────────
-# Cascade / subsequent-balance helpers
-# ──────────────────────────────────────────────────────────────
-
-def update_latest_transactions(request, transaction, new_balance, shop_id=None):
-    """
-    Recalculate old_balance / new_balance for every transaction in *shop*
-    that was created **after** *transaction.created_at*, cascading the running
-    balance forward.
-    Returns 1 on success, 0 on error. The final cascaded balance is stored
-    on the transaction object as transaction._cascaded_balance for the caller
-    to use if needed.
-    """
-    try:
-        if shop_id is None:
-            shop_id = transaction.shop_id
-        latest_transactions = (
-            Transactions.objects
-            .filter(created_at__gt=transaction.created_at, shop_id=shop_id)
-            .order_by('created_at')
-        )
-        if latest_transactions.exists():
-            for trans in latest_transactions:
-                logger.info(
-                    f"Before cascade: [{trans.id}] NAME:[{trans.name}] | AMOUNT:[{trans.amount}] | "
-                    f"TR_TYPE:[{trans.tr_type}] | OLD_BAL:[{trans.old_balance}] | NEW_BAL:[{trans.new_balance}]"
-                )
-                trans.old_balance = new_balance
-                trans.new_balance = calculate_new_balance(new_balance, trans.amount, trans.tr_type)
-                new_balance = trans.new_balance
-                trans.save()
-                logger.info(
-                    f"After cascade:  [{trans.id}] NAME:[{trans.name}] | AMOUNT:[{trans.amount}] | "
-                    f"TR_TYPE:[{trans.tr_type}] | OLD_BAL:[{trans.old_balance}] | NEW_BAL:[{trans.new_balance}]"
-                )
-            logger.info(f"{latest_transactions.count()} subsequent transactions updated. Final balance=[{new_balance}]")
-        else:
-            logger.info("No subsequent transactions found to cascade.")
-
-        # Store the final cascaded balance so the caller can update the ledger
-        transaction._cascaded_balance = new_balance
-        return 1
-    except Exception as e:
-        logger.error(f"Error updating latest transactions: {str(e)}", exc_info=True)
-        messages.error(request, f'Error updating latest transactions: {str(e)}')
-        return 0
-
-
-# ──────────────────────────────────────────────────────────────
-# Legacy reversal helpers (kept for edit_loan compatibility)
-# ──────────────────────────────────────────────────────────────
-
-def reverse_principal_transactions(request, old_principal_trans, old_principal, type):
-    """Reverse (subtract) a principal amount from an existing transaction."""
-    try:
-        old_principal_trans.amount = old_principal_trans.amount - old_principal
-        if type == 'LOAN':
-            old_principal_trans.new_balance = old_principal_trans.new_balance + old_principal
-        else:
-            old_principal_trans.new_balance = old_principal_trans.new_balance - old_principal
-        old_principal_trans.updated_by = request.user
-        old_principal_trans.save()
-        return 1
-    except Exception as e:
-        logger.error(f"Error reversing principal transaction: {str(e)}", exc_info=True)
-        messages.error(request, f'Error reversing principal transaction: {str(e)}')
-        return 0
-
-
-def reverse_interest_transactions(request, old_interest_trans, old_interest):
-    """Reverse (subtract) an interest amount from an existing transaction."""
-    try:
-        old_interest_trans.amount = old_interest_trans.amount - old_interest
-        old_interest_trans.new_balance = old_interest_trans.new_balance - old_interest
-        old_interest_trans.updated_by = request.user
-        old_interest_trans.save()
-        return 1
-    except Exception as e:
-        logger.error(f"Error reversing interest transaction: {str(e)}", exc_info=True)
-        messages.error(request, f'Error reversing interest transaction: {str(e)}')
-        return 0
     
-def get_opening_balance(shop, reference_dt):
+def get_opening_balance(shop, reference_dt=None):
     """
     Get the opening balance for a given shop and reference date.
     This is the new_balance of the most recent transaction before the reference date,
     or the shop's current balance if no such transaction exists.
     """
+    if reference_dt is None:
+        reference_dt = timezone.localdate()
     transactions = Transactions.objects.filter(
         transaction_dt__date__lt=reference_dt, shop=shop
     ).select_related('shop', 'created_by', 'updated_by')
@@ -354,7 +213,7 @@ def _reduce_or_delete_transaction(trans, amount, user, label=""):
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
 
-def _apply_amount_delta(trans, old_amount, new_amount, remark, name, tr_type, shop, chosen_dt, user, label=""):
+def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, chosen_dt, user, account, label=""):
     """
     Same shop + same date: adjust existing transaction by delta (new - old).
     If transaction not found, create a new one with new_amount.
@@ -366,9 +225,9 @@ def _apply_amount_delta(trans, old_amount, new_amount, remark, name, tr_type, sh
     if trans is None:
         logger.info(f"[{label}] no existing transaction — creating new with amount=[{new_amount}]")
         create_transaction(
-            shop=shop, amount=new_amount, name=name,
+            shop=shop, amount=new_amount,
             tr_type=tr_type, remarks=remark,
-            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user
+            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user, account=account
         )
         return
 
@@ -383,7 +242,7 @@ def _apply_amount_delta(trans, old_amount, new_amount, remark, name, tr_type, sh
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
 
-def _add_or_create_transaction(trans, amount, remark, name, tr_type, shop, chosen_dt, user, label=""):
+def _add_or_create_transaction(trans, amount, remark, tr_type, shop, chosen_dt, user, account, label=""):
     """
     Different shop or date: add *amount* to existing transaction on new date,
     or create a fresh transaction if none exists.
@@ -397,9 +256,9 @@ def _add_or_create_transaction(trans, amount, remark, name, tr_type, shop, chose
     else:
         logger.info(f"[{label}] no existing transaction — creating new with amount=[{amount}]")
         create_transaction(
-            shop=shop, amount=amount, name=name,
+            shop=shop, amount=amount,
             tr_type=tr_type, remarks=remark,
-            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user
+            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user, account=account
         )
 
 def purge_old_denominations():
@@ -466,7 +325,10 @@ def get_account_summary(account, financial_year: str) -> dict:
         credit=Sum('amount', filter=Q(tr_type='CREDIT')),
         debit=Sum('amount', filter=Q(tr_type='DEBIT')),
     )
-    opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
+    if account.acc_type.group_order == 2:  # For PL accounts, opening balance is considered as zero
+        opening = Decimal('0.00')
+    else:
+        opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
 
     # Credits & Debits within FY — single query
     fy_qs = Transactions.objects.filter(
@@ -500,6 +362,8 @@ def get_type_summary(acc_type, financial_year: str) -> dict:
     """Returns all balances for an account in a single grouped query."""
     start_date, end_date = date_helper.get_fy_dates(financial_year)
     decimal_mask = Decimal('0.01')
+    # print(f"Type Summary for {acc_type.e_name} in FY {financial_year}:")
+    # print(f"  Start Date: {start_date}, End Date: {end_date}")
 
     # Opening: everything before FY — single query
     opening_qs = Transactions.objects.filter(
@@ -522,11 +386,16 @@ def get_type_summary(acc_type, financial_year: str) -> dict:
     )
     credits = fy_qs['credit'] or Decimal('0.00')
     debits  = fy_qs['debit']  or Decimal('0.00')
+    # print("credits: ", credits)
+    # print("debits: ", debits)
     cur_balance = credits - debits
+    # print("cur_balance: ", cur_balance)
     net_balance = opening + cur_balance
+    # print("net_balance: ", net_balance)
     closing = opening + credits - debits
-    print(f"Type Summary for {acc_type.e_name} in FY {financial_year}:")
-    print(f"  Opening: {opening}, Credits: {credits}, Debits: {debits}, Closing: {closing}")
+    # print("closing: ", closing)
+    # print(f"Type Summary for {acc_type.e_name} in FY {financial_year}:")
+    # print(f"  Opening: {opening}, Credits: {credits}, Debits: {debits}, Closing: {closing}")
     return {
         'name': acc_type.t_name,
         'opening': Decimal(opening).quantize(decimal_mask, rounding=ROUND_HALF_UP),
@@ -547,33 +416,111 @@ def get_group_summary(group, financial_year: str) -> dict:
     decimal_mask = Decimal('0.01')
 
     # Opening: everything before FY — single query
-    opening_qs = Transactions.objects.filter(
-        acc__acc_type__group=group,
-        transaction_dt__date__lt=start_date,
-    ).aggregate(
-        credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+    if group[0] == 1:  # For Capital accounts, include PL accounts in the summary
+        opening_qs = Transactions.objects.filter(
+            acc__acc_type__group_order__in=[1,2],
+            transaction_dt__date__lt=start_date,
+        ).aggregate(
+            credit=Sum('amount', filter=Q(tr_type='CREDIT')),
         debit=Sum('amount', filter=Q(tr_type='DEBIT')),
-    )
+        )
+    else:
+        opening_qs = Transactions.objects.filter(
+            acc__acc_type__group_order=group[0],
+            transaction_dt__date__lt=start_date,
+        ).aggregate(
+            credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+        debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
     opening = (opening_qs['credit'] or Decimal('0.00')) - (opening_qs['debit'] or Decimal('0.00'))
 
     # Credits & Debits within FY — single query
-    fy_qs = Transactions.objects.filter(
-        acc__acc_type__group=group,
-        transaction_dt__date__gte=start_date,
-        transaction_dt__date__lte=end_date,
-    ).aggregate(
+    if group[0] == 1:  # For Capital accounts, include PL accounts in the summary
+        fy_qs = Transactions.objects.filter(
+            acc__acc_type__group_order__in=[1,2],
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).aggregate(
+            credit=Sum('amount', filter=Q(tr_type='CREDIT')),
+            debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+        )
+    else:
+        fy_qs = Transactions.objects.filter(
+            acc__acc_type__group_order=group[0],
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).aggregate(
         credit=Sum('amount', filter=Q(tr_type='CREDIT')),
         debit=Sum('amount', filter=Q(tr_type='DEBIT')),
-    )
+        )
     credits = fy_qs['credit'] or Decimal('0.00')
     debits  = fy_qs['debit']  or Decimal('0.00')
+    if group[0] == 2:  # For PL accounts, opening balance is considered as zero
+        opening = Decimal('0.00')
     closing = opening + credits - debits
 
     return {
-        'name': group.t_name,
-        'id': group.order,
+        'name': group[2],
+        'id': group[0],
         'opening': Decimal(opening).quantize(decimal_mask, rounding=ROUND_HALF_UP),
         'credits': Decimal(credits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
         'debits':  Decimal(debits).quantize(decimal_mask, rounding=ROUND_HALF_UP),
         'closing': Decimal(closing).quantize(decimal_mask, rounding=ROUND_HALF_UP),
     }
+
+def get_linked_account(ledger, rel_type):
+    """
+    Returns the Accounts instance linked to the given ledger and rel_type.
+    rel_type must be one of: LOAN_PRINCIPAL, LOAN_INTEREST,
+                             RELEASE_PRINCIPAL, RELEASE_INTEREST.
+    Returns None if no linked account is found.
+    """
+    try:
+        linked = BT_Ledger_Accounts.objects.select_related('account').get(
+            ledger=ledger, rel_type=rel_type
+        )
+        return linked.account
+    except BT_Ledger_Accounts.DoesNotExist:
+        logger.warning(f"No linked account found for ledger=[{ledger.id}] rel_type=[{rel_type}]")
+        return None
+    
+def group_fy_data(shop, fy):
+    groups = manager_helper.get_groups()
+    group_fy_data = []
+    for group in groups:
+        types = Type.objects.filter(shop=shop, group_order=group[0])
+        type_entries = []
+        for acc_type in types:
+            summary = get_type_summary(acc_type, fy)
+            accounts = Accounts.objects.filter(shop=shop, acc_type=acc_type)
+            acc_entries = []
+            type_opening, type_closing = Decimal('0.00'), Decimal('0.00')
+            for acc in accounts:
+                acc_summary = get_account_summary(acc, fy)
+                acc_entries.append({
+                    'id':          acc.id,
+                    'name':        acc.t_name,
+                    'opening':     acc_summary['opening'],
+                    'closing':     acc_summary['closing']
+                })
+
+                type_opening = type_opening + acc_summary['opening']
+                if acc_type.group_order == 2:  # For PL accounts, opening balance is considered as zero
+                    type_opening = Decimal('0.00')
+                type_closing = type_closing + acc_summary['closing']
+            type_entries.append({
+                'id':          acc_type.id,
+                'name':        acc_type.t_name,
+                'opening':     type_opening,
+                'closing':     type_closing,
+                'accounts':    acc_entries
+            })
+        group_fy_data.append({
+            'id': group[0],
+            'name': group[1],
+            't_name': group[2],
+            'opening': sum([t['opening'] for t in type_entries]),
+            'closing': sum([t['closing'] for t in type_entries]),
+            'types': type_entries
+        })
+    return group_fy_data

@@ -1,22 +1,11 @@
-1, முதலீடு, Capital
-2, ஆதாய வரவு, Income
-2, ஆதாயப் பற்று, Expense
-2, ஆதாயப் பற்று.வரவு, Loan Interest
-3, அடகு கணக்கு,Loan Account
-3, உயிர் காப்பீடு, Life Insurance
-3, சேமிப்பு சீட்டு, Chit Fund
-3, நிலை வைப்பு, Fixed Deposit
-3, பொது நல நிதி, Public Provident Fund
-3, பணியாளர் நல நிதி, Employee Provident Fund
-3, செல்வமகள் சேமிப்பு திட்டம், Sukanya Samriti Yojana
-3, பங்கு, Stock
-3, பங்கு நிதி, Mutual Fund
-3, சேமி வங்கி, Savings Account
-3, இதர வங்கி திட்டம்,Other Bank Schemes
-3, இதர முதலீடு,Other Investments
-3, பிற-முத நகை, Auction Gold
-4, கடன் நகை, Jewel Loan
-4, இதர வங்கி கடன், Other Bank Loans
-5, கடன் நபர், Individual Debt
-5, கைமாற்று, Transfers
-5, அடகு முன்.வரவு, Part Payment
+5,பலபோ்,Others
+2,ஆதாயகணக்கு,Income
+3,அடகுகணக்கு,Loan Account
+4,வங்கிலோன்,Bank Loans
+3,வங்கிகணக்கு,Bank Account
+5,நிலுவை,Pending
+0,நம் கடை,My Shop
+5,நம்மவா்,Our
+5,நிலுவை2,Pending 2
+1,முதலீடுகணக்கு,Capital
+5,நம்கணக்கு,My Account

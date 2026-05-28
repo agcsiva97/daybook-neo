@@ -35,6 +35,26 @@
           </table>
         </div>
       </div>
+      <div class="row">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Linked Accounts</h5>
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#linkAccountsModal">
+            <i class="fa-solid fa-link"></i> Link Accounts
+          </button>
+        </div>
+        {% if linked_accounts %}
+          {% for account in linked_accounts %}
+            <div class="col-md-3">
+              <h6>{{ account.rel_type }}</h6>
+              <p>{{ account.account.t_name }}</p>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="col-12">
+            <p class="text-muted">No linked accounts found.</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -160,4 +180,232 @@
     </div>
   </div>
 </div>
+
+<!-- Link Accounts Modal -->
+<div class="modal fade" id="linkAccountsModal" tabindex="-1" aria-labelledby="linkAccountsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="linkAccountsModalLabel"><i class="fa-solid fa-link"></i> Link Accounts to {{ ledger.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="linkAccountsForm">
+          <div class="mb-3">
+            <label for="loanPrincipalAccount" class="form-label">Loan Principal Account</label>
+            <select class="form-select" id="loanPrincipalAccount" name="LOAN_PRINCIPAL">
+              <option value="">-- Select Account --</option>
+              {% for account in shop_accounts %}
+                <option value="{{ account.id }}" {% if linked_accounts_dict.LOAN_PRINCIPAL.id == account.id %}selected{% endif %}>
+                  {{ account.e_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="loanInterestAccount" class="form-label">Loan Interest Account</label>
+            <select class="form-select" id="loanInterestAccount" name="LOAN_INTEREST">
+              <option value="">-- Select Account --</option>
+              {% for account in shop_accounts %}
+                <option value="{{ account.id }}" {% if linked_accounts_dict.LOAN_INTEREST.id == account.id %}selected{% endif %}>
+                  {{ account.e_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="releasePrincipalAccount" class="form-label">Release Principal Account</label>
+            <select class="form-select" id="releasePrincipalAccount" name="RELEASE_PRINCIPAL">
+              <option value="">-- Select Account --</option>
+              {% for account in shop_accounts %}
+                <option value="{{ account.id }}" {% if linked_accounts_dict.RELEASE_PRINCIPAL.id == account.id %}selected{% endif %}>
+                  {{ account.e_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="releaseInterestAccount" class="form-label">Release Interest Account</label>
+            <select class="form-select" id="releaseInterestAccount" name="RELEASE_INTEREST">
+              <option value="">-- Select Account --</option>
+              {% for account in shop_accounts %}
+                <option value="{{ account.id }}" {% if linked_accounts_dict.RELEASE_INTEREST.id == account.id %}selected{% endif %}>
+                  {{ account.e_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveLinkAccountsBtn">
+          <i class="fa-solid fa-floppy-disk"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const saveLinkAccountsBtn = document.getElementById('saveLinkAccountsBtn');
+  const linkAccountsForm = document.getElementById('linkAccountsForm');
+  const linkAccountsModal = document.getElementById('linkAccountsModal');
+  
+  if (saveLinkAccountsBtn) {
+    saveLinkAccountsBtn.addEventListener('click', function() {
+      const formData = new FormData(linkAccountsForm);
+      const data = {
+        'LOAN_PRINCIPAL': formData.get('LOAN_PRINCIPAL') || null,
+        'LOAN_INTEREST': formData.get('LOAN_INTEREST') || null,
+        'RELEASE_PRINCIPAL': formData.get('RELEASE_PRINCIPAL') || null,
+        'RELEASE_INTEREST': formData.get('RELEASE_INTEREST') || null,
+      };
+      
+      // At least one account must be selected
+      if (!Object.values(data).some(v => v !== null)) {
+        // Show validation error toast
+        const toastContainer = document.querySelector('.toast-container');
+        const warningToastHTML = `
+          <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header text-bg-warning">
+              <i class="fa-solid fa-book me-2"></i>
+              <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+              <small class="ms-auto text-body-dark">just now</small>
+              <button type="button" class="btn btn-link p-0 ms-2 text-white" data-bs-dismiss="toast" aria-label="Close" style="text-decoration: none; font-size: 1.2em;">
+                <i class="fa-solid fa-circle-xmark"></i>
+              </button>
+            </div>
+            <div class="toast-body text-bg-warning">
+              <i class="fa-solid fa-exclamation-triangle me-2"></i>Please select at least one account
+            </div>
+          </div>
+        `;
+        toastContainer.insertAdjacentHTML('beforeend', warningToastHTML);
+        
+        // Show the warning toast
+        const toastEl = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+        return;
+      }
+      
+      // Disable button and show loading state
+      saveLinkAccountsBtn.disabled = true;
+      saveLinkAccountsBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+      
+      fetch('{% url "manager:link_ledger_accounts" ledger.pk %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify(data),
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        if (result.success) {
+          // Create dynamic toast message
+          const toastContainer = document.querySelector('.toast-container');
+          const toastHTML = `
+            <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+              <div class="toast-header text-bg-success">
+                <i class="fa-solid fa-book me-2"></i>
+                <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+                <small class="ms-auto text-body-dark">just now</small>
+                <button type="button" class="btn btn-link p-0 ms-2 text-white" data-bs-dismiss="toast" aria-label="Close" style="text-decoration: none; font-size: 1.2em;">
+                  <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+              </div>
+              <div class="toast-body text-bg-success">
+                <i class="fa-solid fa-circle-check me-2"></i>${result.message}
+              </div>
+            </div>
+          `;
+          toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+          
+          // Show the newly created toast
+          const toastEl = toastContainer.lastElementChild;
+          const toast = new bootstrap.Toast(toastEl);
+          toast.show();
+          
+          // Close modal and reload page after 2 seconds
+          const modal = bootstrap.Modal.getInstance(linkAccountsModal);
+          modal.hide();
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
+        } else {
+          // Show error toast
+          const toastContainer = document.querySelector('.toast-container');
+          const errorToastHTML = `
+            <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+              <div class="toast-header text-bg-danger">
+                <i class="fa-solid fa-book me-2"></i>
+                <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+                <small class="ms-auto text-body-dark">just now</small>
+                <button type="button" class="btn btn-link p-0 ms-2 text-white" data-bs-dismiss="toast" aria-label="Close" style="text-decoration: none; font-size: 1.2em;">
+                  <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+              </div>
+              <div class="toast-body text-bg-danger">
+                <i class="fa-solid fa-circle-xmark me-2"></i>Error: ${result.message}
+              </div>
+            </div>
+          `;
+          toastContainer.insertAdjacentHTML('beforeend', errorToastHTML);
+          
+          // Show the error toast
+          const toastEl = toastContainer.lastElementChild;
+          const toast = new bootstrap.Toast(toastEl);
+          toast.show();
+          
+          saveLinkAccountsBtn.disabled = false;
+          saveLinkAccountsBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Show error toast
+        const toastContainer = document.querySelector('.toast-container');
+        const errorToastHTML = `
+          <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+            <div class="toast-header text-bg-danger">
+              <i class="fa-solid fa-book me-2"></i>
+              <span class="hanuman-600">Daybook</span><span class="hanuman-100" style="font-style:italic;font-size:small;">lite</span>
+              <small class="ms-auto text-body-dark">just now</small>
+              <button type="button" class="btn btn-link p-0 ms-2 text-white" data-bs-dismiss="toast" aria-label="Close" style="text-decoration: none; font-size: 1.2em;">
+                <i class="fa-solid fa-circle-xmark"></i>
+              </button>
+            </div>
+            <div class="toast-body text-bg-danger">
+              <i class="fa-solid fa-circle-xmark me-2"></i>An error occurred while saving linked accounts: ${error.message}
+            </div>
+          </div>
+        `;
+        toastContainer.insertAdjacentHTML('beforeend', errorToastHTML);
+        
+        // Show the error toast
+        const toastEl = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+        
+        saveLinkAccountsBtn.disabled = false;
+        saveLinkAccountsBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+      });
+    });
+  }
+});
+</script>
+
 {% endblock %}

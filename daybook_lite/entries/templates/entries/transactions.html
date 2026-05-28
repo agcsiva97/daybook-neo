@@ -2,18 +2,19 @@
 
 {% block content %}
 <style>
-{% comment %} @page {
-  size: A5;
-  margin: 10mm;
-} {% endcomment %}
-
+@page {
+  size: {{ configs.TRANS_PAPER|default:"A5" }} {{ configs.TRANS_ORIENTATION|default:"portrait" }};
+} 
+.print-only {
+  display: none;
+}
 @media print {
-  {% comment %} /* Set zoom/scale for printing */
+/* Set zoom/scale for printing */
   body {
-    zoom: 50%;
+    zoom: 90%;
     -moz-transform: scale(0.6);
     -moz-transform-origin: 0 0;
-  } {% endcomment %}
+  }
   
   /* Hide elements that shouldn't be printed */
   .btn, .pagination, form, .modal, nav, footer {
@@ -28,6 +29,10 @@
   /* Show print-only table */
   .print-only {
     display: table !important;
+  }
+
+  .no-print {
+    display: none !important;
   }
   
   /* Adjust layout for printing */
@@ -96,16 +101,16 @@
           <!-- Filter Information for Print -->
       <div class="print-filters" style="display: none;">
         <h6>Applied Filters:</h6>
-        {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query or name_search_query %}
+        {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query %}
           <div style="margin: 0; padding-left: 20px;">
             {% if from_date %}
-            <strong>From Date:</strong> {{ from_date }} |
+            <strong><i class="fa-solid fa-calendar"></i> From Date:</strong> {{ from_date }} |
             {% endif %}
             {% if to_date %}
-            <strong>To Date:</strong> {{ to_date }} |
+            <strong><i class="fa-solid fa-calendar"></i> To Date:</strong> {{ to_date }} |
             {% endif %}
             {% if shop_filter %}
-            <strong>Shop:</strong> 
+            <strong><i class="fa-solid fa-store"></i> Shop:</strong> 
               {% for shop in all_shops %}
                 {% if shop.id|stringformat:"s" == shop_filter %}
                   {{ shop.name }} |
@@ -113,10 +118,10 @@
               {% endfor %}
             {% endif %}
             {% if type_filter %}
-            <strong>Type:</strong> {{ type_filter }} |
+            <strong><i class="fa-solid fa-list"></i> Type:</strong> {{ type_filter }} |
             {% endif %}
             {% if account_filter %}
-            <strong>Account:</strong>
+            <strong><i class="fa-solid fa-user"></i> Account:</strong>
               {% for account in all_accounts %}
                 {% if account.id|stringformat:"s" == account_filter %}
                   {{ account.e_name }} |
@@ -124,7 +129,7 @@
               {% endfor %}
             {% endif %}
             {% if account_type_filter %}
-            <strong>Account Type:</strong>
+            <strong><i class="fa-solid fa-id-card"></i> Account Type:</strong>
               {% for acc_type in all_account_types %}
                 {% if acc_type.id|stringformat:"s" == account_type_filter %}
                   {{ acc_type.e_name }} |
@@ -132,13 +137,10 @@
               {% endfor %}
             {% endif %}
             {% if amount_value %}
-            <strong>Amount:</strong> {{ amount_operator }} {{ amount_value }} |
-            {% endif %}
-            {% if name_search_query %}
-            <strong>Name:</strong> {{ name_search_query }} |
+            <strong><i class="fa-solid fa-rupee-sign"></i> Amount:</strong> {{ amount_operator }} {{ amount_value }} |
             {% endif %}
             {% if search_query %}
-            <strong>Remarks:</strong> {{ search_query }} |
+            <strong><i class="fa-solid fa-comment"></i> Remarks:</strong> {{ search_query }} |
             {% endif %}
           </div>
         {% else %}
@@ -149,15 +151,15 @@
       <!-- Filters -->
       <form method="get" class="row g-3 mb-4">
         <div class="col-md-2">
-          <label for="from_date" class="form-label">From Date</label>
+          <label for="from_date" class="form-label"><i class="fa-solid fa-calendar"></i> From Date</label>
           <input type="date" class="form-control" id="from_date" name="from_date" value="{{ from_date }}">
         </div>
         <div class="col-md-2">
-          <label for="to_date" class="form-label">To Date</label>
+          <label for="to_date" class="form-label"><i class="fa-solid fa-calendar"></i> To Date</label>
           <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
         </div>
         <div class="col-md-2">
-          <label for="shop" class="form-label">Shop</label>
+          <label for="shop" class="form-label"><i class="fa-solid fa-store"></i> Shop</label>
           <select class="form-select" id="shop" name="shop">
             <option value="">All Shops</option>
             {% for shop in all_shops %}
@@ -168,7 +170,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="type" class="form-label">Transaction Type</label>
+          <label for="type" class="form-label"><i class="fa-solid fa-list"></i> Transaction Type</label>
           <select class="form-select" id="type" name="type">
             <option value="">All Types</option>
             <option value="DEBIT" {% if type_filter == 'DEBIT' %}selected{% endif %}>DEBIT</option>
@@ -176,7 +178,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="account" class="form-label">Account</label>
+          <label for="account" class="form-label"><i class="fa-solid fa-user"></i> Account</label>
           <select class="form-select" id="account" name="account">
             <option value="">All Accounts</option>
             {% for account in all_accounts %}
@@ -187,7 +189,7 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="account_type" class="form-label">Account Type</label>
+          <label for="account_type" class="form-label"><i class="fa-solid fa-id-card"></i> Account Type</label>
           <select class="form-select" id="account_type" name="account_type">
             <option value="">All Types</option>
             {% for acc_type in all_account_types %}
@@ -198,15 +200,11 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label for="name_search" class="form-label">Search Name</label>
-          <input type="text" class="form-control" id="name_search" name="name_search" value="{{ name_search_query }}" placeholder="Search name...">
-        </div>
-        <div class="col-md-2">
-          <label for="search" class="form-label">Search Remarks</label>
+          <label for="search" class="form-label"><i class="fa-solid fa-comment"></i> Search Remarks</label>
           <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search remarks...">
         </div>
         <div class="col-md-1">
-          <label for="amount_operator" class="form-label">Amount</label>
+          <label for="amount_operator" class="form-label"><i class="fa-solid fa-indian-rupee-sign"></i> Amount</label>
           <select class="form-select" id="amount_operator" name="amount_operator">
             <option value="equals" {% if amount_operator == 'equals' %}selected{% endif %}>=</option>
             <option value="greater" {% if amount_operator == 'greater' %} selected{% endif %}>&gt;</option>
@@ -217,14 +215,21 @@
           <label for="amount_value" class="form-label">&nbsp;</label>
           <input type="number" class="form-control" id="amount_value" name="amount_value" value="{{ amount_value }}" placeholder="Amount" step="0.01">
         </div>
+        <div class="col-md-2">
+          <label for="sort" class="form-label"><i class="fa-solid fa-sort"></i> Sort By</label>
+          <select class="form-select" id="sort" name="sort">
+            <option value="date_desc" {% if sort == 'date_desc' or not sort %}selected{% endif %}>Date (Newest First)</option>
+            <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Oldest First)</option>
+          </select>
+        </div>
         <div class="col-md-1 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filter</button>
         </div>
       </form>
 
-      {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query or name_search_query %}
+      {% if from_date or to_date or shop_filter or type_filter or account_filter or account_type_filter or amount_value or search_query %}
       <div class="mb-3">
-        <a href="{% url 'entries:transactions' %}" class="btn btn-sm btn-outline-secondary">
+        <a href="{% url 'entries:transactions' %}?clear_filters=true" class="btn btn-sm btn-outline-secondary">
           <i class="fa-solid fa-times"></i> Clear Filters
         </a>
       </div>
@@ -236,25 +241,25 @@
           Showing {{ page_obj.paginator.count }} transaction{{ page_obj.paginator.count|pluralize }}
         </p>
         <div class="btn-group" role="group">
-          <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
+           <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
              class="btn btn-sm btn-outline-success">
             <i class="fa-solid fa-file-csv"></i> 
             <span class="d-none d-md-inline"> CSV</span>
           </a>
-          <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if name_search_query %}name_search={{ name_search_query }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}" 
+           <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
              class="btn btn-sm btn-outline-success">
             <i class="fa-solid fa-file-excel"></i> 
             <span class="d-none d-md-inline"> Excel </span>
           </a>
-          <button onclick="window.print()" class="btn btn-sm btn-outline-primary">
+          <a href="{% url 'entries:transactions_print' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" class="btn btn-sm btn-outline-primary">
             <i class="fa-solid fa-print"></i> 
             <span class="d-none d-md-inline"> Print</span>
-          </button>
+          </a>
         </div>
       </div>
 
       <!-- Financial Summary Card -->
-      <div class="row g-3 mb-4">
+      <div class="row g-3 mb-4 screen-only">
         <div class="col-md-4">
           <div class="p-3 bg-light rounded">
             <h6 class="text-muted mb-2 text-end">Total Debits</h6>
@@ -275,6 +280,17 @@
         </div>
       </div>
 
+      <div class="print-only">
+        <center><h6>{{shop.god|default:"-"}}</h6></center>
+        <center><h3>{{shop.name}}</h3></center>
+        <center><h5>
+        {% if shop.d_no %}{{shop.d_no}}, {% endif %}
+        {% if shop.addressline1 %}{{shop.addressline1}}, {% endif %}
+        {% if shop.addressline2 %}{{shop.addressline2}},{% endif %}
+        {% if shop.place %}{{shop.place}} - {{shop.pincode}}{% endif %}
+        </h5></center>
+      </div>
+
       <!-- Transactions Table -->
       <div class="table-responsive">
         <!-- Screen version with pagination -->
@@ -282,17 +298,16 @@
           <thead>
             <tr>
               <th scope="col">Date</th>
-              <th scope="col">Time</th>
-              <th scope="col">Shop</th>
+              {% if shop is None %} <th scope="col">Shop</th> {% endif %}
               <th scope="col">Account Name</th>
               <th scope="col">Remarks</th>
               <th scope="col" class="text-end">DEBIT</th>
               <th scope="col" class="text-end">CREDIT</th>
               {% comment %} <th scope="col" class="text-end">Old Balance</th>
               <th scope="col" class="text-end">New Balance</th> {% endcomment %}
-              <th scope="col">Created By</th>
-              <th scope="col">Updated By</th>
-              <th scope="col">Actions</th>
+              <th class="screen-only" scope="col">Created By</th>
+              <th class="screen-only" scope="col">Updated By</th>
+              <th class="screen-only" scope="col">Actions</th>
             </tr>
           </thead>
           <tbody id="transaction-list">
@@ -309,6 +324,16 @@
           </tfoot> {% endcomment %}
           {% endif %}
         </table>
+
+        <!-- Loading indicator positioned outside the table -->
+        <div id="loading-indicator" class="htmx-indicator py-3" style="display:none;">
+          <div class="d-flex justify-content-center align-items-center gap-2 w-100">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-muted">Loading more transactions...</span>
+          </div>
+        </div>
         
         
 
@@ -316,4 +341,70 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const shopSelect = document.getElementById('shop');
+    const accountSelect = document.getElementById('account');
+    const accountTypeSelect = document.getElementById('account_type');
+
+    if (!shopSelect || !accountSelect || !accountTypeSelect) return;
+
+    function loadAccounts(shopId, selectedAccountId) {
+        if (!shopId) {
+            accountSelect.innerHTML = '<option value="">All Accounts</option>';
+            return;
+        }
+        fetch(`/api/shops/${shopId}/accounts/`)
+            .then(r => r.json())
+            .then(data => {
+                accountSelect.innerHTML = '<option value="">All Accounts</option>';
+                data.forEach(function (acc) {
+                    const opt = new Option(acc.e_name, acc.id);
+                    if (selectedAccountId && acc.id == selectedAccountId) opt.selected = true;
+                    accountSelect.add(opt);
+                });
+            })
+            .catch(function () {
+                accountSelect.innerHTML = '<option value="">All Accounts</option>';
+            });
+    }
+
+    function loadTypes(shopId, selectedTypeId) {
+        if (!shopId) {
+            accountTypeSelect.innerHTML = '<option value="">All Types</option>';
+            return;
+        }
+        fetch(`/api/shops/${shopId}/types/`)
+            .then(r => r.json())
+            .then(data => {
+                accountTypeSelect.innerHTML = '<option value="">All Types</option>';
+                data.forEach(function (t) {
+                    const opt = new Option(t.e_name, t.id);
+                    if (selectedTypeId && t.id == selectedTypeId) opt.selected = true;
+                    accountTypeSelect.add(opt);
+                });
+            })
+            .catch(function () {
+                accountTypeSelect.innerHTML = '<option value="">All Types</option>';
+            });
+    }
+
+    // On shop change, reload both dropdowns
+    shopSelect.addEventListener('change', function () {
+        loadAccounts(this.value, null);
+        loadTypes(this.value, null);
+    });
+
+    // On page load, if a shop is already selected, populate dropdowns with current selections preserved
+    const currentShop = shopSelect.value;
+    const currentAccount = '{{ account_filter }}';
+    const currentType = '{{ account_type_filter }}';
+
+    if (currentShop) {
+        loadAccounts(currentShop, currentAccount);
+        loadTypes(currentShop, currentType);
+    }
+});
+</script>
 {% endblock %}

@@ -29,7 +29,7 @@
           </thead>
           <tbody>
             <tr>
-              <td>{{ loan.transaction_dt|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ loan.transaction_dt|date:"d-m-Y" }}</td>
               <td>{{ loan.pawn_no }}</td>
               <td>{{ loan.ledger.name }}</td>
               <td>{{ loan.type }}</td>
@@ -63,7 +63,7 @@
             <tr>
               <td>{{ record.history_date|date:"Y-m-d H:i:s" }}</td>
               <td>{% if record.history_user %}{{ record.history_user.username }}{% else %}-{% endif %}</td>
-              <td>{{ record.transaction_dt|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ record.transaction_dt|date:"d-m-Y H:i:s" }}</td>
               <td>{{ record.pawn_no|default:"-" }}</td>
               <td>{{ record.ledger|default:"-" }}</td>
               <td>{{ record.type|default:"-" }}</td>

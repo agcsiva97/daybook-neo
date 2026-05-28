@@ -1,8 +1,7 @@
 {% for transaction in page_obj %}
 <tr>
-    <td>{{ transaction.transaction_dt|date:"Y-m-d" }}</td>
-    <td>{{ transaction.transaction_dt|time:"H:i:s" }}</td>
-    <td>{{ transaction.shop.name }}</td>
+    <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
+    {% if shop is None %} <td>{{ transaction.shop.name }}</td> {% endif %}
     <td>{{ transaction.acc.t_name|default:"-" }}</td>
     <td>{{ transaction.remarks|default:"-" }}</td>
     {% if transaction.tr_type == 'DEBIT' %}
@@ -14,9 +13,9 @@
     {% endif %}
     {% comment %} <td class="text-end">{{ transaction.old_balance|default:"-" }}</td>
     <td class="text-end">{{ transaction.new_balance|default:"-" }}</td> {% endcomment %}
-    <td>{{ transaction.created_by.username }}</td>
-    <td>{{ transaction.updated_by.username }}</td>
-    <td>
+    <td class="screen-only">{{ transaction.created_by.username }}</td>
+    <td class="screen-only">{{ transaction.updated_by.username }}</td>
+    <td class="screen-only">
     <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn btn-sm btn-outline-primary">
         <i class="fa-solid fa-pen-to-square"></i>
     </a>
@@ -42,7 +41,6 @@
             <div class="card">
               <div class="card-body">
                 <p class="mb-1"><strong>Shop:</strong> {{ transaction.shop.name }}</p>
-                <p class="mb-1"><strong>Name:</strong> {{ transaction.name|default:"N/A" }}</p>
                 <p class="mb-1"><strong>Type:</strong> {{ transaction.tr_type }}</p>
                 <p class="mb-1"><strong>Amount:</strong> {{ transaction.amount }}</p>
                 <p class="mb-0"><strong>Remarks:</strong> {{ transaction.remarks|default:"N/A" }}</p>
@@ -53,6 +51,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <form method="post" action="{% url 'entries:delete_transaction' transaction.pk %}" class="d-inline">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
               <button type="submit" class="btn btn-danger">Delete Transaction</button>
             </form>
           </div>
@@ -70,25 +69,16 @@
 <!-- Sentinel row — triggers next page load when scrolled into view -->
 {% if page_obj.has_next %}
 <tr id="sentinel-row"
-    hx-get="?page={{ page_obj.next_page_number }}"
+    hx-get="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}"
     hx-trigger="intersect once"
-    hx-target="#sentinel-row"
-    hx-swap="outerHTML"
-    hx-indicator="#loading-spinner">
+    hx-target="#transaction-list"
+    hx-swap="beforeend"
+    hx-indicator="#loading-indicator">
 </tr>
-<!-- Loading Indicator Row - appears at bottom during load -->
-<tr id="loading-spinner" class="htmx-indicator"  style="display:none">
-    <td colspan="12" class="text-center py-4">
-        <div class="d-flex justify-content-center align-items-center gap-2">
-            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <span class="text-muted">Loading more transactions...</span>
-        </div>
-    </td>
-</tr>
-{% elif page_obj.paginator.count > 0 %}
+{% endif %}
+
+{% if not page_obj.has_next and page_obj.paginator.count > 0 %}
 <tr>
-    <td colspan="12" class="text-center text-muted">No more transactions to load</td>
+    <td colspan="12" class="text-center text-muted py-3">No more transactions to load</td>
 </tr>
 {% endif %}

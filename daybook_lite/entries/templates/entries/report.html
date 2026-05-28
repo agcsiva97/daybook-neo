@@ -18,16 +18,6 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Transaction Report</h4>
         <div class="btn-group" role="group">
-          <a href="{% url 'entries:export_report_csv' %}?date={{ report_date|date:'Y-m-d' }}{% if selected_shop %}&shop={{ selected_shop }}{% endif %}" 
-             class="btn btn-sm btn-outline-success">
-            <i class="fa-solid fa-file-csv"></i> 
-            <span class="d-none d-md-inline"> CSV</span>
-          </a>
-          <a href="{% url 'entries:export_report_excel' %}?date={{ report_date|date:'Y-m-d' }}{% if selected_shop %}&shop={{ selected_shop }}{% endif %}" 
-             class="btn btn-sm btn-outline-success">
-            <i class="fa-solid fa-file-excel"></i> 
-            <span class="d-none d-md-inline"> Excel </span>
-          </a>
           <button onclick="window.print()" class="btn btn-sm btn-outline-primary">
             <i class="fa-solid fa-print"></i> 
             <span class="d-none d-md-inline"> Print</span>
@@ -171,6 +161,7 @@
               <thead class="table-light">
                 <tr>
                   <th>Pawn No</th>
+                  <th>Shop</th>
                   <th class="text-end">Principal</th>
                   <th class="text-end">Interest</th>
                 </tr>
@@ -179,19 +170,20 @@
                 {% for loan in loan_entries %}
                 <tr>
                   <td>{{ loan.pawn_no }}</td>
+                  <td>{{ loan.shop.short_name|default:"-" }}</td>
                   <td class="text-end">{{ loan.principal|indian_format }}</td>
                   <td class="text-end">{{ loan.interest|indian_format }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="3" class="text-center text-muted">No loan entries for this date</td>
+                  <td colspan="4" class="text-center text-muted">No loan entries for this date</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if loan_entries %}
               <tfoot class="table-secondary">
                 <tr>
-                  <th>Total:</th>
+                  <th colspan="2">Total:</th>
                   <th class="text-end">{{ loan_totals.total_principal|indian_format }}</th>
                   <th class="text-end">{{ loan_totals.total_interest|indian_format }}</th>
                 </tr>
@@ -209,6 +201,7 @@
               <thead class="table-light">
                 <tr>
                   <th>Pawn No</th>
+                  <th>Shop</th>
                   <th class="text-end">Principal</th>
                   <th class="text-end">Interest</th>
                 </tr>
@@ -217,19 +210,20 @@
                 {% for release in release_entries %}
                 <tr>
                   <td>{{ release.pawn_no }}</td>
+                  <td>{{ release.shop.short_name|default:"-" }}</td>
                   <td class="text-end">{{ release.principal|indian_format }}</td>
                   <td class="text-end">{{ release.interest|indian_format }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="3" class="text-center text-muted">No release entries for this date</td>
+                  <td colspan="4" class="text-center text-muted">No release entries for this date</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if release_entries %}
               <tfoot class="table-secondary">
                 <tr>
-                  <th>Total:</th>
+                  <th colspan="2">Total:</th>
                   <th class="text-end">{{ release_totals.total_principal|indian_format }}</th>
                   <th class="text-end">{{ release_totals.total_interest|indian_format }}</th>
                 </tr>
@@ -247,8 +241,9 @@
           <thead>
             <tr>
               <th>Time</th>
+              <th>Shop</th>
               <th>Created By</th>
-              <th>Name</th>
+              <th>Account Name</th>
               <th>Remarks</th>
               <th class="text-end">DEBIT</th>
               <th class="text-end">CREDIT</th>
@@ -259,8 +254,9 @@
             {% for transaction in transactions %}
             <tr>
               <td>{{ transaction.created_at|time:"H:i:s" }}</td>
+              <td>{{ transaction.shop.short_name|default:"-" }}</td>
               <td>{{ transaction.created_by.username }}</td>
-              <td>{{ transaction.name|default:"-" }}</td>
+              <td>{{ transaction.acc.t_name|default:"-" }}</td>
               <td>{{ transaction.remarks|default:"-" }}</td>
               {% if transaction.tr_type == 'DEBIT' %}
                 <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>
@@ -273,14 +269,14 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6" class="text-center text-muted">No transactions found for this date</td>
+              <td colspan="7" class="text-center text-muted">No transactions found for this date</td>
             </tr>
             {% endfor %}
           </tbody>
           {% if transactions %}
           <tfoot class="table-secondary">
             <tr>
-              <th colspan="4" class="text-end">Total:</th>
+              <th colspan="5" class="text-end">Total:</th>
               <th class="text-danger text-end">{{ debit_total|indian_format }}</th>
               <th class="text-success text-end">{{ credit_total|indian_format }}</th>
               <th class="no-print"></th>
