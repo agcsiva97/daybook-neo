@@ -1,3 +1,5 @@
+from dateutil.relativedelta import relativedelta
+from django.db.models import Sum, Q
 from datetime import datetime, timedelta, date as date_type
 from os import name
 import logging
@@ -24,7 +26,7 @@ from django.db.models import Sum
 
 from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer, AccountSerializer, TypeSerializer
 from django.db import transaction as db_transaction
-from manager.models import Configuration, Accounts, Type
+from manager.models import BT_Ledger_Accounts, Configuration, Accounts, Type
 from entries.helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
 
@@ -199,14 +201,18 @@ def transaction_pie_data(request):
     from django.db.models import Sum
 
     def build_pie(tr_type):
+        # Get all account IDs that are BT ledger accounts
+        bt_account_ids = BT_Ledger_Accounts.objects.values_list('account_id', flat=True)
+
         qs = Transactions.objects.filter(
             tr_type=tr_type,
-            created_at__date__gte=start_date,
-            created_at__date__lte=end_date,
-        ).exclude(name='Opening Deposit' or 'Openning Deposit')
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).exclude(acc_id__in=bt_account_ids)
+
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
-        # Group by account name instead of transaction name
+
         qs = qs.values('acc__e_name').annotate(total=Sum('amount')).order_by('-total')
         labels = []
         values = []
@@ -225,6 +231,115 @@ def transaction_pie_data(request):
         'range': { 'from_date': str(start_date), 'to_date': str(end_date) },
     })
 
+@login_required
+@user_passes_test(_is_admin, login_url='/accounts/login/')
+def bt_ledger_monthly_chart_data(request):
+    from dateutil.relativedelta import relativedelta
+
+    today = timezone.localdate()
+    start_date = today.replace(day=1) - relativedelta(months=11)
+    shop_id = _parse_shop_id(request)
+
+    months = [start_date + relativedelta(months=i) for i in range(12)]
+    labels = [m.strftime('%b %Y') for m in months]
+
+    principal_rel_types = ['LOAN_PRINCIPAL', 'RELEASE_PRINCIPAL']
+    interest_rel_types  = ['LOAN_INTEREST',  'RELEASE_INTEREST']
+
+    TR_TYPE_MAP = {
+        'LOAN_PRINCIPAL':    'DEBIT',
+        'RELEASE_PRINCIPAL': 'CREDIT',
+        'LOAN_INTEREST':     'CREDIT',
+        'RELEASE_INTEREST':  'CREDIT',
+    }
+
+    def build_series(rel_types):
+        bt_qs = BT_Ledger_Accounts.objects.filter(
+            rel_type__in=rel_types
+        ).select_related('account', 'shop')
+
+        if shop_id:
+            bt_qs = bt_qs.filter(shop_id=shop_id)
+
+        # Group by shop
+        shops_map = {}
+        for bt in bt_qs:
+            sid = bt.shop_id
+            if sid not in shops_map:
+                shops_map[sid] = {
+                    'shop': bt.shop,
+                    'entries': [],
+                }
+            shops_map[sid]['entries'].append(bt)
+
+        series = []
+
+        for sid, shop_data in shops_map.items():
+            shop_obj = shop_data['shop']
+            shop_label = shop_obj.short_name if shop_obj else 'Unknown'
+
+            # Deduplicate accounts per shop:
+            # Key = (account_id, tr_type) — same account used for both
+            # LOAN_INTEREST and RELEASE_INTEREST (both CREDIT) should merge into one
+            seen = {}  # (account_id, tr_type) -> bt entry
+            for bt in shop_data['entries']:
+                tr_type = TR_TYPE_MAP[bt.rel_type]
+                key = (bt.account_id, tr_type)
+                if key not in seen:
+                    seen[key] = bt
+
+            from collections import Counter
+            acc_count = Counter(acc_id for (acc_id, _) in seen.keys())
+
+            for (acc_id, tr_type), bt in seen.items():
+                acc_label = ''
+                if bt.account.e_name and bt.account.e_name.strip():
+                    acc_label = bt.account.e_name.strip()
+                elif bt.account.t_name:
+                    acc_label = bt.account.t_name
+                else:
+                    acc_label = 'Unknown'
+
+                # Only add rel_type suffix if same account appears with different tr_types
+                if acc_count[acc_id] > 1:
+                    series_name = f'{shop_label} - {acc_label} ({bt.rel_type})'
+                else:
+                    series_name = f'{shop_label} - {acc_label}'
+
+                qs = (
+                    Transactions.objects
+                    .filter(
+                        acc_id=acc_id,
+                        shop_id=sid,
+                        tr_type=tr_type,
+                        transaction_dt__date__gte=start_date,
+                        transaction_dt__date__lte=today,
+                    )
+                    .values('transaction_dt__year', 'transaction_dt__month')
+                    .annotate(total=Sum('amount'))
+                    .order_by('transaction_dt__year', 'transaction_dt__month')
+                )
+
+                month_map = {
+                    (item['transaction_dt__year'], item['transaction_dt__month']): float(item['total'])
+                    for item in qs
+                }
+
+                data = [month_map.get((m.year, m.month), 0) for m in months]
+
+                series.append({
+                    'name': series_name,
+                    'group': shop_label,  # ApexCharts uses this for grouped stacking
+                    'data': data,
+                })
+
+        return series
+
+    return JsonResponse({
+        'labels':    labels,
+        'principal': build_series(principal_rel_types),
+        'interest':  build_series(interest_rel_types),
+    })
 
 def _parse_date_range(request):
     """Helper: parse from_date / to_date query params. Returns (start_date, end_date)."""
@@ -262,6 +377,7 @@ def dashboard_chart_data(request):
     today = timezone.localdate()
     start_date, end_date = _parse_date_range(request)
     shop_id = _parse_shop_id(request)
+    bt_account_ids = BT_Ledger_Accounts.objects.values_list('account_id', flat=True)
 
     date_range = []
     d = start_date
@@ -301,8 +417,8 @@ def dashboard_chart_data(request):
     release_data = [release_map.get(str(d), 0) for d in date_range]
 
     # Summary: total debit/credit for the range (also filtered by shop if set)
-    debit_base  = Transactions.objects.filter(tr_type='DEBIT',  created_at__date__gte=start_date, created_at__date__lte=end_date)
-    credit_base = Transactions.objects.filter(tr_type='CREDIT', created_at__date__gte=start_date, created_at__date__lte=end_date).exclude(name='Openning Deposit')
+    debit_base  = Transactions.objects.filter(tr_type='DEBIT',  transaction_dt__date__gte=start_date, transaction_dt__date__lte=end_date).exclude(acc_id__in=bt_account_ids)
+    credit_base = Transactions.objects.filter(tr_type='CREDIT', transaction_dt__date__gte=start_date, transaction_dt__date__lte=end_date).exclude(acc_id__in=bt_account_ids)
     if shop_id:
         debit_base  = debit_base.filter(shop_id=shop_id)
         credit_base = credit_base.filter(shop_id=shop_id)
@@ -323,6 +439,36 @@ def dashboard_chart_data(request):
             'from_date': str(start_date),
             'to_date':   str(end_date),
         },
+    })
+
+@login_required
+@user_passes_test(_is_admin, login_url='/accounts/login/')
+def loan_gauge_data(request):
+    """Returns average daily loan count for the filtered date range."""
+    start_date, end_date = _parse_date_range(request)
+    shop_id = _parse_shop_id(request)
+
+    from django.db.models import Count
+    from datetime import timedelta
+
+    qs = Loan.objects.filter(
+        type='LOAN',
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    )
+    if shop_id:
+        qs = qs.filter(shop_id=shop_id)
+
+    total_loans = qs.count()
+    num_days = max((end_date - start_date).days + 1, 1)
+    avg = round(total_loans / num_days, 1)
+
+    return JsonResponse({
+        'average': avg,
+        'total': total_loans,
+        'days': num_days,
+        'from_date': str(start_date),
+        'to_date': str(end_date),
     })
 
 @api_view(['POST'])

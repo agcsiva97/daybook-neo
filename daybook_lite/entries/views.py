@@ -86,9 +86,26 @@ def admin_or_staff_required(view_func):
 @login_required
 def home(request):
     today = timezone.localdate()
+    form = TransactionForm()
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
-    transactions = Transactions.objects.filter(transaction_dt__date=today).order_by('-transaction_dt')[:10]
+    
+    # Apply permission-based filtering (same as transactions view)
+    if is_admin(request.user) or is_super_admin(request.user):
+        transactions = Transactions.objects.filter(transaction_dt__date=today).select_related(
+            'shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by'
+        ).order_by('-transaction_dt')
+    else:
+        transactions = Transactions.objects.filter(
+            transaction_dt__date=today,
+            acc__is_admin_only=False
+        ).select_related(
+            'acc',
+            'acc__acc_type',
+            'shop',
+            'created_by',
+            'updated_by'
+        ).order_by('-transaction_dt')
     daily_totals = (
         Transactions.objects.filter(transaction_dt__date=today)
         .values('shop_id')
@@ -130,7 +147,8 @@ def home(request):
             'opening_balance': data['opening_balance'],
             'closing_balance': data['closing_balance'],
         })
-    
+
+    print(transactions)
     context = {
         'nav_title':'Home',
         'transactions': transactions,
@@ -139,6 +157,7 @@ def home(request):
         'shop_balances': shop_balances,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'form': form,
     }
     
     return render(request, 'entries/home.html',context)
@@ -168,10 +187,13 @@ def update_silver_price(request):
 @login_required
 def add_entries(request):
     """Add a new transaction entry"""
-    form          = TransactionForm()
-    transfer_form = TransferForm()
     loan_form     = LoanForm()
-
+    today = timezone.localdate()
+    loans = Loan.objects.filter(transaction_dt__date=today, type='LOAN').order_by('-transaction_dt')
+    releases = Loan.objects.filter(transaction_dt__date=today, type='RELEASE').order_by('-transaction_dt')
+    gold_price = manager_helper.get_gold_price()
+    silver_price = manager_helper.get_silver_price()
+    
     if request.method == 'POST':
         form = TransactionForm(request.POST)
 
@@ -208,6 +230,8 @@ def add_entries(request):
                                 'form': form,
                                 'transfer_form': TransferForm(),
                                 'loan_form': LoanForm(),
+                                'loans': loans,
+                                'releases': releases,
                             })
 
                     # ── Save transaction ──────────────────────────────
@@ -228,16 +252,18 @@ def add_entries(request):
                     'loan_form': LoanForm(),
                 })
 
-            return redirect('entries:add_entries')
+            return redirect('entries:home')
 
         else:
             logger.warning(f"Transaction form invalid -> errors=[{form.errors}]")
 
     return render(request, 'entries/add_entries.html', {
         'nav_title': 'Add Entries',
-        'form': form,
-        'transfer_form': transfer_form,
+        'loans': loans,
+        'releases': releases,
         'loan_form': loan_form,
+        'gold_price': gold_price,
+        'silver_price': silver_price,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
     })

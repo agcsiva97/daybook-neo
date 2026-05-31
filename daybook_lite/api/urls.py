@@ -11,6 +11,8 @@ urlpatterns = [
     path('dashboard/chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
     path('dashboard/transaction-pie/', views.transaction_pie_data, name='transaction_pie_data'),
     path('balance-sheet/networth/', views.networth_chart_data, name='networth_chart_data'),
+    path('dashboard/bt-ledger-monthly/', views.bt_ledger_monthly_chart_data, name='bt_ledger_monthly_chart_data'),
+    path('dashboard/loan-gauge/', views.loan_gauge_data, name='loan_gauge_data'),
     # Shop CRUD endpoints
     path('shops/', views.shop_list_create, name='shop_list_create'),
     path('transactions/', views.get_transactions, name='transactions'),

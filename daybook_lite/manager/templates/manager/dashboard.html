@@ -1,9 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  #debit-legend::-webkit-scrollbar,
+#credit-legend::-webkit-scrollbar {
+  width: 3px;
+}
+#debit-legend::-webkit-scrollbar-thumb,
+#credit-legend::-webkit-scrollbar-thumb {
+  background: #CCC;
+  border-radius: 5px;
+}
+#debit-legend::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+</style>
+
 <div class="container mt-3">
 
-  <!-- Title row: Dashboard + Filter button -->
+  <!-- Title + Filter -->
   <div class="d-flex justify-content-between align-items-center mb-1">
     <h5 class="mb-0">Dashboard</h5>
     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
@@ -11,9 +26,9 @@
     </button>
   </div>
 
-  <!-- Applied filter badge row -->
+  <!-- Applied filter + spinner -->
   <div class="mb-3">
-    <span class="text-muted small" id="applied-filters">
+    <span class="text-muted small">
       <span id="applied-range"></span>
       <span id="applied-shop"></span>
     </span>
@@ -22,7 +37,7 @@
     </div>
   </div>
 
-  <!-- Filter Modal -->
+  <!-- Filter Modal (unchanged) -->
   <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -57,77 +72,133 @@
     </div>
   </div>
 
-  <!-- Summary Cards -->
-  <div class="row g-3 mb-4">
+  <!-- Row 1: Summary stat cards -->
+  <div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Total Debit</div>
-          <div class="fs-5 fw-bold text-danger" id="stat-total-debit">&mdash;</div>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column justify-content-center">
+          <div class="text-muted small mb-1">Total Debit</div>
+          <div class="fs-5 fw-bold" style="color: var(--daybook-red);" id="stat-total-debit">&mdash;</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Total Credit</div>
-          <div class="fs-5 fw-bold text-success" id="stat-total-credit">&mdash;</div>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column justify-content-center">
+          <div class="text-muted small mb-1">Total Credit</div>
+          <div class="fs-5 fw-bold" style="color: var(--daybook-primary);" id="stat-total-credit">&mdash;</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Total Loans</div>
-          <div class="fs-5 fw-bold text-info" id="stat-loans-week">&mdash;</div>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column justify-content-center">
+          <div class="text-muted small mb-1">Total Loans</div>
+          <div class="fs-5 fw-bold" style="color: #0d6efd;" id="stat-loans-week">&mdash;</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="card text-center border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Total Releases</div>
-          <div class="fs-5 fw-bold text-warning" id="stat-releases-week">&mdash;</div>
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body d-flex flex-column justify-content-center">
+          <div class="text-muted small mb-1">Total Releases</div>
+          <div class="fs-5 fw-bold" style="color: var(--daybook-teal);" id="stat-releases-week">&mdash;</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Area Chart -->
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-0 pt-3 pb-2">
-      <h6 class="mb-0"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Loan Activity</h6>
+  <!-- Row 2: Loan Activity (wide) + Avg Daily Gauge (narrow) -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-line me-2" style="color:var(--daybook-primary)"></i>Loan Activity</h6>
+        </div>
+        <div class="card-body pt-2">
+          <div id="loanChart"></div>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <div id="loanChart"></div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h6 class="mb-0"><i class="fa-solid fa-gauge me-2" style="color:var(--daybook-primary)"></i>Avg Daily Loans</h6>
+        </div>
+        <div class="card-body d-flex flex-column align-items-center justify-content-center pt-2">
+          <div id="loanGaugeChart" style="width:100%;"></div>
+          <small class="text-muted text-center" id="gauge-subtitle">— loans/day</small>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Pie Charts -->
-  <div class="row g-3 mt-2">
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-0 pt-3 pb-2">
-          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2 text-danger"></i>Debit by Name</h6>
+  <!-- Row 3: Principal chart (wide) + Debit pie (narrow) -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm" style="height: 100%;">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h6 class="mb-0">
+            <i class="fa-solid fa-chart-column me-2" style="color:var(--daybook-primary)"></i>Principal — Monthly
+            <small class="text-muted ms-2 fw-normal" style="font-size:0.75rem;">Last 12 Months</small>
+          </h6>
         </div>
-        <div class="card-body">
+        <div class="card-body pt-2">
+          <div id="principalChart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4" style="display: flex; flex-direction: column;">
+      <div class="card border-0 shadow-sm" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="card-header bg-white border-0 pt-3 pb-2 d-flex justify-content-between align-items-center" style="flex-shrink: 0;">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2" style="color:var(--daybook-red)"></i>Debit by Account</h6>
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.72rem;" onclick="toggleLegend('debit-legend', this)">
+            <i class="fa-solid fa-list me-1"></i>Legend
+          </button>
+        </div>
+        <div class="card-body pt-2 pb-1" style="flex-shrink: 0;">
           <div id="debitPieChart"></div>
         </div>
+        <div id="debit-legend" style="display:none; flex-shrink: 0; max-height: 50px; overflow-y: auto; padding: 8px 16px 12px; border-top: 1px solid var(--daybook-border);">
+          <div id="debit-legend-items" class="d-flex flex-wrap gap-2"></div>
+        </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-0 pt-3 pb-2">
-          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2 text-success"></i>Credit by Name</h6>
+  </div>
+
+  <!-- Row 4: Interest chart (wide) + Credit pie (narrow) -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm" style="height: 100%;">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h6 class="mb-0">
+            <i class="fa-solid fa-chart-column me-2" style="color:var(--daybook-teal)"></i>Interest — Monthly
+            <small class="text-muted ms-2 fw-normal" style="font-size:0.75rem;">Last 12 Months</small>
+          </h6>
         </div>
-        <div class="card-body">
+        <div class="card-body pt-2">
+          <div id="interestChart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4" style="display: flex; flex-direction: column;">
+      <div class="card border-0 shadow-sm" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="card-header bg-white border-0 pt-3 pb-2 d-flex justify-content-between align-items-center" style="flex-shrink: 0;">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-pie me-2" style="color:var(--daybook-primary)"></i>Credit by Account</h6>
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.72rem;" onclick="toggleLegend('credit-legend', this)">
+            <i class="fa-solid fa-list me-1"></i>Legend
+          </button>
+        </div>
+        <div class="card-body pt-2 pb-1" style="flex-shrink: 0;">
           <div id="creditPieChart"></div>
+        </div>
+        <div id="credit-legend" style="display:none; flex-shrink: 0; max-height: 50px; overflow-y: auto; padding: 8px 16px 12px; border-top: 1px solid var(--daybook-border);">
+          <div id="credit-legend-items" class="d-flex flex-wrap gap-2"></div>
         </div>
       </div>
     </div>
   </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
 <script>
   const CHART_DATA_URL = '{% url "api:dashboard_chart_data" %}';
@@ -156,7 +227,7 @@
   const chartOptions = {
     chart: {
       type: 'area',
-      height: 350,
+      height: 300,
       toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
       zoom: { enabled: true, type: 'x', autoScaleYaxis: true },
     },
@@ -194,30 +265,55 @@
   chart.render();
 
   // ── Pie chart config ──
-  function pieOptions(noDataText) {
-    return {
-      chart: { 
-        type: 'pie', 
-        height: 350,
-        toolbar: { show: true, tools: { download: true } },
-     },
-      series: [],
-      labels: [],
-      legend: { position: 'bottom', fontSize: '13px' },
-      dataLabels: {
-        enabled: true,
-        formatter: (val, opts) => {
-          const name = opts.w.globals.labels[opts.seriesIndex];
-          return name.length > 15 ? name.slice(0, 14) + '\u2026' : name;
+  function pieOptions(noDataText, chartId) {
+      return {
+        chart: { 
+          type: 'pie', 
+          height: 320,
+          toolbar: { show: true, tools: { download: true } },
+          events: {
+            dataPointSelection: function(e, chart, opts) {},
+          }
         },
-        style: { fontSize: '11px', fontWeight: 500 },
-        dropShadow: { enabled: false },
-      },
-      tooltip: {
-        y: { formatter: (val) => '\u20B9' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
-      },
-      noData: { text: noDataText },
-    };
+        series: [],
+        labels: [],
+        legend: { show: false },  // hide default legend
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opts) => {
+            const name = opts.w.globals.labels[opts.seriesIndex];
+            return name.length > 12 ? name.slice(0, 11) + '…' : name;
+          },
+          style: { fontSize: '10px', fontWeight: 500 },
+          dropShadow: { enabled: false },
+        },
+        tooltip: {
+          y: { formatter: (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+        },
+        noData: { text: noDataText },
+      };
+    }
+  
+  function toggleLegend(id, btn) {
+    const el = document.getElementById(id);
+    const isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+    if (btn) {
+      btn.innerHTML = isHidden
+        ? '<i class="fa-solid fa-times me-1"></i>Hide'
+        : '<i class="fa-solid fa-list me-1"></i>Legend';
+    }
+  }
+
+  function renderCustomLegend(containerId, labels, colors) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = labels.map((label, i) => `
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.72rem;white-space:nowrap;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${colors[i] || '#ccc'};flex-shrink:0;display:inline-block;"></span>
+        <span>${label}</span>
+      </div>
+    `).join('');
   }
 
   const debitPie  = new ApexCharts(document.getElementById('debitPieChart'),  pieOptions('No debit data'));
@@ -290,6 +386,14 @@
         debitPie.updateSeries(pie.debit.values);
         creditPie.updateOptions({ labels: pie.credit.labels });
         creditPie.updateSeries(pie.credit.values);
+
+        // Render custom legends after chart updates
+        setTimeout(() => {
+          const debitColors = debitPie.w.globals.colors;
+          const creditColors = creditPie.w.globals.colors;
+          renderCustomLegend('debit-legend-items', pie.debit.labels, debitColors);
+          renderCustomLegend('credit-legend-items', pie.credit.labels, creditColors);
+        }, 300);
       })
       .catch((err) => console.error('Pie error:', err));
   }
@@ -305,6 +409,8 @@
     if (from > to)    { alert('From date must be before To date.'); return; }
 
     loadCharts(from, to, elShop.value);
+    loadBTCharts(elShop.value);
+    loadGauge(from, to, elShop.value);
 
     // Close modal
     bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
@@ -316,8 +422,222 @@
     elShop.value = '';
 
     loadCharts(defaultFrom, todayStr, '');
+    loadBTCharts('');
+    loadGauge(defaultFrom, todayStr, '');
 
     bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
   });
+
+const BT_MONTHLY_URL = '{% url "api:bt_ledger_monthly_chart_data" %}';
+
+// Colors for the 4 series
+const BT_COLORS = {
+  LOAN_PRINCIPAL:    '#0d6efd',
+  RELEASE_PRINCIPAL: '#198754',
+  LOAN_INTEREST:     '#fd7e14',
+  RELEASE_INTEREST:  '#20c997',
+};
+
+// Generate distinct colors for series, grouped by shop
+function generateSeriesColors(series) {
+  // Distinct base colors per shop group
+  const shopColors = [
+    ['#107a8b', '#2cb978'],  // shop 1: blue shades
+    ['#fc5185', '#364f6b'],  // shop 2: green shades
+    ['#d72323', '#d72323'],  // shop 3: orange shades
+  ];
+
+  // Assign colors: track which shop gets which palette
+  const shopIndex = {};
+  const shopCounter = {};
+  let paletteIdx = 0;
+
+  return series.map(s => {
+    const group = s.group;
+    if (!(group in shopIndex)) {
+      shopIndex[group] = paletteIdx++;
+      shopCounter[group] = 0;
+    }
+    const palette = shopColors[shopIndex[group] % shopColors.length];
+    const color = palette[shopCounter[group] % palette.length];
+    shopCounter[group]++;
+    return color;
+  });
+}
+
+function buildStackedGroupedOptions(series, labels) {
+  const colors = generateSeriesColors(series);
+  return {
+    chart: {
+      type: 'bar',
+      height: 320,
+      stacked: true,
+      stackOnlyBar: true,
+      toolbar: { show: true, tools: { download: true } },
+    },
+    series: series,
+    colors: colors,
+    xaxis: {
+      categories: labels,
+      labels: { rotate: -45, style: { fontSize: '11px' } },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val) => '₹' + Number(val).toLocaleString('en-IN', { maximumFractionDigits: 0 }),
+      },
+    },
+    dataLabels: { enabled: false },
+    plotOptions: {
+      bar: {
+        columnWidth: '70%',
+        borderRadius: 2,
+      },
+    },
+    legend: {
+      position: 'bottom',
+      fontSize: '11px',
+      itemMargin: { horizontal: 6, vertical: 4 },
+    },
+    tooltip: {
+      y: {
+        formatter: (val) => '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+      },
+    },
+    grid: { borderColor: 'rgba(0,0,0,0.05)' },
+    noData: { text: 'Loading...' },
+  };
+}
+
+// Initialize with empty charts
+const principalChart = new ApexCharts(
+  document.getElementById('principalChart'),
+  buildStackedGroupedOptions([], [])
+);
+const interestChart = new ApexCharts(
+  document.getElementById('interestChart'),
+  buildStackedGroupedOptions([], [])
+);
+principalChart.render();
+interestChart.render();
+
+function loadBTCharts(shopId) {
+  const qs = shopId ? `?shop=${shopId}` : '';
+
+  fetch(`${BT_MONTHLY_URL}${qs}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    credentials: 'same-origin',
+  })
+    .then(r => r.json())
+    .then(data => {
+      // Destroy and recreate to apply new colors + groups cleanly
+      principalChart.destroy();
+      const newPrincipal = new ApexCharts(
+        document.getElementById('principalChart'),
+        buildStackedGroupedOptions(data.principal, data.labels)
+      );
+      newPrincipal.render();
+
+      interestChart.destroy();
+      const newInterest = new ApexCharts(
+        document.getElementById('interestChart'),
+        buildStackedGroupedOptions(data.interest, data.labels)
+      );
+      newInterest.render();
+    })
+    .catch(err => console.error('BT chart error:', err));
+}
+
+// Load on init
+loadBTCharts('');
+
+const GAUGE_URL = '{% url "api:loan_gauge_data" %}';
+
+const gaugeOptions = {
+  chart: {
+    type: 'radialBar', // CRITICAL: ApexCharts requires this exact type
+    height: 300,
+    offsetY: -10,
+  },
+  series: [0], // radialBar natively expects a percentage from 0 to 100
+  plotOptions: {
+    radialBar: {
+      startAngle: -135, // Keeps your desired arc shape
+      endAngle: 135,
+      hollow: {
+        size: '65%', // Creates the donut hole in the middle
+      },
+      track: {
+        background: '#e2e8f0', // Light gray background track
+        strokeWidth: '100%',
+      },
+      dataLabels: {
+        name: {
+          show: true,
+          color: '#64748b',
+          fontSize: '13px',
+          offsetY: -10
+        },
+        value: {
+          offsetY: 10,
+          fontSize: '28px',
+          fontWeight: 700,
+          color: '#0F172A',
+          formatter: function (val) {
+            // Convert the percentage back to your 0-15 scale for the text label
+            return ((val / 100) * 15).toFixed(1);
+          },
+        },
+      },
+    },
+  },
+  fill: {
+    colors: ['#FF4560']  // default red, will be updated dynamically
+  },
+  stroke: {
+    lineCap: 'round' // Makes the edges of the gauge rounded and smooth
+  },
+  labels: ['Loans/Day'], // This displays above the number
+};
+
+const gaugeChart = new ApexCharts(document.getElementById('loanGaugeChart'), gaugeOptions);
+gaugeChart.render();
+
+function loadGauge(fromDate, toDate, shopId) {
+  let qs = `from_date=${fromDate}&to_date=${toDate}`;
+  if (shopId) qs += `&shop=${shopId}`;
+
+  fetch(`${GAUGE_URL}?${qs}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    credentials: 'same-origin',
+  })
+    .then(r => r.json())
+    .then(data => {
+      let rawAverage = parseFloat(data.average);
+      if (rawAverage > 15) rawAverage = 15;
+      if (rawAverage < 0) rawAverage = 0;
+
+      const percentage = (rawAverage / 15) * 100;
+
+      // Determine color based on average
+      let color;
+      if (rawAverage < 5) {
+        color = '#FF4560';   // red
+      } else if (rawAverage < 10) {
+        color = '#FEB019';   // yellow
+      } else {
+        color = '#00E396';   // green
+      }
+
+      gaugeChart.updateOptions({ fill: { colors: [color] } });
+      gaugeChart.updateSeries([percentage]);
+
+      document.getElementById('gauge-subtitle').textContent =
+        `${data.average} loans/day · ${data.total} total over ${data.days} days`;
+    })
+    .catch(err => console.error('Gauge error:', err));
+}
+
+// Load on init
+loadGauge(defaultFrom, todayStr, '');
 </script>
 {% endblock %}

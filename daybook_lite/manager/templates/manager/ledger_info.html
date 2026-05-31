@@ -197,7 +197,7 @@
               <option value="">-- Select Account --</option>
               {% for account in shop_accounts %}
                 <option value="{{ account.id }}" {% if linked_accounts_dict.LOAN_PRINCIPAL.id == account.id %}selected{% endif %}>
-                  {{ account.e_name }}
+                  {{ account.t_name }} | {{ account.e_name }} | {{ account.shop.short_name }}
                 </option>
               {% endfor %}
             </select>
@@ -209,7 +209,7 @@
               <option value="">-- Select Account --</option>
               {% for account in shop_accounts %}
                 <option value="{{ account.id }}" {% if linked_accounts_dict.LOAN_INTEREST.id == account.id %}selected{% endif %}>
-                  {{ account.e_name }}
+                  {{ account.t_name }} | {{account.e_name }} | {{ account.shop.short_name }}
                 </option>
               {% endfor %}
             </select>
@@ -221,7 +221,7 @@
               <option value="">-- Select Account --</option>
               {% for account in shop_accounts %}
                 <option value="{{ account.id }}" {% if linked_accounts_dict.RELEASE_PRINCIPAL.id == account.id %}selected{% endif %}>
-                  {{ account.e_name }}
+                  {{ account.t_name }} | {{ account.e_name }} | {{ account.shop.short_name }}
                 </option>
               {% endfor %}
             </select>
@@ -233,7 +233,7 @@
               <option value="">-- Select Account --</option>
               {% for account in shop_accounts %}
                 <option value="{{ account.id }}" {% if linked_accounts_dict.RELEASE_INTEREST.id == account.id %}selected{% endif %}>
-                  {{ account.e_name }}
+                  {{ account.t_name }} | {{account.e_name }} | {{ account.shop.short_name }}
                 </option>
               {% endfor %}
             </select>

@@ -2,76 +2,31 @@
 
 {% block content %}
 <div class="container">
-  <div class="row">
-    <div class="col-md-6">
-      <h5>Add <span style="text-decoration: underline;">T</span>ransaction</h5>
-      <form method="post" class="card card-body">
-        {% csrf_token %}
-        <div class="mb-3">
-          <div class="row">
-            <div class="col">
-              <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
-              {{ form.date }}
-              {% if form.date.errors %}
-                <div class="text-danger small">{{ form.date.errors|striptags }}</div>
-              {% endif %}
-            </div>
-            <div class="col">
-              <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
-              {{ form.time }}
-              {% if form.time.errors %}
-                <div class="text-danger small">{{ form.time.errors|striptags }}</div>
-              {% endif %}
-            </div>
+  <div class="row" style="margin-bottom: 16px;">
+    <div class="col">
+        <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-tag"></i> Prices</h5>
+        <a href="" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-arrow-rotate-right"></i> Update Prices
+        </a>
+      </div>
+      <div class="ledger-card" style="cursor: pointer; position: relative;">
+          <div class="ledger-card-balance-title text-start">
+            <small class="text-muted">Gold Price:</small>
+            <div class="ledger-card-balance">{{ gold_price.price|indian_format }}</div>
+            <small class="text-muted">Updated: {{ gold_price.updated_at|date:"d/m/Y" }}</small>
           </div>
-        </div>
-        <div class="mb-3">
-          <div class="row">
-            <div class="col">
-              <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
-              {{ form.shop }}
-              {% if form.shop.errors %}
-                <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
-              {% endif %}
-              </div>
-            <div class="col">
-              <label class="form-label" for="{{ form.acc.id_for_label }}"><u>A</u>ccount</label>
-              {{ form.acc }}
-              {% if form.acc.errors %}
-                <div class="text-danger small">{{ form.acc.errors|striptags }}</div>
-              {% endif %}
-              </div>
-            </div>  
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.amount.id_for_label }}"><u>A</u>mount</label>
-          {{ form.amount }}
-          {% if form.amount.errors %}
-            <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
-          {% endif %}
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
-          {{ form.remarks }}
-          {% if form.remarks.errors %}
-            <div class="text-danger small">{{ form.remarks.errors|striptags }}</div>
-          {% endif %}
-        </div>
-        {% if form.non_field_errors %}
-          <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
-        {% endif %}
-        <div class="row">
-          <div class="col">
-            {% comment %} பற்று {% endcomment %}
-            <button type="button" class="cust-button btn-red" onclick="submitTransaction('DEBIT')">DEBIT</button>
+      </div>
+      <div class="ledger-card" style="cursor: pointer; position: relative;">
+          <div class="ledger-card-balance-title text-start">
+            <small class="text-muted">Silver Price:</small>
+            <div class="ledger-card-balance">{{ silver_price.price|indian_format }}</div>
+            <small class="text-muted">Updated: {{ silver_price.updated_at|date:"d/m/Y" }}</small>
           </div>
-          <div class="col">
-            {% comment %} வரவு {% endcomment %}
-            <button type="button" class="cust-button btn-primary" onclick="submitTransaction('CREDIT')">CREDIT</button>
-          </div>
-        </div>
-      </form>
+      </div>
     </div>
+  </div> 
+  <div class="row">
     <div class="col-md-6">
       <h5><u>L</u>oan Management</h5>
       <div class="card card-body">
@@ -79,6 +34,7 @@
           <div class="mb-3">
             <div class="row">
               <div class="col">
+                {% csrf_token %}
                 <label class="form-label" for="{{ loan_form.date.id_for_label }}">{{ loan_form.date.label }}</label>
                 {{ loan_form.date }}
                 {% if loan_form.date.errors %}
@@ -151,6 +107,76 @@
         </div>
       </div> 
     </div>
+    <div class="col-md-3">
+      <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 8px;">
+        <h5 class="mb-0"><i class="fa-solid fa-file-lines"></i> Loans</h5>
+      </div>
+      <div class="transaction-list" id="transactionList">
+        {% for loan in loans %}
+        <div class="transaction-item">
+          <div class="transaction-shop">{{ loan.shop.short_name }}</div>
+          <div class="transaction-amount">
+            {{ loan.pawn_no }}
+          </div>
+          <div class="transaction-details" style="text-align: right;">
+            <div class="transaction-account">{{ loan.principal|indian_format }}</div>
+            <div class="transaction-meta text-muted">
+              {{ loan.interest|indian_format }}
+            </div>
+          </div>
+
+          {% comment %} <div class="transaction-actions">
+            <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn-action btn-action-edit" title="Edit">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </a>
+            {% if is_admin %}
+            <button class="btn-action btn-action-delete" title="Delete"
+              data-bs-toggle="modal" data-bs-target="#delModal{{ transaction.pk }}">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+            {% endif %}
+          </div> {% endcomment %}
+        </div>
+        {% empty %}
+        <p class="text-muted text-center">No loan transactions for today.</p>
+        {% endfor %}
+      </div>
+    </div>
+        <div class="col-md-3">
+      <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 8px;">
+        <h5 class="mb-0"><i class="fa-solid fa-file-lines"></i> Release</h5>
+      </div>
+      <div class="transaction-list" id="transactionList">
+        {% for release in releases %}
+        <div class="transaction-item">
+          <div class="transaction-shop">{{ release.shop.short_name }}</div>
+          <div class="transaction-amount">
+            {{ release.pawn_no }}
+          </div>
+          <div class="transaction-details" style="text-align: right;">
+            <div class="transaction-account">{{ release.principal|indian_format }}</div>
+            <div class="transaction-meta text-muted">
+              {{ release.interest|indian_format }}
+            </div>
+          </div>
+
+          {% comment %} <div class="transaction-actions">
+            <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn-action btn-action-edit" title="Edit">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </a>
+            {% if is_admin %}
+            <button class="btn-action btn-action-delete" title="Delete"
+              data-bs-toggle="modal" data-bs-target="#delModal{{ transaction.pk }}">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+            {% endif %}
+          </div> {% endcomment %}
+        </div>
+        {% empty %}
+        <p class="text-muted text-center">No loan transactions for today.</p>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 
@@ -178,54 +204,6 @@ document.addEventListener('keydown', function(e) {
         const el = document.getElementById(inputId);
         if (el) el.focus();
     }
-});
-
-// Transaction form - dynamically load accounts based on shop selection
-document.addEventListener('DOMContentLoaded', function() {
-    const transShop = document.getElementById('id_shop');
-    const transAccount = document.getElementById('id_account');
-    
-    if (!transShop || !transAccount) return;
-
-    transAccount.disabled = true;
-    transAccount.innerHTML = '<option value="">First select a shop</option>';
-    
-    transShop.addEventListener('change', function() {
-        const shopId = this.value;
-        
-        // Clear existing ledger options
-        transAccount.innerHTML = '<option value="">Loading...</option>';
-        transAccount.disabled = true;
-        
-        if (!shopId) {
-            transAccount.innerHTML = '<option value="">First select a shop</option>';
-            transAccount.disabled = true;
-            return;
-        }
-        
-        // Fetch accounts for selected shop
-        fetch(`/api/shops/${shopId}/accounts/`)
-            .then(response => response.json())
-            .then(data => {
-                transAccount.innerHTML = '';
-                transAccount.disabled = false;
-                
-                if (data.length === 0) {
-                    transAccount.innerHTML = '<option value="">No accounts available for this shop</option>';
-                    transAccount.disabled = true;
-                } else {
-                    data.forEach(account => {
-                        const option = new Option(account.t_name, account.id);
-                        transAccount.add(option);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching accounts:', error);
-                transAccount.innerHTML = '<option value="">Error loading accounts</option>';
-                transAccount.disabled = true;
-            });
-    });
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -271,57 +249,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 });
-
-// Transaction form submission
-function submitTransaction(transactionType) {
-    const amount = document.getElementById('id_amount').value.trim();
-    const shop = document.getElementById('id_shop').value;
-    const account = document.getElementById('id_account').value;
-    const remarks = document.getElementById('id_remarks').value.trim();
-    const date = document.getElementById('id_date').value;
-    const time = document.getElementById('id_time').value;
-    
-    // Validate fields
-    if (!date) {
-        alert('Please select a Date');
-        document.getElementById('id_date').focus();
-        return;
-    }
-    if (!amount) {
-        alert('Please enter Amount');
-        document.getElementById('id_amount').focus();
-        return;
-    }
-    if (!shop) {
-        alert('Please select a Shop');
-        document.getElementById('id_shop').focus();
-        return;
-    }
-    if (!account) {
-        alert('Please select an Account');
-        document.getElementById('id_account').focus();
-        return;
-    }
-    
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{% url "entries:add_entries" %}';
-    
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    form.innerHTML = `
-        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-        <input type="hidden" name="amount" value="${amount}">
-        <input type="hidden" name="shop" value="${shop}">
-        <input type="hidden" name="acc" value="${account}">
-        <input type="hidden" name="tr_type" value="${transactionType}">
-        <input type="hidden" name="remarks" value="${remarks}">
-        <input type="hidden" name="date" value="${date}">
-        <input type="hidden" name="time" value="${time}">
-    `;
-    
-    document.body.appendChild(form);
-    form.submit();
-}
 
 // Loan form submission
 function submitLoan(loanType) {
