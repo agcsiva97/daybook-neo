@@ -93,9 +93,9 @@ def sync_types(request,shop_obj):
         for row in csv_reader:
             acc_type, created = Type.objects.update_or_create(
                 shop = shop_obj,
-                e_name = row[2].strip(),
+                t_name = row[1].strip(),
                 defaults={
-                    't_name':row[1].strip(),
+                    'e_name':row[2].strip(),
                     'group_order':row[0].strip()
                 }
             )

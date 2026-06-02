@@ -188,9 +188,11 @@ def update_silver_price(request):
 def add_entries(request):
     """Add a new transaction entry"""
     loan_form     = LoanForm()
+    release_form  = LoanForm()
     today = timezone.localdate()
     loans = Loan.objects.filter(transaction_dt__date=today, type='LOAN').order_by('-transaction_dt')
     releases = Loan.objects.filter(transaction_dt__date=today, type='RELEASE').order_by('-transaction_dt')
+    shops = Shop.objects.all().order_by('short_name')
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
     
@@ -230,8 +232,10 @@ def add_entries(request):
                                 'form': form,
                                 'transfer_form': TransferForm(),
                                 'loan_form': LoanForm(),
+                                'release_form': LoanForm(),
                                 'loans': loans,
                                 'releases': releases,
+                                'shops': shops,
                             })
 
                     # ── Save transaction ──────────────────────────────
@@ -250,6 +254,8 @@ def add_entries(request):
                     'form': form,
                     'transfer_form': TransferForm(),
                     'loan_form': LoanForm(),
+                    'release_form': LoanForm(),
+                    'shops': shops,
                 })
 
             return redirect('entries:home')
@@ -261,7 +267,9 @@ def add_entries(request):
         'nav_title': 'Add Entries',
         'loans': loans,
         'releases': releases,
+        'shops': shops,
         'loan_form': loan_form,
+        'release_form': release_form,
         'gold_price': gold_price,
         'silver_price': silver_price,
         'is_super_admin': request.user.is_superuser,

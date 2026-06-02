@@ -581,7 +581,6 @@ def export_transactions(request, pk):
                         'amount': str(trans.amount),
                         'tr_type': trans.tr_type,
                         'remarks': trans.remarks or '',
-                        'name': trans.name or '',
                         'is_tally': trans.is_tally,
                         'created_at': trans.created_at.isoformat(),
                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
@@ -639,7 +638,6 @@ def export_transactions(request, pk):
                         'amount': str(trans.amount),
                         'tr_type': trans.tr_type,
                         'remarks': trans.remarks or '',
-                        'name': trans.name or '',
                         'is_tally': trans.is_tally,
                         'created_at': trans.created_at.isoformat(),
                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
@@ -786,7 +784,6 @@ def export_transactions(request, pk):
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
                                         'remarks': trans.remarks or '',
-                                        'name': trans.name or '',
                                         'is_tally': trans.is_tally,
                                         'created_at': trans.created_at.isoformat(),
                                         'created_by': trans.created_by.username if trans.created_by else '',
@@ -805,7 +802,6 @@ def export_transactions(request, pk):
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
                                         'remarks': trans.remarks or '',
-                                        'name': trans.name or '',
                                         'is_tally': trans.is_tally,
                                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
                                         'updated_by': trans.updated_by.username if trans.updated_by else '',
@@ -971,7 +967,6 @@ def export_transactions(request, pk):
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
                                         'remarks': trans.remarks or '',
-                                        'name': trans.name or '',
                                         'is_tally': trans.is_tally,
                                         'created_at': trans.created_at.isoformat(),
                                         'created_by': trans.created_by.username if trans.created_by else '',
@@ -990,7 +985,6 @@ def export_transactions(request, pk):
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
                                         'remarks': trans.remarks or '',
-                                        'name': trans.name or '',
                                         'is_tally': trans.is_tally,
                                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
                                         'updated_by': trans.updated_by.username if trans.updated_by else '',
@@ -1809,7 +1803,6 @@ def import_transactions(request):
                             trans.amount = amount
                             trans.tr_type = trans_data.get('tr_type', 'DEBIT')
                             trans.remarks = trans_data.get('remarks', '')
-                            trans.name = trans_data.get('name', '')
                             trans.is_tally = trans_data.get('is_tally', False)
                             trans.shop = shop
                             # Always set updated_by to system_user, ignore any user data from import
@@ -1836,7 +1829,6 @@ def import_transactions(request):
                                 amount=amount,
                                 tr_type=trans_data.get('tr_type', 'DEBIT'),
                                 remarks=trans_data.get('remarks', ''),
-                                name=trans_data.get('name', ''),
                                 is_tally=trans_data.get('is_tally', False),
                                 shop=shop,
                                 created_by=system_user,

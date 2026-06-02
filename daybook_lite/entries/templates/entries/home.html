@@ -125,9 +125,16 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ form.amount.id_for_label }}"><u>A</u>mount</label>
-            {{ form.amount }}
-            {% if form.amount.errors %}<div class="text-danger small">{{ form.amount.errors|striptags }}</div>{% endif %}
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="id_debit_amount"><u>D</u>ebit Amount</label>
+                <input type="number" id="id_debit_amount" name="debit_amount" class="form-control" step="0.01" placeholder="Debit amount" min="1">
+              </div>
+              <div class="col">
+                <label class="form-label" for="id_credit_amount"><u>C</u>redit Amount</label>
+                <input type="number" id="id_credit_amount" name="credit_amount" class="form-control" step="0.01" placeholder="Credit amount" min="1">
+              </div>
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
@@ -139,10 +146,10 @@
           {% endif %}
           <div class="row">
             <div class="col">
-              <button type="button" class="cust-button btn-red" onclick="submitTransaction('DEBIT')">DEBIT</button>
+              <button type="button" class="cust-button btn-primary" onclick="submitMultipleTransactions()">Submit</button>
             </div>
             <div class="col">
-              <button type="button" class="cust-button btn-primary" onclick="submitTransaction('CREDIT')">CREDIT</button>
+              <button type="reset" class="cust-button btn-secondary">Reset</button>
             </div>
           </div>
         </form>
@@ -330,9 +337,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Transaction form submission
-function submitTransaction(transactionType) {
-    const amount = document.getElementById('id_amount').value.trim();
+// Transaction form submission - handles multiple transactions (debit and/or credit)
+function submitMultipleTransactions() {
+    const debitAmount = parseFloat(document.getElementById('id_debit_amount').value) || 0;
+    const creditAmount = parseFloat(document.getElementById('id_credit_amount').value) || 0;
     const shop = document.getElementById('id_shop').value;
     const account = document.getElementById('id_account').value;
     const remarks = document.getElementById('id_remarks').value.trim();
@@ -345,40 +353,90 @@ function submitTransaction(transactionType) {
         document.getElementById('id_date').focus();
         return;
     }
-    if (!amount) {
-        alert('Please enter Amount');
-        document.getElementById('id_amount').focus();
+    
+    if (debitAmount <= 0 && creditAmount <= 0) {
+        alert('Please enter Debit Amount or Credit Amount (or both)');
+        document.getElementById('id_debit_amount').focus();
         return;
     }
+    
     if (!shop) {
         alert('Please select a Shop');
         document.getElementById('id_shop').focus();
         return;
     }
+    
     if (!account) {
         alert('Please select an Account');
         document.getElementById('id_account').focus();
         return;
     }
     
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{% url "entries:add_entries" %}';
+    if (!remarks) {
+        alert('Please enter Remarks');
+        document.getElementById('id_remarks').focus();
+        return;
+    }
     
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    form.innerHTML = `
-        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-        <input type="hidden" name="amount" value="${amount}">
-        <input type="hidden" name="shop" value="${shop}">
-        <input type="hidden" name="acc" value="${account}">
-        <input type="hidden" name="tr_type" value="${transactionType}">
-        <input type="hidden" name="remarks" value="${remarks}">
-        <input type="hidden" name="date" value="${date}">
-        <input type="hidden" name="time" value="${time}">
-    `;
     
-    document.body.appendChild(form);
-    form.submit();
+    // Submit debit transaction if debit amount > 0
+    if (debitAmount > 0) {
+        const debitForm = document.createElement('form');
+        debitForm.method = 'POST';
+        debitForm.action = '{% url "entries:add_entries" %}';
+        debitForm.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+            <input type="hidden" name="amount" value="${debitAmount}">
+            <input type="hidden" name="shop" value="${shop}">
+            <input type="hidden" name="acc" value="${account}">
+            <input type="hidden" name="tr_type" value="DEBIT">
+            <input type="hidden" name="remarks" value="${remarks}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="time" value="${time}">
+        `;
+        document.body.appendChild(debitForm);
+        debitForm.submit();
+        
+        // If credit amount also > 0, delay credit submission
+        if (creditAmount > 0) {
+            setTimeout(() => {
+                const creditForm = document.createElement('form');
+                creditForm.method = 'POST';
+                creditForm.action = '{% url "entries:add_entries" %}';
+                creditForm.innerHTML = `
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                    <input type="hidden" name="amount" value="${creditAmount}">
+                    <input type="hidden" name="shop" value="${shop}">
+                    <input type="hidden" name="acc" value="${account}">
+                    <input type="hidden" name="tr_type" value="CREDIT">
+                    <input type="hidden" name="remarks" value="${remarks}">
+                    <input type="hidden" name="date" value="${date}">
+                    <input type="hidden" name="time" value="${time}">
+                `;
+                document.body.appendChild(creditForm);
+                creditForm.submit();
+            }, 500); // 500ms delay between submissions
+        }
+    } 
+    // Submit credit transaction if only credit amount > 0
+    else if (creditAmount > 0) {
+        const creditForm = document.createElement('form');
+        creditForm.method = 'POST';
+        creditForm.action = '{% url "entries:add_entries" %}';
+        creditForm.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+            <input type="hidden" name="amount" value="${creditAmount}">
+            <input type="hidden" name="shop" value="${shop}">
+            <input type="hidden" name="acc" value="${account}">
+            <input type="hidden" name="tr_type" value="CREDIT">
+            <input type="hidden" name="remarks" value="${remarks}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="time" value="${time}">
+        `;
+        document.body.appendChild(creditForm);
+        creditForm.submit();
+    }
 }
 
 {% comment %} function matchTransactionListHeight() {
