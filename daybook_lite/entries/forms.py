@@ -30,7 +30,11 @@ class TransactionForm(forms.ModelForm):
         queryset=Accounts.objects.all(),
         required=True,
         empty_label='-- Select Account --',
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_account'}),
+        widget=forms.Select(attrs={
+            'class': 'form-select', 
+            'id': 'id_account',
+            'data-live-search': "true"
+        }),
         label='Account',
     )
 
@@ -43,7 +47,12 @@ class TransactionForm(forms.ModelForm):
 
     remarks = forms.CharField(
         required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter remarks'}),
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Enter remarks',
+            'lang': 'ta',
+            'dir': 'ltr'
+        }),
         label='Remarks',
     )
 

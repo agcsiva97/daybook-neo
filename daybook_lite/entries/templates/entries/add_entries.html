@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <div class="container">
   <div class="row" id="loanRow">
@@ -11,7 +11,7 @@
             <div class="row">
               <div class="col">
                 {% csrf_token %}
-                <label class="form-label" for="{{ loan_form.date.id_for_label }}">{{ loan_form.date.label }}</label>
+                <label class="form-label" for="{{ loan_form.date.id_for_label }}">Date</label>
                 {{ loan_form.date }}
                 {% if loan_form.date.errors %}
                   <div class="text-danger small">{{ loan_form.date.errors|striptags }}</div>
@@ -25,14 +25,14 @@
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">S<u>h</u>op</label>
+                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">Shop</label>
                 {{ loan_form.shop }}
                 {% if loan_form.shop.errors %}
                   <div class="text-danger small">{{ loan_form.shop.errors|striptags }}</div>
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">L<u>e</u>dger</label>
+                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">Ledger</label>
                 {{ loan_form.ledger }}
                 {% if loan_form.ledger.errors %}
                   <div class="text-danger small">{{ loan_form.ledger.errors|striptags }}</div>
@@ -43,21 +43,21 @@
           <div class="mb-3">
             <div class="row">
               <div class="col">
-                <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pa<u>w</u>n No</label>
+                <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pawn No</label>
                 {{ loan_form.pawn_no }}
                 {% if loan_form.pawn_no.errors %}
                   <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.principal.id_for_label }}"><u>P</u>rincipal</label>
+                <label class="form-label" for="{{ loan_form.principal.id_for_label }}">Principal</label>
                 {{ loan_form.principal }}
                 {% if loan_form.principal.errors %}
                   <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.interest.id_for_label }}"><u>I</u>ntrest</label>
+                <label class="form-label" for="{{ loan_form.interest.id_for_label }}">Intrest</label>
                 {{ loan_form.interest }}
                 {% if loan_form.interest.errors %}
                   <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
@@ -91,7 +91,11 @@
           </div>
         </div>
         {% empty %}
-        <p class="text-muted text-center">No loan transactions for today.</p>
+        <div class="text-center py-4">
+          <img src="{% static 'img/add-loan.svg' %}" alt="No loans" style="width: 100%; max-width: 80px; margin: 0 auto 12px; display: block; opacity: 0.7;">
+          <h5 style="text-align: center; font-size: 0.9rem;">Add new loans</h5>
+          <p class="text-muted text-center" style="font-size: 0.8rem;">No loans recorded for today.</p>
+        </div>
         {% endfor %}
       </div>
     </div>
@@ -99,7 +103,7 @@
 
   <div class="row" id="releaseRow" style="margin-top: 16px;">
     <div class="col-md-9">
-      <h5><u>R</u>elease Management</h5>
+      <h5>R<u>e</u>lease Management</h5>
       <div class="card card-body" id="releaseCard">
         <div class="row">
           <div class="mb-3">
@@ -114,7 +118,7 @@
                 <input type="time" name="release_time" id="release_time" class="form-control" step="1">
               </div>
               <div class="col">
-                <label class="form-label" for="release_shop">S<u>h</u>op</label>
+                <label class="form-label" for="release_shop">Shop</label>
                 <select class="form-control" id="release_shop" name="release_shop">
                   <option value="">-- Select Shop --</option>
                   {% for shop in shops %}
@@ -123,7 +127,7 @@
                 </select>
               </div>
               <div class="col">
-                <label class="form-label" for="release_ledger">L<u>e</u>dger</label>
+                <label class="form-label" for="release_ledger">Ledger</label>
                 <select class="form-control" id="release_ledger" name="release_ledger">
                   <option value="">First select a shop</option>
                 </select>
@@ -133,15 +137,15 @@
           <div class="mb-3">
             <div class="row">
               <div class="col">
-                <label class="form-label" for="release_pawn_no">Pa<u>w</u>n No</label>
+                <label class="form-label" for="release_pawn_no">Pawn No</label>
                 <input type="text" name="release_pawn_no" id="release_pawn_no" class="form-control" placeholder="Enter Pawn No" maxlength="10">
               </div>
               <div class="col">
-                <label class="form-label" for="release_principal"><u>P</u>rincipal</label>
+                <label class="form-label" for="release_principal">Principal</label>
                 <input type="number" name="release_principal" id="release_principal" class="form-control" step="0.01" placeholder="0.00">
               </div>
               <div class="col">
-                <label class="form-label" for="release_interest"><u>I</u>ntrest</label>
+                <label class="form-label" for="release_interest">Interest</label>
                 <input type="number" name="release_interest" id="release_interest" class="form-control" step="0.01" placeholder="0.00">
               </div>
             </div>
@@ -172,7 +176,11 @@
           </div>
         </div>
         {% empty %}
-        <p class="text-muted text-center">No release transactions for today.</p>
+        <div class="text-center py-4">
+          <img src="{% static 'img/add-release.svg' %}" alt="No releases" style="width: 100%; max-width: 80px; margin: 0 auto 12px; display: block; opacity: 0.7;">
+          <h5 style="text-align: center; font-size: 0.9rem;">Add new releases</h5>
+          <p class="text-muted text-center" style="font-size: 0.8rem;">No releases recorded for today.</p>
+        </div>
         {% endfor %}
       </div>
     </div>
@@ -182,16 +190,8 @@
 
 <script>
 const shortcuts = {
-    't': 'id_date',
-    's': 'id_shop',
-    'a': 'id_amount',
-    'm': 'id_remarks',
     'l': 'loan_date',
-    'h': 'loan_shop',
-    'e': 'loan_ledger',
-    'w': 'loan_pawn_no',
-    'p': 'loan_principal',
-    'i': 'loan_interest',
+    'e': 'release_date',
 };
 
 document.addEventListener('keydown', function(e) {

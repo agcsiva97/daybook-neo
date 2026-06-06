@@ -1299,6 +1299,67 @@ def edit_shop(request, pk):
         form = ShopEditForm(instance=shop)
     return render(request, 'manager/edit_shop.html', {'nav_title': 'Shops', 'form': form, 'shop': shop, 'app_name': 'manager','is_super_admin': request.user.is_superuser,})
 
+@login_required
+def shop_meta(request, pk):
+    shop = get_object_or_404(Shop, pk=pk)
+
+    # Fetch all types for this shop, ordered by group_order then name
+    types_qs = (
+        Type.objects
+        .filter(shop=shop)
+        .prefetch_related('accounts')
+        .order_by('group_order', 'e_name')
+    )
+
+    # Build hierarchy: group_order → [types with accounts + balances]
+    groups_dict = {}
+    for typ in types_qs:
+        order = typ.group_order
+        if order not in groups_dict:
+            groups_dict[order] = {
+                'order': order,
+                'label': manager_helper.get_group(order)[2],
+                'types': [],
+                'type_count': 0,
+                'account_count': 0,
+            }
+
+        # Annotate accounts with balance (fetch from your balance logic)
+        accounts = list(typ.accounts.filter(shop=shop).order_by('priority', 'e_name'))
+
+        # If you have a balance field/property on Accounts, use it directly.
+        # Otherwise call your balance calculation utility here.
+        for acc in accounts:
+            acc.balance = transaction_helper.get_account_balance(acc)  # replace with your helper
+
+        groups_dict[order]['types'].append({
+            'obj': typ,
+            'accounts': accounts,
+        })
+        groups_dict[order]['type_count'] += 1
+        groups_dict[order]['account_count'] += len(accounts)
+
+    hierarchy = sorted(groups_dict.values(), key=lambda g: g['order'])
+
+    # Summary stats
+    all_accounts = Accounts.objects.filter(shop=shop)
+    total_accounts = all_accounts.count()
+    total_types = types_qs.count()
+    total_groups = len(hierarchy)
+
+    # Shop-level balance (sum of all account balances)
+    shop_balance = sum(
+        transaction_helper.get_account_balance(acc) for acc in all_accounts
+    )
+
+    return render(request, 'manager/shop_meta.html', {
+        'shop': shop,
+        'hierarchy': hierarchy,
+        'total_groups': total_groups,
+        'total_types': total_types,
+        'total_accounts': total_accounts,
+        'shop_balance': shop_balance,
+    })
 
 @login_required
 @super_admin_required

@@ -113,7 +113,18 @@
           <label for="to_date" class="form-label">To Date</label>
           <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
+          <label for="shop" class="form-label">Shop</label>
+          <select class="form-select" id="shop" name="shop">
+            <option value="">All Shops</option>
+            {% for shop in all_shops %}
+            <option value="{{ shop.id }}" {% if shop_filter == shop.id|stringformat:"s" %}selected{% endif %}>
+              {{ shop.short_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1">
           <label for="ledger" class="form-label">Ledger</label>
           <select class="form-select" id="ledger" name="ledger">
             <option value="">All Ledgers</option>
@@ -307,10 +318,10 @@
         <ul class="pagination justify-content-center">
           {% if page_obj.has_previous %}
           <li class="page-item">
-            <a class="page-link" href="?page=1{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">&laquo; First</a>
+            <a class="page-link" href="?page=1{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if shop_filter %}&shop={{ shop_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">&laquo; First</a>
           </li>
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if shop_filter %}&shop={{ shop_filter}}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
           </li>
           {% endif %}
 
@@ -322,10 +333,10 @@
 
           {% if page_obj.has_next %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if shop_filter %}&shop={{ shop_filter}}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
           </li>
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last &raquo;</a>
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if ledger_filter %}&ledger={{ ledger_filter }}{% endif %}{% if shop_filter %}&shop={{ shop_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last &raquo;</a>
           </li>
           {% endif %}
         </ul>
@@ -334,4 +345,83 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const shopSelect = document.getElementById('shop');
+    const ledgerSelect = document.getElementById('ledger');
+
+    if (!shopSelect.value) {
+      ledgerSelect.innerHTML = '<option value="">Select shop first</option>';
+      ledgerSelect.disabled = true;
+    }
+    else{
+      // If a shop is already selected on page load, trigger change event to populate accounts and types
+      const shopId = shopSelect.value;
+        if (!shopId) {
+            ledgerSelect.innerHTML = '<option value="">Select shop first</option>';
+            ledgerSelect.disabled = true;
+            return;
+        }
+        fetch(`/api/shops/${shopId}/ledgers/`)
+            .then(response => response.json())
+            .then(data => {
+                ledgerSelect.innerHTML = '';
+                ledgerSelect.disabled = false;
+                
+                if (data.length === 0) {
+                    ledgerSelect.innerHTML = '<option value="">No ledgers available for this shop</option>';
+                    ledgerSelect.disabled = true;
+                } else {
+                    const option = new Option('All Ledgers', '');
+                    ledgerSelect.add(option);
+                    data.forEach(ledger => {
+                        const option = new Option(ledger.name, ledger.id);
+                        ledgerSelect.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ledgers:', error);
+                ledgerSelect.innerHTML = '<option value="">Error loading ledgers</option>';
+                ledgerSelect.disabled = true;
+        });
+    }
+
+    if (!shopSelect || !ledgerSelect) return;
+
+    shopSelect.addEventListener('change', function() {
+      const shopId = this.value;
+        if (!shopId) {
+            ledgerSelect.innerHTML = '<option value="">Select shop first</option>';
+            ledgerSelect.disabled = true;
+            return;
+        }
+        fetch(`/api/shops/${shopId}/ledgers/`)
+            .then(response => response.json())
+            .then(data => {
+                ledgerSelect.innerHTML = '';
+                ledgerSelect.disabled = false;
+                
+                if (data.length === 0) {
+                    ledgerSelect.innerHTML = '<option value="">No ledgers available for this shop</option>';
+                    ledgerSelect.disabled = true;
+                } else {
+                    const option = new Option('All Ledgers', '');
+                    ledgerSelect.add(option);
+                    data.forEach(ledger => {
+                        const option = new Option(ledger.name, ledger.id);
+                        ledgerSelect.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ledgers:', error);
+                ledgerSelect.innerHTML = '<option value="">Error loading ledgers</option>';
+                ledgerSelect.disabled = true;
+        });
+    });
+
+});
+</script>
 {% endblock %}

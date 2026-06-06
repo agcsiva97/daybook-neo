@@ -726,8 +726,8 @@ def export_transactions_excel(request):
         if shop_filter:
             try:
                 shop_obj = Shop.objects.get(pk=shop_filter)
-                ws.cell(row=current_row, column=1, value="Shop:")
-                ws.cell(row=current_row, column=2, value=shop_obj.name)
+                # ws.cell(row=current_row, column=1, value="Shop:")
+                # ws.cell(row=current_row, column=2, value=shop_obj.name)
                 current_row += 1
             except Shop.DoesNotExist:
                 pass
@@ -755,7 +755,11 @@ def export_transactions_excel(request):
         current_row += 2
     
     # Headers
-    headers = ['Transaction Date', 'Shop', 'Account', 'Remarks', 'Debit', 'Credit']
+    if not shop_filter:
+        headers = ['Transaction Date', 'Shop', 'Account', 'Remarks', 'Debit', 'Credit']
+    else:
+        headers = ['Transaction Date', 'Account', 'Remarks', 'Debit', 'Credit']
+
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=current_row, column=col)
         cell.value = header
@@ -781,19 +785,33 @@ def export_transactions_excel(request):
             credit_amount = float(transaction.amount)
         
         ws.cell(row=current_row, column=1, value=transaction_datetime)
-        ws.cell(row=current_row, column=2, value=transaction.shop.name)
-        ws.cell(row=current_row, column=3, value=account_name)
-        ws.cell(row=current_row, column=4, value=transaction.remarks or '-')
+        if not shop_filter:
+            ws.cell(row=current_row, column=2, value=transaction.shop.name)
+            ws.cell(row=current_row, column=3, value=account_name)
+            ws.cell(row=current_row, column=4, value=transaction.remarks or '-')
         
-        # Debit column
-        debit_cell = ws.cell(row=current_row, column=5, value=debit_amount)
-        if debit_amount is not None:
-            debit_cell.font = Font(color="FF0000")
+            # Debit column
+            debit_cell = ws.cell(row=current_row, column=5, value=debit_amount)
+            if debit_amount is not None:
+                debit_cell.font = Font(color="FF0000")
+            
+            # Credit column
+            credit_cell = ws.cell(row=current_row, column=6, value=credit_amount)
+            if credit_amount is not None:
+                credit_cell.font = Font(color="008000")
+        else:
+            ws.cell(row=current_row, column=2, value=account_name)
+            ws.cell(row=current_row, column=3, value=transaction.remarks or '-')
         
-        # Credit column
-        credit_cell = ws.cell(row=current_row, column=6, value=credit_amount)
-        if credit_amount is not None:
-            credit_cell.font = Font(color="008000")
+            # Debit column
+            debit_cell = ws.cell(row=current_row, column=4, value=debit_amount)
+            if debit_amount is not None:
+                debit_cell.font = Font(color="FF0000")
+            
+            # Credit column
+            credit_cell = ws.cell(row=current_row, column=5, value=credit_amount)
+            if credit_amount is not None:
+                credit_cell.font = Font(color="008000")
         
         current_row += 1
     
@@ -1000,9 +1018,8 @@ def delete_transaction(request, pk):
 
         try:
             # Option 1 — warn user if transaction is loan-linked
-            LOAN_REMARKS = ['Loan Principal', 'Loan Interest', 'Release Principal', 'Release Interest']
             with db_transaction.atomic():
-                if transaction.remarks in LOAN_REMARKS:
+                if transaction_helper.is_loan_transaction(transaction.remarks):
                     messages.error(request, 'This transaction is linked to a loan entry. Please delete it from Loan Transactions page instead.')
                     return redirect('entries:transactions')
                 log_activity(request, 'DELETE', 'Transaction', transaction.id, f'Transaction deleted: {transaction.remarks} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}', shop=transaction.shop)
@@ -1785,6 +1802,10 @@ def loan(request):
         interest_account  = transaction_helper.get_linked_account(ledger, interest_rel_type)
         logger.info(f"Linked accounts -> principal=[{principal_account}] | interest=[{interest_account}]")
 
+        if principal_account is None or interest_account is None:
+            messages.error(request, 'No linked accounts found for principal and interest. Please check ledger configuration.')
+            return redirect('entries:add_entries')
+        
         with db_transaction.atomic():
             shop = Shop.objects.select_for_update().get(pk=ledger.shop_id)
 
@@ -1813,8 +1834,8 @@ def loan(request):
 
             # ── Step 3: Find existing principal/interest transactions for the day ──
             logger.info(f"Searching transactions -> shop=[{shop.short_name}] | date=[{chosen_date}]")
-            principal_filter = dict(shop=shop, remarks=principal_remark, transaction_dt__date=chosen_date)
-            interest_filter  = dict(shop=shop, remarks=interest_remark,  transaction_dt__date=chosen_date)
+            principal_filter = dict(shop=shop, remarks__startswith=principal_remark, transaction_dt__date=chosen_date)
+            interest_filter  = dict(shop=shop, remarks__startswith=interest_remark,  transaction_dt__date=chosen_date)
             if principal_account:
                 principal_filter['acc'] = principal_account
             if interest_account:
@@ -1856,6 +1877,20 @@ def loan(request):
             else:
                 logger.info("[interest] amount is 0 — skipping transaction")
 
+        # ── Step 6: Append pawn_no to transaction remarks ────────
+        # Re-fetch transactions after create/update to get latest state
+        updated_principal_trans = Transactions.objects.filter(**principal_filter).first()
+        updated_interest_trans  = Transactions.objects.filter(**interest_filter).first()
+
+        if updated_principal_trans:
+            transaction_helper.append_pawn_no_to_remark(
+                updated_principal_trans, pawn_no, request.user, label="principal remark"
+            )
+        if updated_interest_trans:
+            transaction_helper.append_pawn_no_to_remark(
+                updated_interest_trans, pawn_no, request.user, label="interest remark"
+            )
+
         log_activity(request, 'CREATE', 'Loan', loan_entry.id, f'Loan created: {loan_entry.pawn_no}', shop=shop)
         messages.success(request, f'{loan_type.capitalize()} entry created successfully!')
         logger.info(f"Loan [{loan_entry.id}] created by [{request.user.username}]")
@@ -1881,8 +1916,13 @@ def loans(request):
     from_date = (request.GET.get('from_date') or '').strip()
     to_date = (request.GET.get('to_date') or '').strip()
     ledger_filter = (request.GET.get('ledger') or '').strip()
+    shop_filter = (request.GET.get('shop') or '').strip()
     type_filter = (request.GET.get('type') or '').strip().upper()
     search_query = (request.GET.get('search') or '').strip()
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    filter_query = query_params.urlencode()
 
     if from_date:
         try:
@@ -1897,9 +1937,15 @@ def loans(request):
             loans_list = loans_list.filter(transaction_dt__date__lte=to_date_obj)
         except ValueError:
             to_date = ''
+    
+    if shop_filter:
+        print(f"Filtering by shop: {shop_filter}")
+        loans_list = loans_list.filter(shop_id=shop_filter)
+    elif shop_filter:
+        shop_filter = ''
 
-    if ledger_filter and ledger_filter.isdigit():
-        loans_list = loans_list.filter(ledger_id=int(ledger_filter))
+    if ledger_filter:
+        loans_list = loans_list.filter(ledger_id=ledger_filter)
     elif ledger_filter:
         ledger_filter = ''
 
@@ -1922,20 +1968,23 @@ def loans(request):
     )
     
     # Pagination
-    paginator = Paginator(loans_list, 50)
+    paginator = Paginator(loans_list, 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
     # Get all ledgers for filter dropdown
     all_ledgers = Ledger.objects.all().order_by('name')
+    all_shops = Shop.objects.all().order_by('name')
     
     context = {
         'nav_title': 'Loan Transactions',
         'page_obj': page_obj,
         'all_ledgers': all_ledgers,
+        'all_shops': all_shops,
         'from_date': from_date,
         'to_date': to_date,
         'ledger_filter': ledger_filter,
+        'shop_filter': shop_filter,
         'type_filter': type_filter,
         'search_query': search_query,
         'loan_totals': loan_totals,
@@ -1943,6 +1992,7 @@ def loans(request):
         'all_loans': loans_list,  # For print view
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'filter_query': filter_query,
         'is_admin_user': is_admin(request.user) or request.user.is_superuser,
     }
     return render(request, 'entries/loans.html', context)
@@ -1960,6 +2010,7 @@ def edit_loan(request, pk):
     old_ledger       = loan.ledger
     old_shop         = old_ledger.shop
     old_date         = timezone.localtime(loan.transaction_dt).date()
+    old_pawn_no      = loan.pawn_no
 
     if request.method == 'POST':
         logger.info("============ Loan Update Started ============")
@@ -2028,8 +2079,8 @@ def edit_loan(request, pk):
 
                     # ── Step 2: Find old transactions on old date ───────────
                     logger.info(f"Searching old transactions -> shop=[{old_shop.short_name}] | date=[{old_date}]")
-                    old_principal_filter = dict(shop=old_shop, remarks=old_principal_remark, transaction_dt__date=old_date)
-                    old_interest_filter  = dict(shop=old_shop, remarks=old_interest_remark,  transaction_dt__date=old_date)
+                    old_principal_filter = dict(shop=old_shop, remarks__startswith=old_principal_remark, transaction_dt__date=old_date)
+                    old_interest_filter  = dict(shop=old_shop, remarks__startswith=old_interest_remark,  transaction_dt__date=old_date)
                     if old_principal_account:
                         old_principal_filter['acc'] = old_principal_account
                     if old_interest_account:
@@ -2041,8 +2092,8 @@ def edit_loan(request, pk):
 
                     # ── Step 3: Find new transactions on new date ───────────
                     logger.info(f"Searching new transactions -> shop=[{new_shop.short_name}] | date=[{new_date}]")
-                    new_principal_filter = dict(shop=new_shop, remarks=new_principal_remark, transaction_dt__date=new_date)
-                    new_interest_filter  = dict(shop=new_shop, remarks=new_interest_remark,  transaction_dt__date=new_date)
+                    new_principal_filter = dict(shop=new_shop, remarks__startswith=new_principal_remark, transaction_dt__date=new_date)
+                    new_interest_filter  = dict(shop=new_shop, remarks__startswith=new_interest_remark,  transaction_dt__date=new_date)
                     if new_principal_account:
                         new_principal_filter['acc'] = new_principal_account
                     if new_interest_account:
@@ -2148,6 +2199,30 @@ def edit_loan(request, pk):
                         )
 
                     # ── Step 6: Save updated loan ───────────────────────────
+                    # Always remove old pawn_no first, then append new one below
+                    old_p = Transactions.objects.filter(**old_principal_filter).first()
+                    old_i = Transactions.objects.filter(**old_interest_filter).first()
+                    if old_p:
+                        transaction_helper.remove_pawn_no_from_remark(
+                            old_p, old_pawn_no, request.user, label="old principal remark"
+                        )
+                    if old_i:
+                        transaction_helper.remove_pawn_no_from_remark(
+                            old_i, old_pawn_no, request.user, label="old interest remark"
+                        )
+
+                    # Add pawn_no to new/updated transactions
+                    new_p = Transactions.objects.filter(**new_principal_filter).first()
+                    new_i = Transactions.objects.filter(**new_interest_filter).first()
+                    if new_p:
+                        transaction_helper.append_pawn_no_to_remark(
+                            new_p, updated_loan.pawn_no, request.user, label="new principal remark"
+                        )
+                    if new_i:
+                        transaction_helper.append_pawn_no_to_remark(
+                            new_i, updated_loan.pawn_no, request.user, label="new interest remark"
+                        )
+                    
                     updated_loan.updated_by = request.user
                     updated_loan.transaction_dt = new_dt
                     updated_loan.save()
@@ -2217,8 +2292,8 @@ def delete_loan(request, pk):
                 principal_account = transaction_helper.get_linked_account(loan.ledger, principal_rel_type)
                 interest_account  = transaction_helper.get_linked_account(loan.ledger, interest_rel_type)
 
-                principal_filter = dict(shop=loan_shop, remarks=principal_remark, transaction_dt__date=loan_date)
-                interest_filter  = dict(shop=loan_shop, remarks=interest_remark,  transaction_dt__date=loan_date)
+                principal_filter = dict(shop=loan_shop, remarks__startswith=principal_remark, transaction_dt__date=loan_date)
+                interest_filter  = dict(shop=loan_shop, remarks__startswith=interest_remark,  transaction_dt__date=loan_date)
                 if principal_account:
                     principal_filter['acc'] = principal_account
                 if interest_account:
@@ -2227,6 +2302,16 @@ def delete_loan(request, pk):
                 principal_trans = Transactions.objects.filter(**principal_filter).first()
                 interest_trans  = Transactions.objects.filter(**interest_filter).first()
                 logger.info(f"Principal trans found: [{principal_trans is not None}] | Interest trans found: [{interest_trans is not None}]")
+
+                # ── Step 1b: Remove pawn_no from remarks before reduction ──
+                if principal_trans:
+                    transaction_helper.remove_pawn_no_from_remark(
+                        principal_trans, loan_pawn_no, request.user, label="principal remark"
+                    )
+                if interest_trans:
+                    transaction_helper.remove_pawn_no_from_remark(
+                        interest_trans, loan_pawn_no, request.user, label="interest remark"
+                    )
 
                 # ── Step 2: Reduce or delete principal transaction ───────
                 transaction_helper._reduce_or_delete_transaction(

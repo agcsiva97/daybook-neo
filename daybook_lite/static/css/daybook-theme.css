@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&display=swap');
+
 @font-face {
   font-family: 'Google Sans';
   font-style: normal;
@@ -91,7 +93,7 @@ h5{
   font-weight: 300;
 }
 .hanuman-600 {
-  font-weight: 600;
+  font-weight: 700;
 }
 .hanuman-200 {
   font-weight: 200;

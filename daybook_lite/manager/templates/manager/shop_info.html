@@ -15,6 +15,9 @@
           <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-file-invoice-dollar"></i> <span class="d-none d-md-inline">Types Summary</span>
           </a>
+          <a href="{% url 'manager:shop_meta' shop.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-sitemap"></i> <span class="d-none d-md-inline">Account Tree</span>
+          </a>
           <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-arrows-rotate"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
           </a>

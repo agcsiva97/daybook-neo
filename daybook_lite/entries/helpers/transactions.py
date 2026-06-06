@@ -524,3 +524,85 @@ def group_fy_data(shop, fy):
             'types': type_entries
         })
     return group_fy_data
+
+# ──────────────────────────────────────────────────────────────
+# Remark pawn_no management helpers
+# ──────────────────────────────────────────────────────────────
+
+def _parse_pawn_nos(remark: str) -> tuple[str, list[str]]:
+    """
+    Split a remark into base text and list of pawn nos.
+    Example:
+        "Loan Principal [A1511, C563]" -> ("Loan Principal", ["A1511", "C563"])
+        "Loan Principal"               -> ("Loan Principal", [])
+    """
+    import re
+    match = re.search(r'\[([^\]]*)\]$', remark.strip())
+    if match:
+        base = remark[:match.start()].strip()
+        pawn_nos = [p.strip() for p in match.group(1).split(',') if p.strip()]
+    else:
+        base = remark.strip()
+        pawn_nos = []
+    return base, pawn_nos
+
+
+def _build_remark(base: str, pawn_nos: list[str]) -> str:
+    """
+    Reconstruct remark string from base and pawn no list.
+    Example:
+        ("Loan Principal", ["A1511", "C563"]) -> "Loan Principal [A1511, C563]"
+        ("Loan Principal", [])                -> "Loan Principal"
+    """
+    if pawn_nos:
+        return f"{base} [{', '.join(pawn_nos)}]"
+    return base
+
+
+def append_pawn_no_to_remark(trans, pawn_no: str, user, label=""):
+    """
+    Add pawn_no to the transaction's remark list if not already present.
+    Saves the transaction.
+    """
+    if trans is None:
+        logger.warning(f"[{label}] transaction not found — cannot append pawn_no=[{pawn_no}]")
+        return
+
+    base, pawn_nos = _parse_pawn_nos(trans.remarks)
+    if pawn_no not in pawn_nos:
+        pawn_nos.append(pawn_no)
+        trans.remarks = _build_remark(base, pawn_nos)
+        trans.updated_by = user
+        trans.save()
+        logger.info(f"[{label}] appended pawn_no=[{pawn_no}] to trans id=[{trans.id}] remarks=[{trans.remarks}]")
+    else:
+        logger.info(f"[{label}] pawn_no=[{pawn_no}] already in trans id=[{trans.id}] remarks — skipping")
+
+
+def remove_pawn_no_from_remark(trans, pawn_no: str, user, label=""):
+    """
+    Remove pawn_no from the transaction's remark list.
+    Saves the transaction. Does not delete the transaction.
+    """
+    if trans is None:
+        logger.warning(f"[{label}] transaction not found — cannot remove pawn_no=[{pawn_no}]")
+        return
+
+    base, pawn_nos = _parse_pawn_nos(trans.remarks)
+    if pawn_no in pawn_nos:
+        pawn_nos.remove(pawn_no)
+        trans.remarks = _build_remark(base, pawn_nos)
+        trans.updated_by = user
+        trans.save()
+        logger.info(f"[{label}] removed pawn_no=[{pawn_no}] from trans id=[{trans.id}] remarks=[{trans.remarks}]")
+    else:
+        logger.info(f"[{label}] pawn_no=[{pawn_no}] not found in trans id=[{trans.id}] remarks — skipping")
+
+def is_loan_transaction(remark: str) -> bool:
+    """
+    Determine if a transaction remark indicates a loan-related transaction.
+    This is a simple heuristic based on the presence of certain keywords.
+    """
+    loan_keywords = ['loan principal', 'loan interest', 'release principal', 'release interest']
+    remark_lower = remark.lower()
+    return any(keyword in remark_lower for keyword in loan_keywords)

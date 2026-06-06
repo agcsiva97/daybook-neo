@@ -18,13 +18,13 @@
 
     <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
     {% if not shop_filter %}
-      {% if is_admin %}
+      {% if is_admin and transaction.shop %}
         <td> <a href="{% url 'manager:shop_info' transaction.shop.pk %}">{{ transaction.shop.short_name }}</a></td>
       {% else %}
         <td>{{ transaction.shop.short_name }}</td>
       {% endif %}
     {% endif %}
-    {% if is_admin %}
+    {% if is_admin and transaction.acc %}
       <td> <a href="{% url 'manager:account_info' transaction.acc.pk %}">{{ transaction.acc.t_name|default:"-" }}</a></td>
     {% else %}
       <td>{{ transaction.acc.t_name|default:"-" }}</td>

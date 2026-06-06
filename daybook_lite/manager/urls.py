@@ -24,6 +24,7 @@ urlpatterns = [
     path('shops/<str:pk>/add_account', views.add_account, name='add-account'),
     path('shops/<str:pk>/edit/', views.edit_shop, name='edit_shop'),
     path('shops/<str:pk>/delete/', views.delete_shop, name='delete_shop'),
+    path('shops/<str:pk>/meta/', views.shop_meta, name='shop_meta'),
     path('shops/<str:shop_pk>/add-ledger/', views.add_shop_ledger, name='add_shop_ledger'),
     path('ledger/<str:pk>/', views.ledger_info, name='ledger_info'),
     path('ledger/<str:pk>/link-accounts/', views.link_ledger_accounts, name='link_ledger_accounts'),
