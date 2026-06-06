@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 
 from django.conf import settings
@@ -17,20 +18,35 @@ def _generate_ledger_id():
     """Generate a unique 8-char ledger ID: LED + 5 random alphanumeric chars."""
     return 'LED' + uuid.uuid4().hex[:5].upper()
 
+def _generate_type_id():
+    """Generate a unique 8-char type ID: TYP + 5 random alphanumeric chars."""
+    return 'TYP' + uuid.uuid4().hex[:5].upper()
+
+def _generate_accounts_id():
+    """Generate a unique 8-char accounts ID: ACC + 5 random alphanumeric chars."""
+    return 'ACC' + uuid.uuid4().hex[:5].upper()
+
+def _generate_bt_id():
+    """Generate a unique 8-char BT ID: BT + 5 random alphanumeric chars."""
+    return 'BT' + uuid.uuid4().hex[:5].upper()
+
 # Create your models here.
 class Shop(models.Model):
     id = models.CharField(max_length=10, primary_key=True, default=_generate_shop_id, editable=False)
     short_name = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100, null=True, blank=True)
+    proprietor = models.CharField(max_length=100, null=True, blank=True, default='')
+    god = models.CharField(max_length=100, null=True, blank=True, default='')  # GST / GOD number
+    pan = models.CharField(max_length=20, null=True, blank=True, default='')  # PAN number
     d_no = models.CharField(max_length=10, null=True, blank=True, default='')
     addressline1 = models.CharField(max_length=255, null=True, blank=True, default='')
     addressline2 = models.CharField(max_length=255, null=True, blank=True, default='')
     place = models.CharField(max_length=50, null=True, blank=True)
     pincode = models.DecimalField(max_digits=6, decimal_places=0, null=True, blank=True)
-    balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    # is_local = models.BooleanField(default=True)
-    # ip_address = models.GenericIPAddressField(null=True, blank=True) 
-    # port = models.PositiveIntegerField( null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(65535)])
+    last_transaction_exported_at = models.DateTimeField(null=True, blank=True)
+    last_transaction_imported_at = models.DateTimeField(null=True, blank=True)
+    last_loans_exported_at = models.DateTimeField(null=True, blank=True)
+    last_loans_imported_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.short_name
@@ -44,6 +60,29 @@ class Ledger(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Type(models.Model):
+    id = models.CharField(max_length=10, primary_key=True, default=_generate_type_id, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='types')
+    e_name = models.CharField(max_length=50, blank=True, default='')
+    t_name = models.CharField(max_length=50, blank=True, default='')
+    group_order = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(6)])
+
+    def __str__(self):
+        return self.e_name
+
+class Accounts(models.Model):
+    id = models.CharField(max_length=10, primary_key=True, default=_generate_accounts_id, editable=False)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='shop_accounts')
+    e_name = models.CharField(max_length=50, blank=True, default='')
+    t_name = models.CharField(max_length=50, blank=True, default='')
+    acc_type = models.ForeignKey(Type, on_delete=models.CASCADE, null=True, blank=True, related_name='accounts')
+    priority = models.PositiveIntegerField(default=0)
+    is_admin_only = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.e_name
 
 class Configuration(models.Model):
     class Group(models.TextChoices):
@@ -71,7 +110,7 @@ class Configuration(models.Model):
         Key.LOAN_PAPER: 'A5',
         Key.LOAN_ORIENTATION: 'Portrait',
         Key.DEN_PURGE_DAYS: '7',
-        Key.SESSION_TIMEOUT: '60',
+        Key.SESSION_TIMEOUT: '1800',
         Key.ACTIVITY_PURGE_DAYS: '7'
     }
 
@@ -147,6 +186,7 @@ class ActivityLog(models.Model):
         ('VIEW',   'View'),
     ]
     user        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    shop        = models.ForeignKey(Shop, on_delete=models.SET_NULL, null=True, blank=True)
     action      = models.CharField(max_length=10, choices=ACTION_CHOICES)
     model_name  = models.CharField(max_length=50, blank=True)  # e.g. 'Loan', 'Transaction'
     object_id   = models.CharField(max_length=50, blank=True)  # pk of affected record
@@ -159,3 +199,77 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user} | {self.action} | {self.model_name} | {self.created_at}"
+
+class ExportHistory(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='export_histories')
+    export_type = models.CharField(max_length=20)  # e.g. 'transactions', 'loans'
+    exported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-exported_at']
+
+    def __str__(self):
+        return f"{self.shop.short_name} | {self.export_type} | {self.exported_at}"
+    
+class ExportDetails(models.Model):
+    export_history = models.ForeignKey(ExportHistory, on_delete=models.CASCADE, related_name='details')
+    record_id = models.CharField(max_length=50)  # ID of the exported record
+    record_type = models.CharField(max_length=20)  # e.g. 'transaction', 'loan'
+    status = models.CharField(max_length=20)  # e.g. 'success', 'failed'
+    message = models.TextField(blank=True)  # Optional message for failures or additional info
+
+    def __str__(self):
+        return f"{self.export_history.shop.short_name} | {self.record_type} | {self.record_id} | {self.status}"
+    
+class ImportHistory(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='import_histories')
+    import_type = models.CharField(max_length=20)  # e.g. 'transactions', 'loans'
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-imported_at']
+
+    def __str__(self):
+        return f"{self.shop.short_name} | {self.import_type} | {self.imported_at}"
+    
+class ImportDetails(models.Model):
+    import_history = models.ForeignKey(ImportHistory, on_delete=models.CASCADE, related_name='details')
+    record_id = models.CharField(max_length=50)  # ID of the imported record
+    record_type = models.CharField(max_length=20)  # e.g. 'transaction', 'loan'
+    status = models.CharField(max_length=20)  # e.g. 'success', 'failed'
+    message = models.TextField(blank=True)  # Optional message for failures or additional info
+
+    def __str__(self):
+        return f"{self.import_history.shop.short_name} | {self.record_type} | {self.record_id} | {self.status}"
+    
+class BT_Ledger_Accounts(models.Model):
+    id = models.CharField(max_length=30, primary_key=True, editable=False, default=_generate_bt_id)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='bt_ledger_accounts')
+    ledger = models.ForeignKey(Ledger, on_delete=models.CASCADE)
+    rel_type = models.CharField(max_length=25, blank=False)  # e.g. 'PRIMARY', 'SECONDARY', etc.
+    account = models.ForeignKey(Accounts, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_bt_ledger_accounts',
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_bt_ledger_accounts',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.shop.short_name} - {self.ledger.name} - {self.account.e_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            shop_name = self.shop.short_name if self.shop_id and self.shop else 'BTL'
+            self.id = _generate_bt_id(shop_name)
+        super().save(*args, **kwargs)    

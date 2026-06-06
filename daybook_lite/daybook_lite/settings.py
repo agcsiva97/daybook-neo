@@ -51,6 +51,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '192.168.1.29',
+    '192.168.1.47',
+    '172.20.10.6',
 ]
 
 
@@ -107,6 +109,9 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'builtins': [
+                'api.templatetags.indian_format',  # ← add this
+            ],
         },
     },
 ]
@@ -151,7 +156,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': BASE_DIR / 'data/db.sqlite3',
         }
     }
 
@@ -255,34 +260,42 @@ LOGGING = {
         },
         'file': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'daybook.log',
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'when': 'midnight',
             'backupCount': 10,
+            'encoding': 'utf-8',
+            'delay': True,
             'formatter': 'verbose',
         },
         'error_file': {
             'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'daybook_errors.log',
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'when': 'midnight',
             'backupCount': 10,
+            'encoding': 'utf-8',
+            'delay': True,
             'formatter': 'verbose',
         },
         'security_file': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'security.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'when': 'midnight',
             'backupCount': 5,
+            'encoding': 'utf-8',
+            'delay': True,
             'formatter': 'verbose',
         },
         'transaction_file': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'transactions.log',
-            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'when': 'midnight',
             'backupCount': 10,
+            'encoding': 'utf-8',
+            'delay': True,
             'formatter': 'verbose',
         },
     },

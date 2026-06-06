@@ -1,3 +1,3 @@
 @echo off
-cd /d C:\Learnings\Python\daybook_lite\daybook_lite
-start "Daybook Server" C:\Learnings\Python\daybook_lite\.venv\Scripts\python.exe manage.py runserver daybook.local:8000
+cd /d C:\dbk\daybook_lite\daybook_lite
+C:\dbk\daybook_lite\venv\Scripts\python.exe manage.py runserver daybook.local:8000

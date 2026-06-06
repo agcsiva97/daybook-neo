@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
-from manager.models import Shop, Ledger
+from manager.models import Shop, Ledger, Accounts
 
 
 def generate_custom_id(ledger_name):
@@ -23,20 +23,18 @@ def generate_custom_id(ledger_name):
 
 
 # Create your models here.
-def _generate_shop_id():
-    """Generate a unique 8-char shop ID: SHP + 5 random alphanumeric chars."""
-    return 'SHP' + uuid.uuid4().hex[:5].upper()
+def generate_gold_id():
+    """Generate a unique 8-char Metal ID: MTL + 5 random alphanumeric chars."""
+    return 'MTL' + uuid.uuid4().hex[:5].upper()
 
     
 class Transactions(models.Model):
     id = models.CharField(max_length=30, primary_key=True, editable=False)
     amount = models.DecimalField(decimal_places=2, max_digits=12)
-    name = models.TextField(blank=True)
+    acc = models.ForeignKey(Accounts, on_delete=models.CASCADE, null=True, blank=True, related_name = 'transactions')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, null=True, blank=True, related_name='transactions')
     tr_type = models.CharField(max_length=10)
     remarks = models.TextField(blank=True)
-    old_balance = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
-    new_balance = models.DecimalField(decimal_places=2, max_digits=12, null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -54,12 +52,12 @@ class Transactions(models.Model):
     transaction_dt = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_tally = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:
         indexes = [
             models.Index(fields=['shop', 'transaction_dt']),  # updated from created_at
-            models.Index(fields=['shop', 'name']),
         ]
     
     def __str__(self):
@@ -80,6 +78,7 @@ class Transactions(models.Model):
 
 class Denomination(models.Model):
     id = models.CharField(max_length=30, primary_key=True, editable=False)
+    denomination_dt = models.DateField(default=timezone.now)
     TIME_PERIOD_CHOICES = [
         ('MORNING', 'Morning'),
         ('AFTERNOON', 'Afternoon'),
@@ -113,6 +112,8 @@ class Denomination(models.Model):
         blank=True,
         related_name='updated_denominations',
     )
+    denomination_order = models.IntegerField(default=0)
+    denomination_group_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -166,3 +167,21 @@ class Loan(models.Model):
             ledger_name = self.ledger.name if self.ledger_id and self.ledger else 'LON'
             self.id = generate_custom_id(ledger_name)
         super().save(*args, **kwargs)
+
+class GLDSLRPriceHistory(models.Model):
+    id = models.CharField(max_length=30, primary_key=True, editable=False)
+    type = models.CharField(max_length=10)
+    price = models.DecimalField(decimal_places=2, max_digits=12)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        get_latest_by = 'created_at'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = generate_gold_id()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"GLDS Price: {self.price} on {self.updated_at.strftime('%d-%m-%Y %H:%M:%S')}"

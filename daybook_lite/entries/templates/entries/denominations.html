@@ -15,7 +15,7 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th class="px-3">Date</th>
+              <th class="px-3">Denomination Date</th>
               <th>Period</th>
               <th>User</th>
               <th>Shop</th>
@@ -36,7 +36,7 @@
                   {% endif %}
                 </td>
                 <td>{{ item.shop__name|default:"—" }}</td>
-                <td class="text-end fw-semibold">₹ {{ item.total|floatformat:2 }}</td>
+                <td class="text-end fw-semibold">₹ {{ item.total|indian_format }}</td>
                 <td class="text-center">
                   <a href="{% url 'entries:view_denomination' item.key %}" class="btn btn-sm btn-outline-info me-1" title="View">
                     <i class="fa-solid fa-eye"></i>

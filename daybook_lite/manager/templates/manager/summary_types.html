@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="input-group" style="width: 150px;">
+        <button class="btn btn-primary" onclick="changeYear(-1)">-</button>
+        <input type="text" id="year" class="form-control text-center" readonly>
+        <button class="btn btn-primary" onclick="changeYear(1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-start">
+      <div>
+        <h4 class="mb-0">
+          <i class="fa-solid fa-wallet"></i> Types Summary of {{ shop.name }} for FY{{ fy }}
+        </h4>
+      </div>
+      <div class="d-flex gap-2">
+        <!-- Reports Dropdown -->
+        <div class="btn-group" role="group">
+          <button type="button" class="btn btn-sm btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-chart-bar"></i> <span class="d-none d-md-inline">Reports</span>
+          </button>
+          <ul class="dropdown-menu">
+            <!-- Trial Balance -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropend" role="button">
+                <i class="fa-solid fa-file-lines me-2"></i>Trial Balance
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_wopl_pdf' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_wopl_excel' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_wopl_csv' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+            <!-- Trial Balance with P/L -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button">
+                <i class="fa-solid fa-file-lines me-2"></i>Trial Balance with P/L
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_pdf' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_excel' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:trial_balance_csv' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+            <!-- Balance Sheet (Type) -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button">
+                <i class="fa-solid fa-scale-balanced me-2"></i>Balance Sheet (Type)
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_wopl_pdf' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_wopl_excel' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_wopl_csv' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+            <!-- Balance Sheet (Type) with P/L -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button">
+                <i class="fa-solid fa-scale-balanced me-2"></i>Balance Sheet (Type) with P/L
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_pdf' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_excel' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:bs_shop_csv' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+            <!-- Balance Sheet (Group) -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" role="button">
+                <i class="fa-solid fa-layer-group me-2"></i>Balance Sheet (Group) with P/L
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:group_type_summary_pdf' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:group_type_summary_excel' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:group_type_summary_csv' shop.pk %}?fy={{ fy }}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span class="d-none d-md-inline">Back to {{ shop.name }}</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      {% if grouped_list %}
+        <div class="mb-4">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Group</th>
+                  <th class="text-end">Opening Balance</th>
+                  <th class="text-end">Current Balance</th>
+                  <th class="text-end">Net Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for group in grouped_list %}
+                {% for item in group.types %}
+              <tr>
+                <td>
+                  <a href="{% url 'manager:type_balance_sheet' shop.pk item.id %}{% if fy %}?fy={{ fy }}{% endif %}">
+                    {{ item.name }} <small class="text-muted">({{ item.e_name }})</small>
+                  </a>
+                </td>
+                <td>
+                  {{ group.group_name }}
+                </td>
+                {% if item.opening >= 0 %}
+                <td class="text-end text-success">
+                  ₹{{ item.opening|indian_format }}CR
+                </td>
+                {% else %}
+                <td class="text-end text-danger">
+                  ₹{{ item.opening|indian_format }}DB
+                </td>
+                {% endif %}
+                {% if item.cur_balance >= 0 %}
+                <td class="text-end text-success">
+                  ₹{{ item.cur_balance|indian_format }}CR
+                </td>
+                {% else %}
+                <td class="text-end text-danger">
+                  ₹{{ item.cur_balance|indian_format }}DB
+                </td>
+                {% endif %}
+                {% if item.net_balance >= 0 %}
+                <td class="text-end text-success">
+                  ₹{{ item.net_balance|indian_format }}CR
+                {% else %}
+                <td class="text-end text-danger">
+                  ₹{{ item.net_balance|indian_format }}DB
+                {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+        {% endfor %}
+        <tr>
+          <td colspan="4" class="text-end"><strong>கை இருப்பு</strong></td>
+          <td class="text-end {% if cash_in_hand >= 0 %}text-success{% else %}text-danger{% endif %}">
+            <strong>₹{{ cash_in_hand|indian_format }}{% if cash_in_hand >= 0 %}CR{% else %}DB{% endif %}</strong>
+          </td>
+        </tr>
+            </tbody>
+          </table>
+        </div>
+      </div> 
+      {% else %}
+        <p class="text-muted">No data available for this financial year.</p>
+      {% endif %}
+    </div>{# end card-body #}
+  </div>{# end card #}
+</div>{# end container #}
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+
+  // Fix nested dropdowns for Bootstrap 5
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle nested dropdown items that are toggles
+    document.querySelectorAll('.dropend > a.dropdown-toggle').forEach(toggle => {
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const submenu = this.nextElementSibling;
+        if (submenu && submenu.classList.contains('dropdown-menu')) {
+          // Show/hide submenu
+          submenu.classList.toggle('show');
+          this.setAttribute('aria-expanded', submenu.classList.contains('show'));
+        }
+      });
+      
+      // Handle hover to show submenu for better UX
+      toggle.parentElement.addEventListener('mouseenter', function() {
+        const submenu = toggle.nextElementSibling;
+        if (submenu) {
+          submenu.classList.add('show');
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+      });
+      
+      toggle.parentElement.addEventListener('mouseleave', function() {
+        const submenu = toggle.nextElementSibling;
+        if (submenu) {
+          submenu.classList.remove('show');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+    
+    // Prevent link clicks from closing parent dropdown
+    document.querySelectorAll('.dropdown-menu a:not(.dropdown-toggle)').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    });
+  });
+
+</script>
+
+{% endblock %}

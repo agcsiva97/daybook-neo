@@ -1,4 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&display=swap');
+
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans/GoogleSans-VariableFont_GRAD,opsz,wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans/GoogleSans-Italic-VariableFont_GRAD,opsz,wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Google Sans Code';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans_Code/GoogleSansCode-VariableFont_wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Google Sans Code';
+  font-style: italic;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans_Code/GoogleSansCode-Italic-VariableFont_wght.ttf') format('truetype-variations');
+}
+
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../webfonts/NotoSans_Tamil/NotoSansTamil-VariableFont.ttf') format('truetype-variations');
+}
 
 /* Primary	#4A7766	Deep Garnet	#774A4B */
 /* Click/Active	#006440	Crimson Punch	#640001 */
@@ -22,19 +62,38 @@
   --daybook-teal-click: #dcb155;
 }
 
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  src: url('../webfonts/MaterialSymbolsOutlined[FILL\,GRAD\,opsz\,wght].woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
+}
+
+.text-end, .text-start{
+  font-family: "Google Sans Code", monospace;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.text-start{
+  margin-right: 12px;
+}
+
 h5{
   font-family: "Google Sans", sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
   color: var(--daybook-primary);
   font-weight: 700;
+  font-size: 0.95rem;
 }
 
 .hanuman-300 {
   font-weight: 300;
 }
 .hanuman-600 {
-  font-weight: 600;
+  font-weight: 700;
 }
 .hanuman-200 {
   font-weight: 200;
@@ -50,6 +109,7 @@ body {
     font-variation-settings:"GRAD" 0;
     background-color: var(--daybook-secondary);
     color: var(--daybook-text);
+    font-size: 0.875rem;
 }
 
 a {
@@ -141,17 +201,17 @@ a:hover {
 }
 
 .cust-button{
-  padding: 0.375rem 0.75rem;
   margin: 5px;
   background-color: var(--daybook-primary);
   color: #ffffff;
   border: 1px solid var(--daybook-primary);
   border-radius: 0.25rem;
   width: 100%;
-  font-size: 1rem;
   line-height: 1.5;
   cursor: pointer;
   transition: all 0.15s ease-in-out;
+  font-size: 0.875rem;
+  padding: 0.3rem 0.75rem;
 }
 
 .cust-button:hover {
@@ -247,9 +307,16 @@ a:hover {
   color: #2a3d35;
 }
 
+.form-label {
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
 .form-control,
 .form-select {
   border-color: rgba(74, 119, 102, 0.25);
+  font-size: 0.82rem;
+  padding: 0.3rem 0.6rem;
 }
 
 .form-control::placeholder {
@@ -399,13 +466,13 @@ input[type="radio"].form-check-input:checked {
     display:inline-flex;
     flex-direction: column;
     background-color: #FFF;
-    width: 15rem;
+    width: auto;
     height: max-content;
     margin-top: 8px; 
     margin-left: 0px;
     margin-bottom: 5px;
     margin-right: 10px;
-    padding: 20px 20px;
+    padding: 14px 16px;
     border-radius: 5px;
     cursor: pointer;
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -417,16 +484,19 @@ input[type="radio"].form-check-input:checked {
 
 .ledger-card-ledgername{
     font-size: x-large;
+    font-size: 1.1rem;
 }
 
 .ledger-card-balance-title{
     font-size: x-small;
     font-weight: 700;
+    font-size: 0.68rem;
 }
 
 .ledger-card-balance{
     font-size:large;
     font-weight: 300;
+    font-size: 0.9rem
 }
 
 /* width */
@@ -533,4 +603,198 @@ display: block;
   border-radius: 5px;
   color: var(--daybook-primary) !important;
   font-weight: 600;
+}
+
+/* Transaction list view */
+.transaction-list {
+  background-color: var(--daybook-surface);
+  border-radius: 5px;
+  border: 1px solid var(--daybook-border);
+  box-shadow: var(--daybook-shadow);
+  overflow-y: auto !important;  /* force override any conflicting rule */
+  overflow-x: hidden;
+  min-height: 0;
+  max-height: 80vh;
+}
+
+/* Vertical scrollbar style matching horizontal shop scroll */
+.transaction-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.transaction-list::-webkit-scrollbar-track {
+  background: #EEE;
+}
+
+.transaction-list::-webkit-scrollbar-thumb {
+  background: #EEE;
+  border-radius: 5px;
+}
+
+.transaction-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Vertical scrollbar style matching horizontal shop scroll */
+.infoModal-scrollable {
+  overflow-y: auto;
+  max-height: 65vh;
+}
+
+.infoModal-scrollable::-webkit-scrollbar {
+  width: 2px;
+}
+
+.infoModal-scrollable::-webkit-scrollbar-track {
+  background: #EEE;
+}
+
+.infoModal-scrollable::-webkit-scrollbar-thumb {
+  background: #EEE;
+  border-radius: 5px;
+}
+
+.infoModal-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(74, 119, 102, 0.08);
+  transition: background 0.15s;
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-item:hover {
+  background-color: rgba(74, 119, 102, 0.05);
+}
+
+.transaction-shop {
+  font-family: "Google Sans Code", monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--daybook-primary);
+  min-width: 36px;
+  background-color: var(--daybook-accent);
+  border-radius: 4px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.transaction-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-account {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--daybook-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-meta {
+  font-size: 0.75rem;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-amount {
+  font-family: "Google Sans Code", monospace;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.amount-credit {
+  color: #2e7d52;
+}
+
+.amount-debit {
+  color: var(--daybook-red);
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.transaction-item:hover .transaction-actions {
+  opacity: 1;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-action-edit {
+  color: var(--daybook-primary);
+}
+
+.btn-action-edit:hover {
+  background-color: var(--daybook-accent);
+  color: var(--daybook-primary-click);
+}
+
+.btn-action-delete {
+  color: var(--daybook-red);
+}
+
+.btn-action-delete:hover {
+  background-color: rgba(255, 85, 85, 0.1);
+  color: var(--daybook-red-click);
+}
+
+.transaction-item-modal{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(74, 119, 102, 0.08);
+  background-color: #fff;
+}
+
+.transaction-item-modal-tr-type{
+  font-family: "Google Sans Code", monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 36px;
+  border-radius: 4px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.tr-type-credit{
+  color: var(--daybook-primary);
+  background-color: rgba(46, 125, 82, 0.1);
+}
+
+.tr-type-debit{
+  color: var(--daybook-red);
+  background-color: rgba(255, 85, 85, 0.1);
 }

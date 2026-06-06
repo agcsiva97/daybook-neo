@@ -1,46 +1,87 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
+<style>
+  /* Right-side slide-in modal */
+.modal-dialog-end {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  width: 400px;
+  max-width: 100%;
+  height: 100%;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+
+.modal.show .modal-dialog-end {
+  transform: translateX(0);
+}
+
+.modal-dialog-end .modal-content {
+  height: 100%;
+  border-radius: 0;
+  border-left: 1px solid var(--daybook-border);
+  box-shadow: -8px 0 24px rgba(31, 43, 39, 0.12);
+}
+
+.modal-dialog-end .modal-body {
+  overflow-y: auto;
+}
+
+/* Override Bootstrap's default fade transform for right-side modal */
+.modal.fade .modal-dialog-end {
+  transform: translateX(100%);
+}
+
+.modal.fade.show .modal-dialog-end {
+  transform: translateX(0);
+}
+</style>
+
 <div class="container">
-  <div class='row'>
-    <div class="col">
-      <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fa-solid fa-shop"></i> Shops</h5>
-        {% if is_super_admin %}
-        <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
-          <i class="fa-solid fa-plus"></i> Add Shop
-        </a>
-        {% endif %}
-      </div>
-      <div class="ledger-cards">
+  <div class="row g-3">
+  <!-- LEFT COLUMN: Shops + Form stacked -->
+    <div class="col-md-7 d-flex flex-column gap-3">
+      <!-- Shops -->
+      <div>
+        <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 8px;">
+          <h5 class="mb-0"><i class="fa-solid fa-store"></i> Shops</h5>
+          {% if is_super_admin %}
+          <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-plus"></i> Add Shop
+          </a>
+          {% endif %}
+        </div>
+        <div class="ledger-cards">
           {% for item in shop_balances %}
           <div class="ledger-card" {% if is_admin or is_super_admin %} onclick="window.location.href='{% url 'manager:shop_info' item.shop.pk %}'" {% endif %} style="cursor: pointer; position: relative;">
             <div class="d-flex justify-content-between align-items-start">
-              <div class="ledger-card-ledgername hanuman-600">
-                {{ item.shop.short_name }}
-              </div>
+              <div class="ledger-card-ledgername hanuman-600">{{ item.shop.short_name }}</div>
               {% if is_admin %}
-                  <div class="dropdown" onclick="event.stopPropagation();">
-                    <button class="btn btn-sm btn-link text-dark p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                      <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                      <li><a class="dropdown-item" href="{% url 'manager:edit_shop' item.shop.pk %}"><i class="fa-solid fa-pencil"></i> Edit</a></li>
-                      {% if is_super_admin %}
-                      <li><a class="dropdown-item text-danger" href="{% url 'manager:delete_shop' item.shop.pk %}"><i class="fa-solid fa-trash"></i> Delete</a></li>
-                      {% endif %}
-                    </ul>
-                  </div>
+              <div class="dropdown" onclick="event.stopPropagation();">
+                <button class="btn btn-sm btn-link text-dark p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="{% url 'manager:edit_shop' item.shop.pk %}"><i class="fa-solid fa-pencil"></i> Edit</a></li>
+                  {% if is_super_admin %}
+                  <li><a class="dropdown-item text-danger" href="{% url 'manager:delete_shop' item.shop.pk %}"><i class="fa-solid fa-trash"></i> Delete</a></li>
+                  {% endif %}
+                </ul>
+              </div>
               {% endif %}
             </div>
             <div class="d-flex justify-content-between mt-2">
-              <div class="ledger-card-balance-title">
+              <div class="ledger-card-balance-title text-start">
                 <small class="text-muted">Opening Balance:</small>
-                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.opening_balance }}</div>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.opening_balance|indian_format }}</div>
               </div>
               <div class="ledger-card-balance-title text-end">
                 <small class="text-muted">Closing Balance:</small>
-                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.closing_balance }}</div>
+                <div class="ledger-card-balance" style="font-size: 0.95rem;">{{ item.closing_balance|indian_format }}</div>
               </div>
             </div>
           </div>
@@ -48,46 +89,547 @@
           <p class="text-muted">No shops found.</p>
           {% endfor %}
         </div>
+      </div>
+
+      <!-- Add Transaction Form -->
+      <div>
+        <h5><i class="fa-solid fa-file-circle-plus"></i> Add <span style="text-decoration: underline;">T</span>ransaction</h5>
+        <form method="post" class="card card-body">
+          {% csrf_token %}
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
+                {{ form.date }}
+                {% if form.date.errors %}<div class="text-danger small">{{ form.date.errors|striptags }}</div>{% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
+                {{ form.time }}
+                {% if form.time.errors %}<div class="text-danger small">{{ form.time.errors|striptags }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
+                {{ form.shop }}
+                {% if form.shop.errors %}<div class="text-danger small">{{ form.shop.errors|striptags }}</div>{% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ form.acc.id_for_label }}"><u>A</u>ccount</label>
+                {{ form.acc }}
+                {% if form.acc.errors %}<div class="text-danger small">{{ form.acc.errors|striptags }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="id_debit_amount">D<u>e</u>bit <span style="background-color: #F1BCC1; border-radius:2px;color: #B92736; padding:1px; font-weight: bold;font-size: 0.5rem;">௶</span></label>
+                <input type="number" id="id_debit_amount" name="debit_amount" class="form-control" step="0.01" placeholder="Debit amount" min="1">
+              </div>
+              <div class="col">
+                <label class="form-label" for="id_credit_amount"><u>C</u>redit <span style="background-color: #D2DDCF; border-radius:2px;color: #5a7755; padding:1px; font-weight: bold;font-size: 0.5rem;">௷</span></label>
+                <input type="number" id="id_credit_amount" name="credit_amount" class="form-control" step="0.01" placeholder="Credit amount" min="1">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
+            {{ form.remarks }}
+            {% if form.remarks.errors %}<div class="text-danger small">{{ form.remarks.errors|striptags }}</div>{% endif %}
+          </div>
+          {% if form.non_field_errors %}
+            <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
+          {% endif %}
+          <div class="row">
+            <div class="col">
+              <button type="button" class="cust-button btn-primary" onclick="submitMultipleTransactions()">Submit</button>
+            </div>
+            <div class="col">
+              <button type="reset" class="cust-button btn-secondary">Reset</button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
-  <div class="row mt-4">
-    <div class="col">
-      <h5>Today's Transactions</h5>
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th scope="col">Shop</th>
-              <th scope="col">Name</th>
-              <th scope="col">Remarks</th>
-              <th scope="col" class="text-end">DEBIT</th>
-              <th scope="col" class="text-end">CREDIT</th>
-              <th scope="col">Created At</th>
-              <th scope="col">Updated At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for transaction in transactions %}
-            <tr>
-                <td>{{transaction.shop.short_name}}</td>
-                <td>{{ transaction.name|default:"-" }}</td>
-                <td>{{ transaction.remarks|default:"-" }}</td>
-              {% if transaction.tr_type == 'DEBIT' %}
-                <td class="text-end">{{transaction.amount}}</td>
-                <td class="text-end"></td>
-              {% else %}
-                <td class="text-end"></td>
-                <td class="text-end">{{transaction.amount}}</td>
+
+  <div class="col-md-5 d-flex flex-column">
+    <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 8px;">
+      <h5 class="mb-0"><i class="fa-solid fa-file-lines"></i> Today's Transactions</h5>
+      <a href="{% url 'entries:transactions' %}" class="btn btn-sm btn-primary">
+        View All
+      </a>
+    </div>
+    <div class="transaction-list" id="transactionList">
+      {% for transaction in transactions %}
+      <div class="transaction-item" data-id="{{ transaction.id }}"
+          data-shop="{{ transaction.shop.short_name }}"
+          data-account="{{ transaction.acc.t_name }}"
+          data-amount="{{ transaction.amount|indian_format }}"
+          data-tr-type="{{ transaction.tr_type }}"
+          data-date="{{ transaction.transaction_dt|date:'d-m-Y' }}"
+          data-remarks="{{ transaction.remarks|default:'N/A' }}"
+          data-is-tally="{{ transaction.is_tally|yesno:'Yes,No' }}"
+          data-created-by="{{ transaction.created_by.username }}"
+          data-created-at="{{ transaction.created_at|date:'d-m-Y H:i:s' }}"
+          data-updated-by="{{ transaction.updated_by.username }}"
+          data-updated-at="{{ transaction.updated_at|date:'d-m-Y H:i:s' }}"
+          data-edit-url="{% url 'entries:edit_transaction' transaction.pk %}"
+          data-history-url="{% url 'entries:transaction_history' transaction.pk %}"
+          data-delete-url="{% url 'entries:delete_transaction' transaction.pk %}"
+         {% if is_admin %} data-account-url="{% url 'manager:account_info' transaction.acc.pk %}" {% endif %}
+        >
+        <div class="transaction-shop">{{ transaction.shop.short_name }}</div>
+        <div class="transaction-details">
+          <div class="transaction-account">
+            {% if is_admin%}
+              <a href="{% url 'manager:account_info' transaction.acc.pk %}">
+                {{ transaction.acc.t_name|default:"-" }}
+              </a>
+            {% else %}
+              {{ transaction.acc.t_name|default:"-" }}
             {% endif %}
-                <td>{{ transaction.created_at|time:"H:i:s" }}</td>
-                <td>{{ transaction.updated_at|time:"H:i:s" }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>  
+          </div>
+          <div class="transaction-meta text-muted">
+            {{ transaction.created_at|time:"H:i" }}{% if transaction.remarks %} · {{ transaction.remarks }}{% endif %}
+          </div>
+        </div>
+        <div class="transaction-amount {% if transaction.tr_type == 'CREDIT' %}amount-credit{% else %}amount-debit{% endif %}">
+          {% if transaction.tr_type == 'CREDIT' %}+{% else %}−{% endif %}{{ transaction.amount|indian_format }}
+        </div>
+        <div class="transaction-actions">
+          <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn-action btn-action-edit" title="Edit">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </a>
+          {% if is_admin %}
+          <button class="btn-action btn-action-delete" title="Delete"
+            onclick="switchToSharedDeleteModal(this.closest('.transaction-item').dataset)">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center py-4">
+        <img src="{% static 'img/add-transaction.svg' %}" alt="No transactions" style="width: 100%; max-width: 160px; margin: 0 auto 12px; display: block; opacity: 0.7;">
+        <h5 style="text-align: center; font-size: 0.9rem;">Add new transactions</h5>
+        <p class="text-muted text-center" style="font-size: 0.8rem;">No transactions recorded for today.</p>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
 
+<!-- Single shared info modal -->
+<div class="modal fade modal-end" id="sharedInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-end">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Transaction Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="transaction-item-modal" style="background-color:#fff;border-radius:4px;padding:12px;margin-bottom:16px;">
+          <div id="modal-tr-type"></div>
+          <div class="transaction-details">
+            <div class="transaction-account" id="modal-account">
+            </div>
+          </div>
+          <div class="transaction-amount" id="modal-amount"></div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <p class="mb-1"><span class="text-muted"><small><strong>ID</strong></small></span><br><span id="modal-id"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Shop</strong></small></span><br><span id="modal-shop"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Transaction Date</strong></small></span><br><span id="modal-date"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Remarks</strong></small></span><br><span id="modal-remarks"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Is Tallied</strong></small></span><br><span id="modal-tally"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Created By</strong></small></span><br><span id="modal-created-by"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Created At</strong></small></span><br><span id="modal-created-at"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Updated By</strong></small></span><br><span id="modal-updated-by"></span></p>
+            <p class="mb-1"><span class="text-muted"><small><strong>Updated At</strong></small></span><br><span id="modal-updated-at"></span></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="modal-edit-btn" class="btn btn-outline-primary">Edit</button>
+        <button type="button" id="modal-history-btn" class="btn btn-outline-secondary">History</button>
+        <button type="button" id="modal-delete-btn" class="btn btn-outline-danger">Delete</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Single shared delete modal -->
+<div class="modal fade" id="sharedDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title mb-0">Delete Transaction</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-2">
+        <p class="mb-1 small" id="delete-modal-summary"></p>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" id="delete-modal-form" class="d-inline">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const shortcuts = {
+    's': 'id_shop',
+    'e': 'id_debit_amount',
+    'c': 'id_credit_amount',
+    'a': 'id_account',
+    'm': 'id_remarks',
+};
+
+document.addEventListener('keydown', function(e) {
+    if (!e.altKey) return;
+    const inputId = shortcuts[e.key.toLowerCase()];
+    if (inputId) {
+        e.preventDefault();
+        const el = document.getElementById(inputId);
+        if (el) el.focus();
+    }
+});
+
+// Transaction form - dynamically load accounts based on shop selection
+document.addEventListener('DOMContentLoaded', function() {
+    const transShop = document.getElementById('id_shop');
+    const transAccount = document.getElementById('id_account');
+    
+    if (!transShop || !transAccount) return;
+
+    transAccount.disabled = true;
+    transAccount.innerHTML = '<option value="">First select a shop</option>';
+    
+    transShop.addEventListener('change', function() {
+        const shopId = this.value;
+        
+        // Clear existing ledger options
+        transAccount.innerHTML = '<option value="">Loading...</option>';
+        transAccount.disabled = true;
+        
+        if (!shopId) {
+            transAccount.innerHTML = '<option value="">First select a shop</option>';
+            transAccount.disabled = true;
+            return;
+        }
+        
+        // Fetch accounts for selected shop
+        fetch(`/api/shops/${shopId}/accounts/`)
+            .then(response => response.json())
+            .then(data => {
+                transAccount.innerHTML = '';
+                transAccount.disabled = false;
+                
+                if (data.length === 0) {
+                    transAccount.innerHTML = '<option value="">No accounts available for this shop</option>';
+                    transAccount.disabled = true;
+                } else {
+                    data.forEach(account => {
+                        const option = new Option(account.t_name, account.id);
+                        transAccount.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching accounts:', error);
+                transAccount.innerHTML = '<option value="">Error loading accounts</option>';
+                transAccount.disabled = true;
+            });
+    });
+});
+
+// Transaction form submission - handles multiple transactions (debit and/or credit)
+function submitMultipleTransactions() {
+    const debitAmount = parseFloat(document.getElementById('id_debit_amount').value) || 0;
+    const creditAmount = parseFloat(document.getElementById('id_credit_amount').value) || 0;
+    const shop = document.getElementById('id_shop').value;
+    const account = document.getElementById('id_account').value;
+    const remarks = document.getElementById('id_remarks').value.trim();
+    const date = document.getElementById('id_date').value;
+    const time = document.getElementById('id_time').value;
+    
+    // Validate fields
+    if (!date) {
+        alert('Please select a Date');
+        document.getElementById('id_date').focus();
+        return;
+    }
+    
+    if (debitAmount <= 0 && creditAmount <= 0) {
+        alert('Please enter Debit Amount or Credit Amount (or both)');
+        document.getElementById('id_debit_amount').focus();
+        return;
+    }
+    
+    if (!shop) {
+        alert('Please select a Shop');
+        document.getElementById('id_shop').focus();
+        return;
+    }
+    
+    if (!account) {
+        alert('Please select an Account');
+        document.getElementById('id_account').focus();
+        return;
+    }
+    
+    if (!remarks) {
+        alert('Please enter Remarks');
+        document.getElementById('id_remarks').focus();
+        return;
+    }
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Submit debit transaction if debit amount > 0
+    if (debitAmount > 0) {
+        const debitForm = document.createElement('form');
+        debitForm.method = 'POST';
+        debitForm.action = '{% url "entries:add_entries" %}';
+        debitForm.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+            <input type="hidden" name="amount" value="${debitAmount}">
+            <input type="hidden" name="shop" value="${shop}">
+            <input type="hidden" name="acc" value="${account}">
+            <input type="hidden" name="tr_type" value="DEBIT">
+            <input type="hidden" name="remarks" value="${remarks}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="time" value="${time}">
+        `;
+        document.body.appendChild(debitForm);
+        debitForm.submit();
+        
+        // If credit amount also > 0, delay credit submission
+        if (creditAmount > 0) {
+            setTimeout(() => {
+                const creditForm = document.createElement('form');
+                creditForm.method = 'POST';
+                creditForm.action = '{% url "entries:add_entries" %}';
+                creditForm.innerHTML = `
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                    <input type="hidden" name="amount" value="${creditAmount}">
+                    <input type="hidden" name="shop" value="${shop}">
+                    <input type="hidden" name="acc" value="${account}">
+                    <input type="hidden" name="tr_type" value="CREDIT">
+                    <input type="hidden" name="remarks" value="${remarks}">
+                    <input type="hidden" name="date" value="${date}">
+                    <input type="hidden" name="time" value="${time}">
+                `;
+                document.body.appendChild(creditForm);
+                creditForm.submit();
+            }, 500); // 500ms delay between submissions
+        }
+    } 
+    // Submit credit transaction if only credit amount > 0
+    else if (creditAmount > 0) {
+        const creditForm = document.createElement('form');
+        creditForm.method = 'POST';
+        creditForm.action = '{% url "entries:add_entries" %}';
+        creditForm.innerHTML = `
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+            <input type="hidden" name="amount" value="${creditAmount}">
+            <input type="hidden" name="shop" value="${shop}">
+            <input type="hidden" name="acc" value="${account}">
+            <input type="hidden" name="tr_type" value="CREDIT">
+            <input type="hidden" name="remarks" value="${remarks}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="time" value="${time}">
+        `;
+        document.body.appendChild(creditForm);
+        creditForm.submit();
+    }
+}
+
+{% comment %} function matchTransactionListHeight() {
+  const form = document.querySelector('.card.card-body');
+  const list = document.getElementById('transactionList');
+  if (form && list) {
+    list.style.maxHeight = form.offsetHeight + 'px';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', matchTransactionListHeight);
+window.addEventListener('resize', matchTransactionListHeight); {% endcomment %}
+
+let activeModal = null;
+
+
+function openModal(modalEl) {
+  if (activeModal) {
+    activeModal.hide();
+  }
+  document.body.appendChild(modalEl);
+  activeModal = new bootstrap.Modal(modalEl);
+  activeModal.show();
+
+  modalEl.addEventListener('hidden.bs.modal', function() {
+    activeModal = null;
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+  }, { once: true });
+}
+
+function switchToDeleteModal(btn) {
+  const deleteTarget = btn.getAttribute('data-delete-target');
+  const infoModalEl = btn.closest('.modal');
+
+  const doOpen = function() {
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+
+    const deleteModalEl = document.querySelector(deleteTarget);
+    if (deleteModalEl) {
+      document.body.appendChild(deleteModalEl);
+      const deleteModal = new bootstrap.Modal(deleteModalEl);
+      deleteModal.show();
+    }
+  };
+
+  if (activeModal) {
+    infoModalEl.addEventListener('hidden.bs.modal', doOpen, { once: true });
+    activeModal.hide();
+    activeModal = null;
+  } else {
+    doOpen();
+  }
+}
+
+function openInfoModal(row) {
+  const d = row.dataset;
+
+  document.getElementById('modal-id').textContent = d.id;
+  
+  // Account as clickable link
+  const accountEl = document.getElementById('modal-account');
+  if (d.accountUrl) {
+    accountEl.innerHTML = `<a href="${d.accountUrl}" style="color: var(--daybook-primary); text-decoration: none;">${d.account}</a>`;
+  } else {
+    accountEl.textContent = d.account;
+  }
+
+  document.getElementById('modal-amount').innerHTML = `<small style="font-size:x-small"><strong>௹.</strong></small>${d.amount}`;
+  document.getElementById('modal-shop').textContent = d.shop;
+  document.getElementById('modal-date').textContent = d.date;
+  document.getElementById('modal-remarks').textContent = d.remarks;
+  document.getElementById('modal-tally').textContent = d.isTally;
+  document.getElementById('modal-created-by').textContent = d.createdBy;
+  document.getElementById('modal-created-at').textContent = d.createdAt;
+  document.getElementById('modal-updated-by').textContent = d.updatedBy;
+  document.getElementById('modal-updated-at').textContent = d.updatedAt;
+
+  const trTypeEl = document.getElementById('modal-tr-type');
+  trTypeEl.className = `transaction-item-modal-tr-type tr-type-${d.trType.toLowerCase()}`;
+  trTypeEl.innerHTML = `<p class="mb-1"><strong>${d.trType === 'DEBIT' ? '௶' : '௷'}</strong></p>`;
+
+  document.getElementById('modal-edit-btn').onclick = () => window.location.href = d.editUrl;
+  document.getElementById('modal-history-btn').onclick = () => window.location.href = d.historyUrl;
+  document.getElementById('modal-delete-btn').onclick = () => switchToSharedDeleteModal(d);
+
+  openModal(document.getElementById('sharedInfoModal'));
+}
+
+function switchToSharedDeleteModal(d) {
+  document.getElementById('delete-modal-summary').textContent = `${d.shop} · ${d.trType} · ${d.amount}`;
+  document.getElementById('delete-modal-form').action = d.deleteUrl;
+
+  const doOpen = function() {
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+
+    const deleteModalEl = document.getElementById('sharedDeleteModal');
+    if (!document.body.contains(deleteModalEl)) {
+      document.body.appendChild(deleteModalEl);
+    }
+    const existing = bootstrap.Modal.getInstance(deleteModalEl);
+    if (existing) existing.dispose();
+    const deleteModal = new bootstrap.Modal(deleteModalEl, { backdrop: true });
+    deleteModal.show();
+  };
+
+  if (activeModal) {
+    const infoModalEl = document.getElementById('sharedInfoModal');
+    infoModalEl.addEventListener('hidden.bs.modal', function() {
+      setTimeout(doOpen, 50);
+    }, { once: true });
+    activeModal.hide();
+    activeModal = null;
+  } else {
+    doOpen();
+  }
+}
+
+function addItemClickHandlers() {
+  document.querySelectorAll('div.transaction-item[data-id]').forEach(item => {
+    const newItem = item.cloneNode(true);
+    item.parentNode.replaceChild(newItem, item);
+    newItem.style.cursor = 'pointer';
+    newItem.addEventListener('click', function(e) {
+      if (e.target.closest('a, button, form')) return;
+      openInfoModal(this);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', addItemClickHandlers);
+
+if (typeof htmx !== 'undefined') {
+  document.body.addEventListener('htmx:afterSwap', addRowClickHandlers);
+}
+
+function matchTransactionListHeight() {
+  const shopsSection = document.querySelector('.col-md-7 .ledger-cards');
+  const formCard = document.querySelector('.col-md-7 .card.card-body');
+  const list = document.getElementById('transactionList');
+  const listHeader = document.querySelector('.col-md-5 h5');
+  
+  if (!shopsSection || !formCard || !list) return;
+
+  // Total height = shops wrapper + gap + form card + headings
+  const shopsWrapper = shopsSection.closest('div'); // the div wrapping h5 + ledger-cards
+  const shopsHeight = shopsWrapper ? shopsWrapper.offsetHeight : 0;
+  const formHeight = formCard.offsetHeight;
+  const formTitle = formCard.previousElementSibling; // the h5 above form
+  const formTitleHeight = formTitle ? formTitle.offsetHeight : 0;
+  const gap = 16; // gap-3 = 1rem = 16px, applied twice (between 3 items)
+
+  const totalLeftHeight = shopsHeight + formTitleHeight + formHeight + gap * 2;
+  const headerHeight = listHeader ? listHeader.offsetHeight + 10 : 0;
+
+  list.style.maxHeight = (totalLeftHeight - headerHeight) + 'px';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for full layout render before measuring
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      matchTransactionListHeight();
+    });
+  });
+});
+
+window.addEventListener('resize', matchTransactionListHeight);
+</script>
 {% endblock %}

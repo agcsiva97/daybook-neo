@@ -62,6 +62,21 @@
                 <div class="text-danger small">{{ form.group.errors|striptags }}</div>
               {% endif %}
             </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.password1.id_for_label }}"><i class="fa-solid fa-key"></i> New Password</label>
+              {{ form.password1 }}
+              {% if form.password1.errors %}
+                <div class="text-danger small">{{ form.password1.errors|striptags }}</div>
+              {% endif %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ form.password2.id_for_label }}"><i class="fa-solid fa-key"></i> Confirm New Password</label>
+              {{ form.password2 }}
+              {% if form.password2.errors %}
+                <div class="text-danger small">{{ form.password2.errors|striptags }}</div>
+              {% endif %}
+              <small class="text-muted">Leave password fields blank to keep the existing password.</small>
+            </div>
             {% if form.non_field_errors %}
               <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
             {% endif %}

@@ -19,7 +19,7 @@
             <tr>
               <th>Transaction Date</th>
               <th>Shop</th>
-              <th>Name</th>
+              <th>Account Name</th>
               <th>Type</th>
               <th class="text-end">Amount</th>
               <th>Remarks</th>
@@ -28,9 +28,9 @@
           </thead>
           <tbody>
             <tr>
-              <td>{{ transaction.transaction_dt|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ transaction.transaction_dt|date:"d-m-Y H:i:s" }}</td>
               <td>{{ transaction.shop.name }}</td>
-              <td>{{ transaction.name|default:"-" }}</td>
+              <td>{{ transaction.acc.t_name|default:"-" }}</td>
               <td>
                 {% if transaction.tr_type == 'CREDIT' %}
                   <span class="badge bg-success">{{ transaction.tr_type|default:"-" }}</span>
@@ -38,7 +38,7 @@
                   <span class="badge bg-danger">{{ transaction.tr_type|default:"-" }}</span>
                 {% endif %}
               </td>
-              <td class="text-end">{{ transaction.amount }}</td>
+              <td class="text-end">{{ transaction.amount|indian_format }}</td>
               <td>{{ transaction.remarks|default:"-" }}</td>
               <td>{% if transaction.created_by %}{{ transaction.created_by.username }}{% else %}-{% endif %}</td>
             </tr>
@@ -56,7 +56,7 @@
               <th>Change Type</th>
               <th> Transaction Date</th>
               <th>Shop</th>
-              <th>Name</th>
+              <th>Account Name</th>
               <th>Type</th>
               <th class="text-end">Amount</th>
               <th>Remarks</th>
@@ -65,7 +65,7 @@
           <tbody>
             {% for record in history_records %}
             <tr>
-              <td>{{ record.history_date|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ record.history_date|date:"d-m-Y H:i:s" }}</td>
               <td>{% if record.history_user %}{{ record.history_user.username }}{% else %}-{% endif %}</td>
               <td>
                 {% if record.history_type == '+' %}
@@ -77,9 +77,9 @@
                 {% else %}
                   <span class="badge bg-secondary">{{ record.history_type }}</span>
                 {% endif %}
-              <td>{{ record.transaction_dt|date:"Y-m-d H:i:s" }}</td>
+              <td>{{ record.transaction_dt|date:"d-m-Y H:i:s" }}</td>
               <td>{{ record.shop|default:"-" }}</td>
-              <td>{{ record.name|default:"-" }}</td>
+              <td>{{ record.acc.t_name|default:"-" }}</td>
               <td>
                 {% if record.tr_type == 'CREDIT' %}
                   <span class="badge bg-success">{{ record.tr_type|default:"-" }}</span>
@@ -87,7 +87,7 @@
                   <span class="badge bg-danger">{{ record.tr_type|default:"-" }}</span>
                 {% endif %}
               </td>
-              <td class="text-end">{{ record.amount|default:"-" }}</td>
+              <td class="text-end">{{ record.amount|indian_format }}</td>
               <td>{{ record.remarks|default:"-" }}</td>
             </tr>
             {% empty %}

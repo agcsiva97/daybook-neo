@@ -1,0 +1,57 @@
+{% extends "base-report.html" %}
+{% load static %}
+{% load indian_format %}
+
+{% block title %}Trial Balance - {{ shop.name }} - FY {{ fy }}{% endblock %}
+
+{% block report_title %}Trial Balance{% endblock %}
+
+{% block report_subtitle %}
+  <p class="report-meta">
+    {{ shop.name }}{% if shop.addressline1 %} &mdash; {{ shop.addressline1 }}{% endif %}
+  </p>
+  <p class="report-meta">Financial Year: <strong>{{ fy }}</strong></p>
+{% endblock %}
+
+{% block report_content %}
+  <div class="table-responsive">
+    <table class="table table-hover table-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Account Type</th>
+          <th class="text-end">Debit (DB)</th>
+          <th class="text-end">Credit (CR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.name }}</td>
+          {% if row.debit != '' %}
+            <td class="text-end" style="color:#c0392b;">&#8377; {{ row.debit|indian_format }}</td>
+          {% else %}
+            <td class="text-end text-muted">-</td>
+          {% endif %}
+          {% if row.credit != '' %}
+            <td class="text-end" style="color:#1a7a42;">&#8377; {{ row.credit|indian_format }}</td>
+          {% else %}
+            <td class="text-end text-muted">-</td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="text-center text-muted py-4">No data available for this financial year.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="fw-bold table-light">
+          <td>Total</td>
+          <td class="text-end" style="color:#c0392b;">&#8377; {{ total_debit|indian_format }}</td>
+          <td class="text-end" style="color:#1a7a42;">&#8377; {{ total_credit|indian_format }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% endblock %}
+

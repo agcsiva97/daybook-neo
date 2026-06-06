@@ -1,7 +1,8 @@
 from django import forms
-from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm as DjangoUserCreationForm
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm as DjangoUserCreationForm
 from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
 
 User = get_user_model()
 
@@ -75,6 +76,16 @@ class UserEditForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Group *'
     )
+    password1 = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter new password'}),
+        label='New Password'
+    )
+    password2 = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm new password'}),
+        label='Confirm New Password'
+    )
     
     class Meta:
         model = User
@@ -101,9 +112,28 @@ class UserEditForm(forms.ModelForm):
             user_groups = self.instance.groups.all()
             if user_groups.exists():
                 self.fields['group'].initial = user_groups.first()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+
+        if password1 or password2:
+            if password1 != password2:
+                self.add_error('password2', 'The two password fields didn\'t match.')
+            else:
+                try:
+                    validate_password(password1, self.instance)
+                except forms.ValidationError as exc:
+                    self.add_error('password1', exc)
+
+        return cleaned_data
     
     def save(self, commit=True):
         user = super().save(commit=False)
+        password = self.cleaned_data.get('password1')
+        if password:
+            user.set_password(password)
         if commit:
             user.save()
             # Update group membership

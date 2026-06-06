@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from manager.models import Ledger, Shop
+from manager.models import Accounts, Ledger, Shop, Type
 from entries.models import Transactions
 
 
@@ -36,3 +36,15 @@ class TransactionSerializer(serializers.ModelSerializer):
             'transaction_dt',
             'remarks',
         ]
+
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Accounts
+        fields = ['id', 'e_name', 't_name', 'shop', 'acc_type', 'priority', 'is_admin_only']
+        read_only_fields = ['id']
+
+class TypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Type
+        fields = ['id', 'e_name', 't_name', 'shop']
+        read_only_fields = ['id']

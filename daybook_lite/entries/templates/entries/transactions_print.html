@@ -1,0 +1,273 @@
+{% extends "base-report.html" %}
+
+{% block title %}Transactions Report{% endblock %}
+
+{% block report_title %}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Screen: hide print-only elements ── */
+.no-print  { display: block; }
+.print-only { display: none; }
+
+/* ── Screen: hide card-header only for transactions report ── */
+.transactions-report .report-card-header {
+    display: none;
+}
+
+@media print {
+
+    /* 1. Page setup — generous margins give breathing room above/below content */
+    @page {
+        size: {{ configs.TRANS_PAPER|default:"A5" }} {{ configs.TRANS_ORIENTATION|default:"portrait" }};
+        margin-top: 12mm;
+        margin-bottom: 12mm;
+        margin-left: 8mm;
+        margin-right: 8mm;
+    }
+
+    /* 2. Body/page resets */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    /* 3. Strip base-report chrome that creates blank space on page 1 */
+    .report-card-header { display: none !important; }
+    .report-card        { border: none !important; box-shadow: none !important; }
+    .report-card-body   { padding: 0 !important; }
+    .report-page        { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+
+    /* 4. Show/hide helpers */
+    .no-print   { display: none !important; }
+    .print-only { display: block !important; }
+
+    /* 5. Outer wrapper table — makes header/footer repeat via
+          table-header-group / table-footer-group.
+          This is the ONLY cross-browser reliable way to get
+          repeating page headers in browser print. */
+    .print-wrapper-table {
+        display: table;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Header row — repeats at top of every page */
+    .print-wrapper-thead {
+        display: table-header-group;
+    }
+    .print-wrapper-thead td {
+        padding: 0 0 6px 0;
+        border-bottom: 2px solid #333;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    /* Footer row — repeats at bottom of every page */
+    .print-wrapper-tfoot {
+        display: table-footer-group;
+    }
+    .print-wrapper-tfoot td {
+        padding: 6px 0 0 0;
+        border-top: 1px solid #ccc;
+        text-align: center;
+        font-size: 10px;
+        color: #666;
+    }
+
+    /* Content row — all the actual data */
+    .print-wrapper-tbody {
+        display: table-row-group;
+    }
+    .print-wrapper-tbody > td {
+        padding: 0;
+        vertical-align: top;
+    }
+
+    /* 6. Data table inside content row */
+    .print-content {
+        font-size: 10px;
+        width: 100%;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    table.data-table {
+        width: 100%;
+        page-break-inside: auto;
+        font-size: 10px;
+        border-collapse: collapse;
+    }
+
+    table.data-table th,
+    table.data-table td {
+        padding: 4px 6px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    table.data-table th {
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border-top: 1px solid #999;
+        border-bottom: 2px solid #333;
+        font-weight: 700;
+        font-size: 9px;
+    }
+
+    table.data-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    /* thead repeats on each printed page */
+    table.data-table thead {
+        display: table-header-group;
+    }
+
+    table.data-table tfoot {
+        display: table-footer-group;
+    }
+}
+</style>
+{% endblock %}
+
+{% block report_content %}
+<div class="transactions-report">
+
+  {# ── Screen view: Applied Filters card ── #}
+  <div class="no-print mb-4">
+    <div class="card card-body">
+      <h6 class="mb-3">Applied Filters</h6>
+      <div class="row gy-2">
+        {% if from_date %}<div class="col-auto"><strong>From Date:</strong> {{ from_date }}</div>{% endif %}
+        {% if to_date %}<div class="col-auto"><strong>To Date:</strong> {{ to_date }}</div>{% endif %}
+        {% if shop_filter %}
+          <div class="col-auto"><strong>Shop:</strong> {{ shop.name|default:shop_filter }}</div>
+        {% endif %}
+        {% if type_filter %}<div class="col-auto"><strong>Type:</strong> {{ type_filter }}</div>{% endif %}
+        {% if account_filter %}<div class="col-auto"><strong>Account:</strong> {{ account_filter }}</div>{% endif %}
+        {% if account_type_filter %}<div class="col-auto"><strong>Account Type:</strong> {{ account_type_filter }}</div>{% endif %}
+        {% if amount_value %}
+          <div class="col-auto"><strong>Amount:</strong> {{ amount_operator }} {{ amount_value }}</div>
+        {% endif %}
+        {% if search_query %}<div class="col-auto"><strong>Remarks:</strong> {{ search_query }}</div>{% endif %}
+        <div class="col-auto"><strong>Sort:</strong> {% if sort == 'date_asc' %}Date (Oldest First){% else %}Date (Newest First){% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Print view: outer wrapper table for repeating header/footer ── #}
+  <div class="print-only">
+    <table class="print-wrapper-table">
+
+      {# Page header — repeats on every page #}
+      <thead class="print-wrapper-thead">
+        <tr>
+          <td>
+            {% if shop_filter and shop %}{{ shop.name }}{% else %}Transactions Report{% endif %}
+          </td>
+        </tr>
+      </thead>
+
+      {# Page footer — repeats on every page #}
+      <tfoot class="print-wrapper-tfoot">
+        <tr>
+          <td>Daybook Reporting</td>
+        </tr>
+      </tfoot>
+
+      {# Main content #}
+      <tbody class="print-wrapper-tbody">
+        <tr>
+          <td>
+            <div class="print-content">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    {% if not shop_filter %}<th>Shop</th>{% endif %}
+                    <th>Account Name</th>
+                    <th>Remarks</th>
+                    <th style="text-align:right">Debit</th>
+                    <th style="text-align:right">Credit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for transaction in transactions %}
+                  <tr>
+                    <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
+                    {% if not shop_filter %}<td>{{ transaction.shop.name|default:"-" }}</td>{% endif %}
+                    <td>{{ transaction.acc.t_name|default:"-" }}</td>
+                    <td>{{ transaction.remarks|default:"-" }}</td>
+                    {% if transaction.tr_type == 'DEBIT' %}
+                      <td style="color:#dc3545;text-align:right">{{ transaction.amount|indian_format }}</td>
+                      <td></td>
+                    {% else %}
+                      <td></td>
+                      <td style="color:#198754;text-align:right">{{ transaction.amount|indian_format }}</td>
+                    {% endif %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}" style="text-align:center;color:#888">No transactions found</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+
+    </table>
+  </div>
+
+  {# ── Screen-only table (normal Bootstrap table for screen view) ── #}
+  <div class="no-print">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover">
+        <thead>
+          <tr>
+            <th>Date</th>
+            {% if not shop_filter %}<th>Shop</th>{% endif %}
+            <th>Account Name</th>
+            <th>Remarks</th>
+            <th class="text-end">Debit</th>
+            <th class="text-end">Credit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transaction in transactions %}
+          <tr>
+            <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
+            {% if not shop_filter %}<td>{{ transaction.shop.name|default:"-" }}</td>{% endif %}
+            <td>{{ transaction.acc.t_name|default:"-" }}</td>
+            <td>{{ transaction.remarks|default:"-" }}</td>
+            {% if transaction.tr_type == 'DEBIT' %}
+              <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>
+              <td class="text-end"></td>
+            {% else %}
+              <td class="text-end"></td>
+              <td class="text-success text-end">{{ transaction.amount|indian_format }}</td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}" class="text-center text-muted">No transactions found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.transactions-report -->
+{% endblock %}

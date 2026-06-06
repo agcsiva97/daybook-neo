@@ -7,7 +7,7 @@ app_name = 'entries'
 urlpatterns = [
     path('', views.home, name='home'),
     path('add-entries/', views.add_entries, name='add_entries'),
-    path('transfer/', views.transfer, name='transfer'),
+    # path('transfer/', views.transfer, name='transfer'),
     path('loan/', views.loan, name='loan'),
     path('loans/', views.loans, name='loans'),
     path('loans/<str:pk>/edit/', views.edit_loan, name='edit_loan'),
@@ -16,6 +16,7 @@ urlpatterns = [
     path('transactions/', views.transactions, name='transactions'),
     path('transactions/export/csv/', views.export_transactions_csv, name='export_transactions_csv'),
     path('transactions/export/excel/', views.export_transactions_excel, name='export_transactions_excel'),
+    path('transactions/print/', views.transactions_print, name='transactions_print'),
     path('transactions/<str:pk>/edit/', views.edit_transaction, name='edit_transaction'),
     path('transactions/<str:pk>/delete/', views.delete_transaction, name='delete_transaction'),
     path('transactions/<str:pk>/history/', views.transaction_history, name='transaction_history'),
@@ -26,8 +27,8 @@ urlpatterns = [
     path('denomination/edit/<str:key>/', views.edit_denomination, name='edit_denomination'),
     path('denomination/delete/<str:key>/', views.delete_denomination, name='delete_denomination'),
     path('report/', views.report, name='report'),
-    path('report/export/csv/', views.export_report_csv, name='export_report_csv'),
-    path('report/export/excel/', views.export_report_excel, name='export_report_excel'),
     path('about/', views.about, name='about'),
+    path('fetchmetalprice/gold/', views.update_gold_price, name='update_gold_price'),
+    path('fetchmetalprice/silver/', views.update_silver_price, name='update_silver_price'),
 
 ]

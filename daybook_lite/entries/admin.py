@@ -1,11 +1,11 @@
 from django.contrib import admin
 from simple_history.admin import SimpleHistoryAdmin
 
-from .models import Ledger, Transactions, Denomination, Loan, Shop
+from .models import Ledger, Transactions, Denomination, Loan, Shop, GLDSLRPriceHistory
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
-	list_display = ('name', 'short_name', 'balance')
+	list_display = ('name', 'short_name')
 
 @admin.register(Ledger)
 class LedgerAdmin(admin.ModelAdmin):
@@ -33,3 +33,9 @@ class LoanAdmin(SimpleHistoryAdmin):
 	list_filter = ('type', 'ledger', 'created_at')
 	search_fields = ('pawn_no', 'ledger__name', 'created_by__username')
 	history_list_display = ['pawn_no', 'ledger', 'type', 'principal', 'interest']
+
+@admin.register(GLDSLRPriceHistory)
+class GLDSLRPriceHistoryAdmin(admin.ModelAdmin):
+	list_display = ('price', 'type', 'updated_at')
+	list_filter = ('type', 'updated_at')
+	search_fields = ('type',)

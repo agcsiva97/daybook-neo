@@ -186,3 +186,7 @@ cython_debug/
 
 # Static files
 staticfiles/
+
+dbk_conversion/dbf_files/
+dbk_conversion/input/
+dbk_conversion/output/

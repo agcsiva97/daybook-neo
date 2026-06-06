@@ -1,82 +1,17 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <div class="container">
-  <div class="row">
-    <div class="col-md-6">
-      <h5>Add <span style="text-decoration: underline;">T</span>ransaction</h5>
-      <form method="post" class="card card-body">
-        {% csrf_token %}
-        <div class="mb-3">
-          <div class="row">
-            <div class="col">
-              <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
-              {{ form.date }}
-              {% if form.date.errors %}
-                <div class="text-danger small">{{ form.date.errors|striptags }}</div>
-              {% endif %}
-            </div>
-            <div class="col">
-              <label class="form-label" for="{{ form.time.id_for_label }}">Time <span class="text-muted small">(optional)</span></label>
-              {{ form.time }}
-              {% if form.time.errors %}
-                <div class="text-danger small">{{ form.time.errors|striptags }}</div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
-          {{ form.shop }}
-          {% if form.shop.errors %}
-            <div class="text-danger small">{{ form.shop.errors|striptags }}</div>
-          {% endif %}
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.amount.id_for_label }}"><u>A</u>mount</label>
-          {{ form.amount }}
-          {% if form.amount.errors %}
-            <div class="text-danger small">{{ form.amount.errors|striptags }}</div>
-          {% endif %}
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.name.id_for_label }}"><u>N</u>ame</label>
-          {{ form.name }}
-          {% if form.name.errors %}
-            <div class="text-danger small">{{ form.name.errors|striptags }}</div>
-          {% endif %}
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
-          {{ form.remarks }}
-          {% if form.remarks.errors %}
-            <div class="text-danger small">{{ form.remarks.errors|striptags }}</div>
-          {% endif %}
-        </div>
-        {% if form.non_field_errors %}
-          <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
-        {% endif %}
-        <div class="row">
-          <div class="col">
-            {% comment %} பற்று {% endcomment %}
-            <button type="button" class="cust-button btn-red" onclick="submitTransaction('DEBIT')">DEBIT</button>
-          </div>
-          <div class="col">
-            {% comment %} வரவு {% endcomment %}
-            <button type="button" class="cust-button btn-primary" onclick="submitTransaction('CREDIT')">CREDIT</button>
-          </div>
-        </div>
-      </form>
-    </div>
-    <div class="col-md-6">
+  <div class="row" id="loanRow">
+    <div class="col-md-9">
       <h5><u>L</u>oan Management</h5>
-      <div class="card card-body">
+      <div class="card card-body" id="loanCard">
         <div class="row">
           <div class="mb-3">
             <div class="row">
               <div class="col">
-                <label class="form-label" for="{{ loan_form.date.id_for_label }}">{{ loan_form.date.label }}</label>
+                {% csrf_token %}
+                <label class="form-label" for="{{ loan_form.date.id_for_label }}">Date</label>
                 {{ loan_form.date }}
                 {% if loan_form.date.errors %}
                   <div class="text-danger small">{{ loan_form.date.errors|striptags }}</div>
@@ -89,79 +24,174 @@
                   <div class="text-danger small">{{ loan_form.time.errors|striptags }}</div>
                 {% endif %}
               </div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="row">
               <div class="col">
-                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">S<u>h</u>op</label>
+                <label class="form-label" for="{{ loan_form.shop.id_for_label }}">Shop</label>
                 {{ loan_form.shop }}
                 {% if loan_form.shop.errors %}
                   <div class="text-danger small">{{ loan_form.shop.errors|striptags }}</div>
                 {% endif %}
               </div>
               <div class="col">
-                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">L<u>e</u>dger</label>
+                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">Ledger</label>
                 {{ loan_form.ledger }}
                 {% if loan_form.ledger.errors %}
                   <div class="text-danger small">{{ loan_form.ledger.errors|striptags }}</div>
+                {% endif %}
+              </div>              
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pawn No</label>
+                {{ loan_form.pawn_no }}
+                {% if loan_form.pawn_no.errors %}
+                  <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.principal.id_for_label }}">Principal</label>
+                {{ loan_form.principal }}
+                {% if loan_form.principal.errors %}
+                  <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
+                {% endif %}
+              </div>
+              <div class="col">
+                <label class="form-label" for="{{ loan_form.interest.id_for_label }}">Intrest</label>
+                {{ loan_form.interest }}
+                {% if loan_form.interest.errors %}
+                  <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
                 {% endif %}
               </div>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pa<u>w</u>n No</label>
-            {{ loan_form.pawn_no }}
-            {% if loan_form.pawn_no.errors %}
-              <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.principal.id_for_label }}"><u>P</u>rincipal</label>
-            {{ loan_form.principal }}
-            {% if loan_form.principal.errors %}
-              <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="{{ loan_form.interest.id_for_label }}"><u>I</u>ntrest</label>
-            {{ loan_form.interest }}
-            {% if loan_form.interest.errors %}
-              <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
-            {% endif %}
+            <div class="row">
+              <div class="col-md-4 ms-auto" style="margin-right: 5px;">
+                <button type="button" class="cust-button" onclick="submitLoan('LOAN')"><i class="fa-solid fa-save"></i> Save</button>
+              </div>
+            </div>
           </div>
         </div>
         {% if loan_form.non_field_errors %}
           <div class="text-danger small mb-2">{{ loan_form.non_field_errors|striptags }}</div>
         {% endif %}
-        <div class="row">
-          <div class="col">
-            <button type="button" class="cust-button btn-teal" onclick="submitLoan('LOAN')">LOAN</button>
-          </div>
-          <div class="col">
-            <button type="button" class="cust-button btn-primary" onclick="submitLoan('RELEASE')">RELEASE</button>
+      </div>
+    </div>
+    <div class="col-md-3 d-flex flex-column">
+      <h5 class="mb-0" style="margin-bottom: 8px !important;"><i class="fa-solid fa-file-lines"></i> Loans</h5>
+      <div class="transaction-list" id="transactionList" style="overflow-y: auto; min-height: 0;">
+        {% for loan in loans %}
+        <div class="transaction-item">
+          <div class="transaction-shop">{{ loan.shop.short_name }}</div>
+          <div class="transaction-amount">{{ loan.pawn_no }}</div>
+          <div class="transaction-details" style="text-align: right;">
+            <div class="transaction-account">{{ loan.principal|indian_format }}</div>
+            <div class="transaction-meta text-muted">{{ loan.interest|indian_format }}</div>
           </div>
         </div>
-      </div> 
+        {% empty %}
+        <div class="text-center py-4">
+          <img src="{% static 'img/add-loan.svg' %}" alt="No loans" style="width: 100%; max-width: 80px; margin: 0 auto 12px; display: block; opacity: 0.7;">
+          <h5 style="text-align: center; font-size: 0.9rem;">Add new loans</h5>
+          <p class="text-muted text-center" style="font-size: 0.8rem;">No loans recorded for today.</p>
+        </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
+
+  <div class="row" id="releaseRow" style="margin-top: 16px;">
+    <div class="col-md-9">
+      <h5>R<u>e</u>lease Management</h5>
+      <div class="card card-body" id="releaseCard">
+        <div class="row">
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                {% csrf_token %}
+                <label class="form-label" for="release_date">Date</label>
+                <input type="date" name="release_date" id="release_date" class="form-control" required value="{% now 'Y-m-d' %}">
+              </div>
+              <div class="col">
+                <label class="form-label" for="release_time">Time <span class="text-muted small">(optional)</span></label>
+                <input type="time" name="release_time" id="release_time" class="form-control" step="1">
+              </div>
+              <div class="col">
+                <label class="form-label" for="release_shop">Shop</label>
+                <select class="form-control" id="release_shop" name="release_shop">
+                  <option value="">-- Select Shop --</option>
+                  {% for shop in shops %}
+                    <option value="{{ shop.id }}">{{ shop.short_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label" for="release_ledger">Ledger</label>
+                <select class="form-control" id="release_ledger" name="release_ledger">
+                  <option value="">First select a shop</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col">
+                <label class="form-label" for="release_pawn_no">Pawn No</label>
+                <input type="text" name="release_pawn_no" id="release_pawn_no" class="form-control" placeholder="Enter Pawn No" maxlength="10">
+              </div>
+              <div class="col">
+                <label class="form-label" for="release_principal">Principal</label>
+                <input type="number" name="release_principal" id="release_principal" class="form-control" step="0.01" placeholder="0.00">
+              </div>
+              <div class="col">
+                <label class="form-label" for="release_interest">Interest</label>
+                <input type="number" name="release_interest" id="release_interest" class="form-control" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="row">
+              <div class="col-md-4 ms-auto" style="margin-right: 5px;">
+                <button type="button" class="cust-button" onclick="submitLoan('RELEASE')"><i class="fa-solid fa-save"></i> Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% if release_form.non_field_errors %}
+          <div class="text-danger small mb-2">{{ release_form.non_field_errors|striptags }}</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-md-3 d-flex flex-column">
+      <h5 class="mb-0" style="margin-bottom: 8px !important;"><i class="fa-solid fa-file-lines"></i> Releases</h5>
+      <div class="transaction-list" id="releaseList" style="overflow-y: auto; min-height: 0;">
+        {% for release in releases %}
+        <div class="transaction-item">
+          <div class="transaction-shop">{{ release.shop.short_name }}</div>
+          <div class="transaction-amount">{{ release.pawn_no }}</div>
+          <div class="transaction-details" style="text-align: right;">
+            <div class="transaction-account">{{ release.principal|indian_format }}</div>
+            <div class="transaction-meta text-muted">{{ release.interest|indian_format }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-4">
+          <img src="{% static 'img/add-release.svg' %}" alt="No releases" style="width: 100%; max-width: 80px; margin: 0 auto 12px; display: block; opacity: 0.7;">
+          <h5 style="text-align: center; font-size: 0.9rem;">Add new releases</h5>
+          <p class="text-muted text-center" style="font-size: 0.8rem;">No releases recorded for today.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
 const shortcuts = {
-    't': 'id_date',
-    's': 'id_shop',
-    'a': 'id_amount',
-    'n': 'id_name',
-    'm': 'id_remarks',
-
     'l': 'loan_date',
-    'h': 'loan_shop',
-    'e': 'loan_ledger',
-    'w': 'loan_pawn_no',
-    'p': 'loan_principal',
-    'i': 'loan_interest',
-    
+    'e': 'release_date',
 };
 
 document.addEventListener('keydown', function(e) {
@@ -174,191 +204,127 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-    const fromLedger = document.getElementById('id_from_ledger');
-    const toLedger = document.getElementById('id_to_ledger');
-    
-    if (!fromLedger || !toLedger) return;
-    
-    // Store all original options
-    const fromOptions = Array.from(fromLedger.options).map(opt => ({
-        value: opt.value,
-        text: opt.text
-    }));
-    
-    const toOptions = Array.from(toLedger.options).map(opt => ({
-        value: opt.value,
-        text: opt.text
-    }));
-    
-    // Function to filter options
-    function filterOptions(selectElement, allOptions, excludeValue) {
-        const currentValue = selectElement.value;
-        
-        // Clear current options
-        selectElement.innerHTML = '';
-        
-        // Add filtered options
-        allOptions.forEach(opt => {
-            if (opt.value !== excludeValue) {
-                const option = new Option(opt.text, opt.value);
-                selectElement.add(option);
-            }
-        });
-        
-        // Restore previous selection if still valid
-        if (currentValue && currentValue !== excludeValue) {
-            selectElement.value = currentValue;
-        }
-    }
-    
-    // Event listeners
-    fromLedger.addEventListener('change', function() {
-        filterOptions(toLedger, toOptions, this.value);
-    });
-    
-    toLedger.addEventListener('change', function() {
-        filterOptions(fromLedger, fromOptions, this.value);
-    });
-});
-
-// Loan form - dynamically load ledgers based on shop selection
-document.addEventListener('DOMContentLoaded', function() {
-    const loanShop = document.getElementById('loan_shop');
-    const loanLedger = document.getElementById('loan_ledger');
-    
-    if (!loanShop || !loanLedger) return;
-    
-    loanShop.addEventListener('change', function() {
-        const shopId = this.value;
-        
-        // Clear existing ledger options
-        loanLedger.innerHTML = '<option value="">Loading...</option>';
-        loanLedger.disabled = true;
-        
-        if (!shopId) {
-            loanLedger.innerHTML = '<option value="">First select a shop</option>';
-            loanLedger.disabled = true;
-            return;
-        }
-        
-        // Fetch ledgers for selected shop
-        fetch(`/api/shops/${shopId}/ledgers/`)
-            .then(response => response.json())
-            .then(data => {
-                loanLedger.innerHTML = '';
-                loanLedger.disabled = false;
-                
-                if (data.length === 0) {
-                    loanLedger.innerHTML = '<option value="">No ledgers available for this shop</option>';
-                    loanLedger.disabled = true;
-                } else {
-                    data.forEach(ledger => {
-                        const option = new Option(ledger.name, ledger.id);
-                        loanLedger.add(option);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching ledgers:', error);
-                loanLedger.innerHTML = '<option value="">Error loading ledgers</option>';
-                loanLedger.disabled = true;
-            });
-    });
-});
-
-// Transaction form submission
-function submitTransaction(transactionType) {
-    const amount = document.getElementById('id_amount').value.trim();
-    const shop = document.getElementById('id_shop').value;
-    const name = document.getElementById('id_name').value.trim();
-    const remarks = document.getElementById('id_remarks').value.trim();
-    const date = document.getElementById('id_date').value;
-    const time = document.getElementById('id_time').value;
-    
-    // Validate fields
-    if (!date) {
-        alert('Please select a Date');
-        document.getElementById('id_date').focus();
-        return;
-    }
-    if (!amount) {
-        alert('Please enter Amount');
-        document.getElementById('id_amount').focus();
-        return;
-    }
-    if (!shop) {
-        alert('Please select a Shop');
-        document.getElementById('id_shop').focus();
-        return;
-    }
-    
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{% url "entries:add_entries" %}';
-    
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    form.innerHTML = `
-        <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-        <input type="hidden" name="amount" value="${amount}">
-        <input type="hidden" name="shop" value="${shop}">
-        <input type="hidden" name="tr_type" value="${transactionType}">
-        <input type="hidden" name="name" value="${name}">
-        <input type="hidden" name="remarks" value="${remarks}">
-        <input type="hidden" name="date" value="${date}">
-        <input type="hidden" name="time" value="${time}">
-    `;
-    
-    document.body.appendChild(form);
-    form.submit();
+function matchListHeightToCard(cardId, listId) {
+    const card = document.getElementById(cardId);
+    const list = document.getElementById(listId);
+    if (!card || !list) return;
+    // List column = h5 title (~29px) + 8px margin + list. Total col height = card height.
+    // List height = card height - h5 height - margin
+    const h5 = list.previousElementSibling;
+    const h5Height = h5 ? h5.offsetHeight + 8 : 37;
+    list.style.maxHeight = (card.offsetHeight - h5Height) + 'px';
 }
 
-// Loan form submission
+function applyHeights() {
+    matchListHeightToCard('loanCard', 'transactionList');
+    matchListHeightToCard('releaseCard', 'releaseList');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyHeights();
+    window.addEventListener('resize', applyHeights);
+
+    // Loan form shop selection
+    const loanShop = document.getElementById('loan_shop');
+    const loanLedger = document.getElementById('loan_ledger');
+    if (loanShop && loanLedger) {
+        loanShop.addEventListener('change', function() {
+            loadLedgers(this.value, loanLedger);
+        });
+    }
+
+    // Release form shop selection
+    const releaseShop = document.getElementById('release_shop');
+    const releaseLedger = document.getElementById('release_ledger');
+    if (releaseShop && releaseLedger) {
+        releaseShop.addEventListener('change', function() {
+            loadLedgers(this.value, releaseLedger);
+        });
+    }
+});
+
+function loadLedgers(shopId, ledgerSelect) {
+    ledgerSelect.innerHTML = '<option value="">Loading...</option>';
+    ledgerSelect.disabled = true;
+    if (!shopId) {
+        ledgerSelect.innerHTML = '<option value="">First select a shop</option>';
+        ledgerSelect.disabled = true;
+        return;
+    }
+    fetch(`/api/shops/${shopId}/ledgers/`)
+        .then(response => response.json())
+        .then(data => {
+            ledgerSelect.innerHTML = '';
+            ledgerSelect.disabled = false;
+            if (data.length === 0) {
+                ledgerSelect.innerHTML = '<option value="">No ledgers available for this shop</option>';
+                ledgerSelect.disabled = true;
+            } else {
+                data.forEach(ledger => {
+                    const option = new Option(ledger.name, ledger.id);
+                    ledgerSelect.add(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching ledgers:', error);
+            ledgerSelect.innerHTML = '<option value="">Error loading ledgers</option>';
+            ledgerSelect.disabled = true;
+        });
+}
+
 function submitLoan(loanType) {
-    const pawnNo = document.getElementById('loan_pawn_no').value.trim();
-    const principal = document.getElementById('loan_principal').value.trim();
-    const interest = document.getElementById('loan_interest').value.trim();
-    const shop = document.getElementById('loan_shop').value;
-    const ledger = document.getElementById('loan_ledger').value;
-    const loanDate = document.getElementById('loan_date').value;
-    const loanTime = document.getElementById('loan_time').value;
-    
-    // Validate fields
+    let pawnNo, principal, interest, shop, ledger, loanDate, loanTime;
+    if (loanType === 'LOAN') {
+        pawnNo = document.getElementById('loan_pawn_no').value.trim();
+        principal = document.getElementById('loan_principal').value.trim();
+        interest = document.getElementById('loan_interest').value.trim();
+        shop = document.getElementById('loan_shop').value;
+        ledger = document.getElementById('loan_ledger').value;
+        loanDate = document.getElementById('loan_date').value;
+        loanTime = document.getElementById('loan_time').value;
+    } else {
+        pawnNo = document.getElementById('release_pawn_no').value.trim();
+        principal = document.getElementById('release_principal').value.trim();
+        interest = document.getElementById('release_interest').value.trim();
+        shop = document.getElementById('release_shop').value;
+        ledger = document.getElementById('release_ledger').value;
+        loanDate = document.getElementById('release_date').value;
+        loanTime = document.getElementById('release_time').value;
+    }
     if (!loanDate) {
         alert('Please select a Date');
-        document.getElementById('loan_date').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_date' : 'release_date').focus();
         return;
     }
     if (!shop) {
         alert('Please select a Shop');
-        document.getElementById('loan_shop').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_shop' : 'release_shop').focus();
         return;
     }
     if (!ledger) {
         alert('Please select a Ledger');
-        document.getElementById('loan_ledger').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_ledger' : 'release_ledger').focus();
         return;
     }
     if (!pawnNo) {
         alert('Please enter Pawn No');
-        document.getElementById('loan_pawn_no').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_pawn_no' : 'release_pawn_no').focus();
         return;
     }
     if (!principal) {
         alert('Please enter Principal amount');
-        document.getElementById('loan_principal').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_principal' : 'release_principal').focus();
         return;
     }
     if (!interest) {
         alert('Please enter Interest amount');
-        document.getElementById('loan_interest').focus();
+        document.getElementById(loanType === 'LOAN' ? 'loan_interest' : 'release_interest').focus();
         return;
     }
-    
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '{% url "entries:loan" %}';
-    
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     form.innerHTML = `
         <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
@@ -371,7 +337,6 @@ function submitLoan(loanType) {
         <input type="hidden" name="date" value="${loanDate}">
         <input type="hidden" name="time" value="${loanTime}">
     `;
-    
     document.body.appendChild(form);
     form.submit();
 }

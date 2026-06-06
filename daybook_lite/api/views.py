@@ -1,8 +1,12 @@
+from dateutil.relativedelta import relativedelta
+from django.db.models import Sum, Q
 from datetime import datetime, timedelta, date as date_type
 from os import name
 import logging
 
 from django.contrib.auth.decorators import login_required, user_passes_test
+
+from manager.helper import manager_helper, date_helper
 
 
 def _is_admin(user):
@@ -20,9 +24,9 @@ from rest_framework.response import Response
 from entries.models import Ledger, Loan, Transactions, Shop
 from django.db.models import Sum
 
-from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer
+from .serializers import LedgerSerializer, ShopSerializer, TransactionSerializer, AccountSerializer, TypeSerializer
 from django.db import transaction as db_transaction
-from manager.models import Configuration
+from manager.models import BT_Ledger_Accounts, Configuration, Accounts, Type
 from entries.helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
 
@@ -151,10 +155,43 @@ def shop_ledger_list_create(request, pk):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def shop_account_list(request, pk):
+    """
+    GET  - List all ledgers for a shop
+    POST - Create a new ledger for a shop
+    """
+    try:
+        shop = Shop.objects.get(pk=pk)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        logger.info(f"Fetching accounts for shop ID: {shop.id}, Name: {shop.short_name}")
+        accounts = Accounts.objects.filter(shop_id=pk).order_by('-priority')
+        if request.user.is_authenticated and not _is_admin(request.user) and not request.user.is_superuser:
+            accounts = accounts.filter(is_admin_only=False)
+        logger.info(f"Found {accounts.count()} accounts for shop ID {shop.id} - {shop.short_name}")
+        serializer = AccountSerializer(accounts, many=True)
+        return Response(serializer.data)
+
+@api_view(['GET'])
+@login_required
+def shop_type_list(request, pk):
+    """GET - List all account types (Type) for a shop."""
+    try:
+        shop = Shop.objects.get(pk=pk)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    types = Type.objects.filter(shop_id=pk).order_by('e_name')
+    serializer = TypeSerializer(types, many=True)
+    return Response(serializer.data)
+
 @login_required
 @user_passes_test(_is_admin, login_url='/accounts/login/')
 def transaction_pie_data(request):
-    """Returns debit/credit transaction totals grouped by name as JSON.
+    """Returns debit/credit transaction totals grouped by account as JSON.
     Query params: from_date, to_date (YYYY-MM-DD), shop (ID, optional).
     Defaults to last 7 days.
     """
@@ -164,18 +201,23 @@ def transaction_pie_data(request):
     from django.db.models import Sum
 
     def build_pie(tr_type):
+        # Get all account IDs that are BT ledger accounts
+        bt_account_ids = BT_Ledger_Accounts.objects.values_list('account_id', flat=True)
+
         qs = Transactions.objects.filter(
             tr_type=tr_type,
-            created_at__date__gte=start_date,
-            created_at__date__lte=end_date,
-        ).exclude(name='Openning Deposit')
+            transaction_dt__date__gte=start_date,
+            transaction_dt__date__lte=end_date,
+        ).exclude(acc_id__in=bt_account_ids)
+
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
-        qs = qs.values('name').annotate(total=Sum('amount')).order_by('-total')
+
+        qs = qs.values('acc__e_name').annotate(total=Sum('amount')).order_by('-total')
         labels = []
         values = []
         for item in qs:
-            label = item['name'].strip() if item['name'] and item['name'].strip() else 'Unnamed'
+            label = item['acc__e_name'].strip() if item['acc__e_name'] and item['acc__e_name'].strip() else 'No Account'
             labels.append(label)
             values.append(float(item['total']))
         return labels, values
@@ -189,6 +231,115 @@ def transaction_pie_data(request):
         'range': { 'from_date': str(start_date), 'to_date': str(end_date) },
     })
 
+@login_required
+@user_passes_test(_is_admin, login_url='/accounts/login/')
+def bt_ledger_monthly_chart_data(request):
+    from dateutil.relativedelta import relativedelta
+
+    today = timezone.localdate()
+    start_date = today.replace(day=1) - relativedelta(months=11)
+    shop_id = _parse_shop_id(request)
+
+    months = [start_date + relativedelta(months=i) for i in range(12)]
+    labels = [m.strftime('%b %Y') for m in months]
+
+    principal_rel_types = ['LOAN_PRINCIPAL', 'RELEASE_PRINCIPAL']
+    interest_rel_types  = ['LOAN_INTEREST',  'RELEASE_INTEREST']
+
+    TR_TYPE_MAP = {
+        'LOAN_PRINCIPAL':    'DEBIT',
+        'RELEASE_PRINCIPAL': 'CREDIT',
+        'LOAN_INTEREST':     'CREDIT',
+        'RELEASE_INTEREST':  'CREDIT',
+    }
+
+    def build_series(rel_types):
+        bt_qs = BT_Ledger_Accounts.objects.filter(
+            rel_type__in=rel_types
+        ).select_related('account', 'shop')
+
+        if shop_id:
+            bt_qs = bt_qs.filter(shop_id=shop_id)
+
+        # Group by shop
+        shops_map = {}
+        for bt in bt_qs:
+            sid = bt.shop_id
+            if sid not in shops_map:
+                shops_map[sid] = {
+                    'shop': bt.shop,
+                    'entries': [],
+                }
+            shops_map[sid]['entries'].append(bt)
+
+        series = []
+
+        for sid, shop_data in shops_map.items():
+            shop_obj = shop_data['shop']
+            shop_label = shop_obj.short_name if shop_obj else 'Unknown'
+
+            # Deduplicate accounts per shop:
+            # Key = (account_id, tr_type) — same account used for both
+            # LOAN_INTEREST and RELEASE_INTEREST (both CREDIT) should merge into one
+            seen = {}  # (account_id, tr_type) -> bt entry
+            for bt in shop_data['entries']:
+                tr_type = TR_TYPE_MAP[bt.rel_type]
+                key = (bt.account_id, tr_type)
+                if key not in seen:
+                    seen[key] = bt
+
+            from collections import Counter
+            acc_count = Counter(acc_id for (acc_id, _) in seen.keys())
+
+            for (acc_id, tr_type), bt in seen.items():
+                acc_label = ''
+                if bt.account.e_name and bt.account.e_name.strip():
+                    acc_label = bt.account.e_name.strip()
+                elif bt.account.t_name:
+                    acc_label = bt.account.t_name
+                else:
+                    acc_label = 'Unknown'
+
+                # Only add rel_type suffix if same account appears with different tr_types
+                if acc_count[acc_id] > 1:
+                    series_name = f'{shop_label} - {acc_label} ({bt.rel_type})'
+                else:
+                    series_name = f'{shop_label} - {acc_label}'
+
+                qs = (
+                    Transactions.objects
+                    .filter(
+                        acc_id=acc_id,
+                        shop_id=sid,
+                        tr_type=tr_type,
+                        transaction_dt__date__gte=start_date,
+                        transaction_dt__date__lte=today,
+                    )
+                    .values('transaction_dt__year', 'transaction_dt__month')
+                    .annotate(total=Sum('amount'))
+                    .order_by('transaction_dt__year', 'transaction_dt__month')
+                )
+
+                month_map = {
+                    (item['transaction_dt__year'], item['transaction_dt__month']): float(item['total'])
+                    for item in qs
+                }
+
+                data = [month_map.get((m.year, m.month), 0) for m in months]
+
+                series.append({
+                    'name': series_name,
+                    'group': shop_label,  # ApexCharts uses this for grouped stacking
+                    'data': data,
+                })
+
+        return series
+
+    return JsonResponse({
+        'labels':    labels,
+        'principal': build_series(principal_rel_types),
+        'interest':  build_series(interest_rel_types),
+    })
 
 def _parse_date_range(request):
     """Helper: parse from_date / to_date query params. Returns (start_date, end_date)."""
@@ -209,13 +360,10 @@ def _parse_date_range(request):
 
 
 def _parse_shop_id(request):
-    """Helper: parse optional shop query param. Returns int or None."""
-    shop_str = request.GET.get('shop', '')
+    """Helper: parse optional shop query param. Returns str (shop ID) or None."""
+    shop_str = request.GET.get('shop', '').strip()
     if shop_str:
-        try:
-            return int(shop_str)
-        except (ValueError, TypeError):
-            pass
+        return shop_str
     return None
 
 
@@ -229,6 +377,7 @@ def dashboard_chart_data(request):
     today = timezone.localdate()
     start_date, end_date = _parse_date_range(request)
     shop_id = _parse_shop_id(request)
+    bt_account_ids = BT_Ledger_Accounts.objects.values_list('account_id', flat=True)
 
     date_range = []
     d = start_date
@@ -268,8 +417,8 @@ def dashboard_chart_data(request):
     release_data = [release_map.get(str(d), 0) for d in date_range]
 
     # Summary: total debit/credit for the range (also filtered by shop if set)
-    debit_base  = Transactions.objects.filter(tr_type='DEBIT',  created_at__date__gte=start_date, created_at__date__lte=end_date)
-    credit_base = Transactions.objects.filter(tr_type='CREDIT', created_at__date__gte=start_date, created_at__date__lte=end_date).exclude(name='Openning Deposit')
+    debit_base  = Transactions.objects.filter(tr_type='DEBIT',  transaction_dt__date__gte=start_date, transaction_dt__date__lte=end_date).exclude(acc_id__in=bt_account_ids)
+    credit_base = Transactions.objects.filter(tr_type='CREDIT', transaction_dt__date__gte=start_date, transaction_dt__date__lte=end_date).exclude(acc_id__in=bt_account_ids)
     if shop_id:
         debit_base  = debit_base.filter(shop_id=shop_id)
         credit_base = credit_base.filter(shop_id=shop_id)
@@ -290,6 +439,36 @@ def dashboard_chart_data(request):
             'from_date': str(start_date),
             'to_date':   str(end_date),
         },
+    })
+
+@login_required
+@user_passes_test(_is_admin, login_url='/accounts/login/')
+def loan_gauge_data(request):
+    """Returns average daily loan count for the filtered date range."""
+    start_date, end_date = _parse_date_range(request)
+    shop_id = _parse_shop_id(request)
+
+    from django.db.models import Count
+    from datetime import timedelta
+
+    qs = Loan.objects.filter(
+        type='LOAN',
+        transaction_dt__date__gte=start_date,
+        transaction_dt__date__lte=end_date,
+    )
+    if shop_id:
+        qs = qs.filter(shop_id=shop_id)
+
+    total_loans = qs.count()
+    num_days = max((end_date - start_date).days + 1, 1)
+    avg = round(total_loans / num_days, 1)
+
+    return JsonResponse({
+        'average': avg,
+        'total': total_loans,
+        'days': num_days,
+        'from_date': str(start_date),
+        'to_date': str(end_date),
     })
 
 @api_view(['POST'])
@@ -360,7 +539,8 @@ def create_transaction(request):
             'CREATE',
             'Transaction',
             transaction_obj.id,
-            f'Transaction created: {transaction_obj.name} ({transaction_obj.amount} {transaction_obj.tr_type}) for {shop.short_name}'
+            f'Transaction created: {transaction_obj.name} ({transaction_obj.amount} {transaction_obj.tr_type}) for {shop.short_name}',
+            shop=shop
         )
 
         logger.info("============ Transaction API Creation Completed ============")
@@ -402,7 +582,6 @@ def get_transactions(request):
         shop_filter = request.GET.get('shop')
         type_filter = request.GET.get('type')
         search_query = request.GET.get('search', '')
-        name_search_query = request.GET.get('name_search', '')   
 
         # Apply filters
         if from_date:
@@ -424,9 +603,6 @@ def get_transactions(request):
         
         if type_filter and type_filter in ['DEBIT', 'CREDIT']:
             transactions_list = transactions_list.filter(tr_type=type_filter)
-        
-        if name_search_query:
-            transactions_list = transactions_list.filter(name__icontains=name_search_query)
         
         if search_query:
             transactions_list = transactions_list.filter(remarks__icontains=search_query)
@@ -446,7 +622,6 @@ def get_shop_transactions(request,pk=None):
         shop_filter = request.GET.get('shop')
         type_filter = request.GET.get('type')
         search_query = request.GET.get('search', '')
-        name_search_query = request.GET.get('name_search', '')   
 
         # Apply filters
         if from_date:
@@ -469,11 +644,57 @@ def get_shop_transactions(request,pk=None):
         if type_filter and type_filter in ['DEBIT', 'CREDIT']:
             transactions_list = transactions_list.filter(tr_type=type_filter)
         
-        if name_search_query:
-            transactions_list = transactions_list.filter(name__icontains=name_search_query)
-        
         if search_query:
             transactions_list = transactions_list.filter(remarks__icontains=search_query)
 
         serializer = TransactionSerializer(transactions_list, many=True)
         return Response(serializer.data)
+    
+def networth_chart_data(request):
+    """Returns net worth per financial year as a line chart dataset."""
+    groups = manager_helper.get_groups()
+    fys = date_helper.get_available_fy_years()
+
+    labels = []
+    networth_values = []
+
+    for fy in fys:
+        # Build a map of group_id -> closing for this FY
+        group_closing = {}
+        for group in groups:
+            summary = transaction_helper.get_group_summary(group, fy)
+            group_closing[group[0]] = float(summary['closing'])
+
+        # Same formula as balance_sheet view:
+        # net_worth_closing = PL(2) + Purchases(3) + Liabilities(4)
+        net_worth = (
+            group_closing.get(3, 0.0) +
+            group_closing.get(4, 0.0) +
+            group_closing.get(5, 0.0)
+        )
+        fy_int = int(fy)
+        labels.append(f'FY {fy_int}-{str(fy_int + 1)[2:]}')
+        networth_values.append(abs(net_worth))
+
+    return JsonResponse({
+        'labels': labels,
+        'series': [{'name': 'Net Worth', 'data': networth_values}],
+    })
+
+def get_gold_price(request):
+    """Returns current gold price from manager_helper as JSON."""
+    try:
+        data = manager_helper.get_gold_price()
+        return JsonResponse({'gold_price': data['price'], 'updated_at': data['updated_at']})
+    except Exception as e:
+        logger.error(f"Error fetching gold price: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'Unable to fetch gold price'}, status=500)
+    
+def update_gold_price(request):
+    """Fetches live gold price and updates the database."""
+    try:
+        manager_helper.update_gold_price()
+        return JsonResponse({'message': 'Gold price updated successfully'})
+    except Exception as e:
+        logger.error(f"Error updating gold price: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'Unable to update gold price'}, status=500)

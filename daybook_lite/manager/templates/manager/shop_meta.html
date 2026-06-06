@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+  {# ── Header card ── #}
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-shop me-2"></i>{{ shop.name }}
+        <small class="text-muted ms-2 fs-6">Account Hierarchy</small>
+      </h5>
+      <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="d-none d-md-inline ms-1">Back to Shop</span>
+      </a>
+    </div>
+    <div class="card-body pb-2">
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="p-3 bg-light rounded text-center">
+            <div class="text-muted small">Total Balance</div>
+            {% if shop_balance >= 0 %}
+              <div class="h5 mb-0 text-success fw-bold">{{ shop_balance|indian_format }} CR</div>
+            {% else %}
+              <div class="h5 mb-0 text-danger fw-bold">{{ shop_balance|indian_format }} DB</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 bg-light rounded text-center">
+            <div class="text-muted small">Groups</div>
+            <div class="h5 mb-0">{{ total_groups }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 bg-light rounded text-center">
+            <div class="text-muted small">Types</div>
+            <div class="h5 mb-0">{{ total_types }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 bg-light rounded text-center">
+            <div class="text-muted small">Accounts</div>
+            <div class="h5 mb-0">{{ total_accounts }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Hierarchy tree ── #}
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="fa-solid fa-sitemap me-2"></i>Group → Type → Account</h6>
+    </div>
+    <div class="card-body p-0">
+
+      {% if hierarchy %}
+        <div class="accordion accordion-flush" id="groupAccordion">
+
+          {% for group in hierarchy %}
+          <div class="accordion-item">
+
+            {# Group header #}
+            <h2 class="accordion-header">
+              <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} d-flex justify-content-between"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#group-{{ group.order }}"
+                      aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                <span>
+                  <span class="me-2">{{ group.label }}</span>
+                  <span class="badge bg-secondary fw-normal">{{ group.type_count }} type{{ group.type_count|pluralize }} · {{ group.account_count }} account{{ group.account_count|pluralize }}</span>
+                </span>
+              </button>
+            </h2>
+
+            <div id="group-{{ group.order }}"
+                 class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                 data-bs-parent="#groupAccordion">
+              <div class="accordion-body p-0">
+
+                {% for type in group.types %}
+
+                  {# Type sub-header #}
+                  <div class="border-bottom">
+                    <button class="btn btn-link w-100 text-start text-decoration-none px-4 py-2 d-flex justify-content-between align-items-center"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#type-{{ type.obj.pk }}"
+                            aria-expanded="true">
+                      <span class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-tag fa-xs text-muted"></i>
+                        <span class="fw-semibold text-dark">{{ type.obj.e_name }}</span>
+                        {% if type.obj.t_name %}
+                          <span class="text-muted small">({{ type.obj.t_name }})</span>
+                        {% endif %}
+                        <span class="badge bg-light text-secondary fw-normal border">{{ type.accounts|length }}</span>
+                      </span>
+                      <i class="fa-solid fa-chevron-down fa-xs text-muted"></i>
+                    </button>
+
+                    <div id="type-{{ type.obj.pk }}" class="collapse show">
+                      {% if type.accounts %}
+                        <ul class="list-group list-group-flush">
+                          {% for account in type.accounts %}
+                          <li class="list-group-item d-flex justify-content-between align-items-center py-2"
+                              style="padding-left: 3.5rem; cursor:pointer;"
+                              onclick="window.location.href='{% url 'manager:account_info' account.pk %}'">
+                            <div>
+                              <span class="me-2">{{ account.e_name }}</span>
+                              {% if account.t_name %}
+                                <span class="text-muted small">{{ account.t_name }}</span>
+                              {% endif %}
+                              {% if account.is_admin_only %}
+                                <span class="badge bg-warning text-dark ms-1 small">Admin</span>
+                              {% endif %}
+                            </div>
+                            {% if account.balance >= 0 %}
+                              <span class="text-success fw-semibold small">{{ account.balance|indian_format }} CR</span>
+                            {% else %}
+                              <span class="text-danger fw-semibold small">{{ account.balance|indian_format }} DB</span>
+                            {% endif %}
+                          </li>
+                          {% endfor %}
+                        </ul>
+                      {% else %}
+                        <p class="text-muted small px-5 py-2 mb-0">No accounts in this type.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                {% empty %}
+                  <p class="text-muted p-3 mb-0">No types in this group.</p>
+                {% endfor %}
+
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
+      {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="fa-solid fa-folder-open fa-2x mb-2"></i>
+          <p>No account groups found for this shop.</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

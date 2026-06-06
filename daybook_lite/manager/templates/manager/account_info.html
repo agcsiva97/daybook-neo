@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-start">      
+      <!-- LEFT SIDE -->
+      <div>
+        <h4 class="mb-0">
+          <i class="fa-solid fa-wallet"></i> {{ account.t_name }}
+        </h4>
+      </div>
+      <!-- RIGHT SIDE (buttons) -->
+      <div class="d-flex gap-2">
+          <a href="{% url 'manager:account_edit' account.pk %}" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
+          </a>
+          <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger">
+            <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
+          </a>
+        <a href="{% url 'manager:shop_info' account.shop.id %}" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ account.shop.name }}</span>
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm">
+            <tr>
+              <td class="fw-bold">Account ID</td>
+              <td>{{ account.id }}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Account Name</td>
+              <td>{{ account.t_name }} - {{ account.e_name }}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Account Type</td>
+              <td>{{ account.acc_type.t_name }}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Account Group</td>
+              <td>{{ account_group_name }}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h5>Balance</h5>
+          <p class="display-6 text-primary">{{ balance|indian_format }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h4 class="mb-0">
+            <i class="fa-solid fa-exchange-alt"></i> Transactions
+          </h4>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+          <button type="button" class="btn btn-sm btn-outline-info" id="moveBtn" data-bs-toggle="modal" data-bs-target="#moveTransactionsModal" disabled title="Move selected transactions">
+            <i class="fa-solid fa-arrow-right"></i> <span class="d-none d-md-inline">Move</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-warning" id="tallyBtn" data-bs-toggle="modal" data-bs-target="#tallyTransactionsModal" disabled title="Mark transactions as tallied/not tallied">
+            <i class="fa-solid fa-check-double"></i> <span class="d-none d-md-inline">Tally</span>
+          </button>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="showTalliedCheckbox">
+            <label class="form-check-label" for="showTalliedCheckbox">
+              Show Tallied
+            </label>
+          </div>
+          <div class="input-group" style="width: 120px;">
+            <button class="btn btn-sm btn-outline-primary" onclick="changeYear(-1)">-</button>
+            <input type="text" id="year" class="form-control form-control-sm text-center" readonly>
+            <button class="btn btn-sm btn-outline-primary" onclick="changeYear(1)">+</button>
+          </div>
+        </div>
+      </div>  
+    </div>
+
+    <!-- Financial Summary Card -->
+    <div class="container-fluid px-3 py-3 border-bottom">
+      <div class="row">
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Opening Balance (FY)</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ opening_balance|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Total Debits (FY)</h6>
+            <p class="h5 text-danger mb-0 text-end">₹ {{ total_debit|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Total Credits (FY)</h6>
+            <p class="h5 text-success mb-0 text-end">₹ {{ total_credit|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Net Balance (FY)</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ net_balance|indian_format }}</p>
+          </div>
+        </div>
+        <div class="col-md">
+          <div class="p-3 bg-light rounded">
+            <h6 class="text-muted mb-2 text-end">Closing Balance (FY)</h6>
+            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ closing_balance|indian_format }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">
+                  <input type="checkbox" id="selectAll" class="form-check-input" title="Select all">
+                </th>
+                <th scope="col">Date</th>
+                <th scope="col">Remarks</th>
+                <th scope="col" class="text-end">DEBIT</th>
+                <th scope="col" class="text-end">CREDIT</th>
+                <th scope="col">Tally</th>
+                <th scope="col">Created By</th>
+                <th scope="col">Updated By</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody id="transaction-tbody"
+                   hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&fy={{ fy }}"
+                   hx-trigger="load"
+                   hx-swap="innerHTML"
+                   hx-target="this">
+                <!-- HTMX will load transactions here -->
+                <tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>
+            </tbody>
+        </table>
+      </div>  
+    </div>
+  </div>
+</div>
+
+<!-- Move Transactions Modal -->
+<div class="modal fade" id="moveTransactionsModal" tabindex="-1" aria-labelledby="moveTransactionsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="moveTransactionsModalLabel">Move Transactions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="accountSelect" class="form-label">Select Account</label>
+          <select class="form-select" id="accountSelect">
+            <option value="">-- Select an Account --</option>
+            {% for shop_account in shop_accounts %}
+            <option value="{{ shop_account.id }}" data-name="{{ shop_account.t_name }}" data-ename="{{ shop_account.e_name }}" data-group="{{ shop_account.group_name }}">{{ shop_account.t_name }} ({{ shop_account.e_name }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div id="accountInfo" class="card" style="display: none;">
+          <div class="card-body">
+            <h6 class="card-title">Account Information</h6>
+            <p class="mb-1"><strong>Tamil Name:</strong> <span id="infoTName">-</span></p>
+            <p class="mb-1"><strong>English Name:</strong> <span id="infoEName">-</span></p>
+            <p class="mb-0"><strong>Group:</strong> <span id="infoGroup">-</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="moveConfirmBtn" disabled>Move Transactions</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tally Transactions Modal -->
+<div class="modal fade" id="tallyTransactionsModal" tabindex="-1" aria-labelledby="tallyTransactionsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tallyTransactionsModalLabel">Mark Transactions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Mark selected transaction(s) as:</p>
+        <div id="tallySelectedInfo" class="alert alert-info mb-3" style="display:none;">
+          <strong id="selectedCountInfo"></strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="tallySuccessBtn">
+          <i class="fa-solid fa-check"></i> Tallied
+        </button>
+        <button type="button" class="btn btn-danger" id="tallyFailBtn">
+          <i class="fa-solid fa-times"></i> Not Tallied
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+
+  // Checkbox handling
+  const selectAllCheckbox = document.getElementById('selectAll');
+  const moveBtn = document.getElementById('moveBtn');
+  const tallyBtn = document.getElementById('tallyBtn');
+  const accountSelect = document.getElementById('accountSelect');
+  const accountInfo = document.getElementById('accountInfo');
+  const moveConfirmBtn = document.getElementById('moveConfirmBtn');
+  const tallySuccessBtn = document.getElementById('tallySuccessBtn');
+  const tallyFailBtn = document.getElementById('tallyFailBtn');
+  const showTalliedCheckbox = document.getElementById('showTalliedCheckbox');
+  const selectedCountInfo = document.getElementById('selectedCountInfo');
+  const transactionTbody = document.getElementById('transaction-tbody');
+
+  // Function to get all transaction checkboxes
+  function getTransactionCheckboxes() {
+    return document.querySelectorAll('.transaction-checkbox');
+  }
+
+  // Function to update button states
+  function updateMoveTallyButtonState() {
+    const anySelected = Array.from(getTransactionCheckboxes()).some(cb => cb.checked);
+    moveBtn.disabled = !anySelected;
+    tallyBtn.disabled = !anySelected;
+  }
+
+  // Function to filter tallied transactions based on checkbox state
+  function applyTalliedFilter() {
+    const transactionRows = document.querySelectorAll('.transaction-row');
+    transactionRows.forEach(row => {
+      if (!showTalliedCheckbox.checked && row.dataset.tallyStatus === 'true') {
+        row.style.display = 'none';
+      } else {
+        row.style.display = '';
+      }
+    });
+  }
+
+  // Bind events to transaction checkboxes using event delegation
+  transactionTbody.addEventListener('change', function(e) {
+    if (e.target.classList.contains('transaction-checkbox')) {
+      updateMoveTallyButtonState();
+      // Update select all checkbox state
+      const allCheckboxes = getTransactionCheckboxes();
+      const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+      const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+      selectAllCheckbox.checked = allChecked;
+      selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+  });
+
+  // HTMX event listener for when content is swapped/loaded
+  transactionTbody.addEventListener('htmx:afterSwap', function(e) {
+    applyTalliedFilter();
+  });
+
+  // Select all checkbox handler
+  selectAllCheckbox.addEventListener('change', function() {
+    getTransactionCheckboxes().forEach(checkbox => {
+      checkbox.checked = this.checked;
+    });
+    updateMoveTallyButtonState();
+  });
+
+  // Filter tallied transactions
+  showTalliedCheckbox.addEventListener('change', function() {
+    const transactionRows = document.querySelectorAll('.transaction-row');
+    transactionRows.forEach(row => {
+      if (!this.checked && row.dataset.tallyStatus === 'true') {
+        row.style.display = 'none';
+      } else {
+        row.style.display = '';
+      }
+    });
+  });
+
+  // Account select change handler
+  accountSelect.addEventListener('change', function() {
+    if (this.value) {
+      const selectedOption = this.options[this.selectedIndex];
+      document.getElementById('infoTName').textContent = selectedOption.dataset.name;
+      document.getElementById('infoEName').textContent = selectedOption.dataset.ename;
+      document.getElementById('infoGroup').textContent = selectedOption.dataset.group;
+      accountInfo.style.display = 'block';
+      moveConfirmBtn.disabled = false;
+    } else {
+      accountInfo.style.display = 'none';
+      moveConfirmBtn.disabled = true;
+    }
+  });
+
+  // Move confirm button handler
+  moveConfirmBtn.addEventListener('click', function() {
+    const selectedTransactions = Array.from(getTransactionCheckboxes())
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+    const targetAccountId = accountSelect.value;
+
+    if (selectedTransactions.length === 0 || !targetAccountId) {
+      alert('Please select transactions and an account');
+      return;
+    }
+
+    // Show loading state
+    moveConfirmBtn.disabled = true;
+    const originalText = moveConfirmBtn.innerHTML;
+    moveConfirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Moving...';
+
+    // Send AJAX request
+    fetch('{% url "manager:move_transactions" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        transaction_ids: selectedTransactions,
+        target_account_id: targetAccountId
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Close modal and reload page
+        const modal = bootstrap.Modal.getInstance(document.getElementById('moveTransactionsModal'));
+        modal.hide();
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        alert('Error: ' + (data.message || 'Failed to move transactions'));
+        moveConfirmBtn.disabled = false;
+        moveConfirmBtn.innerHTML = originalText;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while moving transactions');
+      moveConfirmBtn.disabled = false;
+      moveConfirmBtn.innerHTML = originalText;
+    });
+  });
+
+  // Reset modal when it closes
+  document.getElementById('moveTransactionsModal').addEventListener('hidden.bs.modal', function() {
+    accountSelect.value = '';
+    accountInfo.style.display = 'none';
+    moveConfirmBtn.disabled = true;
+  });
+
+  // Tally modal handlers
+  document.getElementById('tallyTransactionsModal').addEventListener('show.bs.modal', function() {
+    const selectedCount = Array.from(getTransactionCheckboxes()).filter(cb => cb.checked).length;
+    selectedCountInfo.textContent = `${selectedCount} transaction(s) selected`;
+    document.getElementById('tallySelectedInfo').style.display = 'block';
+  });
+
+  tallySuccessBtn.addEventListener('click', function() {
+    updateTransactionsTally(true);
+  });
+
+  tallyFailBtn.addEventListener('click', function() {
+    updateTransactionsTally(false);
+  });
+
+  function updateTransactionsTally(isTallied) {
+    const selectedTransactions = Array.from(getTransactionCheckboxes())
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+
+    if (selectedTransactions.length === 0) {
+      alert('Please select transactions');
+      return;
+    }
+
+    // Show loading state
+    const activeBtn = isTallied ? tallySuccessBtn : tallyFailBtn;
+    activeBtn.disabled = true;
+    const originalText = activeBtn.innerHTML;
+    activeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
+
+    // Send AJAX request
+    fetch('{% url "manager:update_tally_transactions" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        transaction_ids: selectedTransactions,
+        is_tally: isTallied
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Close modal and reload page
+        const modal = bootstrap.Modal.getInstance(document.getElementById('tallyTransactionsModal'));
+        modal.hide();
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        alert('Error: ' + (data.message || 'Failed to update transactions'));
+        activeBtn.disabled = false;
+        activeBtn.innerHTML = originalText;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while updating transactions');
+      activeBtn.disabled = false;
+      activeBtn.innerHTML = originalText;
+    });
+  }
+
+  // Reset tally modal when it closes
+  document.getElementById('tallyTransactionsModal').addEventListener('hidden.bs.modal', function() {
+    tallySuccessBtn.disabled = false;
+    tallyFailBtn.disabled = false;
+    tallySuccessBtn.innerHTML = '<i class="fa-solid fa-check"></i> Tallied';
+    tallyFailBtn.innerHTML = '<i class="fa-solid fa-times"></i> Not Tallied';
+  });
+</script>
+{% endblock %}

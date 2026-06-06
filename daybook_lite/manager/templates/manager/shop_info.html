@@ -12,13 +12,23 @@
       </div>
       <!-- RIGHT SIDE (buttons) -->
       <div class="d-flex gap-2">
+          <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-file-invoice-dollar"></i> <span class="d-none d-md-inline">Types Summary</span>
+          </a>
+          <a href="{% url 'manager:shop_meta' shop.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-sitemap"></i> <span class="d-none d-md-inline">Account Tree</span>
+          </a>
+          <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-arrows-rotate"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
+          </a>
+
         {% if is_admin %}
-          <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-outline-primary">
+          <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-teal">
             <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
           </a>
         {% endif %}
         {% if is_super_admin %}
-          <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-outline-danger">
+          <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-red">
             <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
           </a>
         {% endif %}
@@ -29,47 +39,28 @@
     </div>
     <div class="card-body">
       <div class="row">
-        <div class="col-md-6">
-          <table class="table table-sm">
-            <tr>
-              <td class="fw-bold">Shop ID</td>
-              <td>{{ shop.id }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Short Name</td>
-              <td>{{ shop.short_name }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Name</td>
-              <td>{{ shop.name }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">D.No</td>
-              <td>{{ shop.d_no }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Address Line 1</td>
-              <td>{{ shop.addressline1 }}</td>
-            </tr>
-            {% if shop.addressline2 %}
-            <tr>
-              <td class="fw-bold">Address Line 2</td>
-              <td>{{ shop.addressline2 }}</td>
-            </tr>
-            {% endif %}
-            <tr>
-              <td class="fw-bold">Place</td>
-              <td>{{ shop.place }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">Pincode</td>
-              <td>{{ shop.pincode }}</td>
-            </tr>
-          </table>
+        <div class="col-md-3">
+          {% comment %} <center><img src="{{ shop.logo.url if shop.logo else '/static/images/default_shop_logo.png' }}" alt="Shop Logo" class="img-fluid rounded mb-2" style="max-height: 150px;"></center> {% endcomment %}
         </div>
         <div class="col-md-6">
-          <h5>Balance</h5>
-          <p class="display-6 text-primary">{{ balance }}</p>
+          <center><h6>{{shop.god|default:"-"}}</h6></center>
+          <center><h3>{{shop.name}}</h3></center>
+          <center><h5>
+          {% if shop.d_no %}{{shop.d_no}}, {% endif %}
+          {% if shop.addressline1 %}{{shop.addressline1}}, {% endif %}
+          {% if shop.addressline2 %}{{shop.addressline2}},{% endif %}
+          {% if shop.place %}{{shop.place}} - {{shop.pincode}}{% endif %}
+          </h5></center>
+        </div>
+        <div class="col-md-3">
+
+          <h5 style="text-align: right;">{{shop.proprietor}}</h5>
+          <h5 style="text-align: right;">{{shop.pan|default:"-"}}</h5>
+        </div>
+      </div>
+      <div>
+                  <h5>Balance</h5>
+          <p class="display-6 text-primary">{{ balance|indian_format }}</p>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <h5 class="mb-0">Linked Ledgers</h5>
             {% if is_admin %}
@@ -99,51 +90,51 @@
           {% else %}
           <p class="text-muted mt-2">No ledgers linked to this shop.</p>
           {% endif %}
-        </div>
       </div>
     </div>
   </div>
 
   <div class="card mt-3">
-    <div class="card-header">
-      <h5 class="mb-0">Recent Transactions </h5>
-      <small class="text-muted">Showing up to 10 most recent transactions for this shop, to view all transactions, <a href="{% url 'entries:transactions' %}?from_date=&to_date=&shop={{ shop.id }}&type=&name_search=&search=">click here</a>.</small>
+    <div class="card-header d-flex justify-content-between align-items-start">
+      <h5 class="mb-0">Accounts</h5>
+      <div class="d-flex gap-2">
+        <a href="{% url 'manager:add-account' shop.pk %}" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Account</span>
+        </a>
+      </div>
     </div>
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
             <tr>
-              <th>Transaction Date</th>
-              <th>Name</th>
-              <th>Remarks</th>
-              <th class="text-end">DEBIT</th>
-              <th class="text-end">CREDIT</th>
-              <th>Created By</th>
+              <th>Tamil Name</th>
+              <th>English Name</th>
+              <th>Account Type</th>
+              <th>Account Group</th>
+              <th class="text-center">Balance</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {% for transaction in transactions_list %}
+            {% for account in accounts_list %}
             <tr>
-              <td>{{ transaction.transaction_dt|date:"d-m-Y" }} <small class="text-muted"> {{ transaction.transaction_dt|date:"H:i:s" }} </small></td>
-              <td>{{ transaction.name|default:"-" }}</td>
-              <td>{{ transaction.remarks|default:"-" }}</td>
-              {% if transaction.tr_type == 'DEBIT' %}
-                <td class="text-danger text-end">{{ transaction.amount }}</td>
-                <td class="text-end"></td>
+              <td><a href="{% url 'manager:account_info' account.pk %}" style="cursor:pointer; text-decoration: none; color: inherit;">{{account.t_name}}</a></td>
+              <td><a href="{% url 'manager:account_info' account.pk %}" style="cursor:pointer; text-decoration: none; color: inherit;">{{account.e_name}}</a></td>
+              <td>{{account.acc_type.t_name}}</td>
+              <td>{{account.group_name}}</td>
+              {% if account.balance >= 0.00 %}
+                <td class="text-success fw-bold text-end">{{ account.balance|indian_format }} CR</td>
               {% else %}
-                <td class="text-end"></td>
-                <td class="text-success text-end">{{ transaction.amount }}</td>
+                <td class="text-danger fw-bold text-end">{{ account.balance|indian_format }} DB</td>
               {% endif %}
-              <td>{{ transaction.created_by.username|default:"-" }}</td>
               <td>
                 <div class="d-flex gap-1">
                   {% if is_admin %}
-                  <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Transaction">
+                  <a href="{% url 'manager:account_edit' account.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Account">
                     <i class="fa-solid fa-pencil"></i>
                   </a>
-                  <a href="{% url 'entries:delete_transaction' transaction.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Transaction">
+                  <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Account">
                     <i class="fa-solid fa-trash"></i>
                   </a>
                   {% endif %}
@@ -152,7 +143,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="8" class="text-center text-muted">No transactions found</td>
+              <td colspan="6" class="text-center text-muted">No Accounts found</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -224,4 +215,41 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* Nested dropdown styling */
+  .dropend .dropdown-menu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 0.125rem;
+  }
+
+  .dropend > .dropdown-toggle::after {
+    content: '';
+    display: inline-block;
+    margin-left: 0.5rem;
+    vertical-align: 0.255em;
+    border-left: 0.25em solid;
+    border-right: 0;
+    border-top: 0.25em solid transparent;
+    border-bottom: 0.25em solid transparent;
+  }
+
+  /* Show dropdown on hover for desktop, on click for mobile */
+  @media (hover: hover) {
+    .dropend:hover > .dropdown-menu {
+      display: block;
+    }
+  }
+
+  .dropdown-menu.show {
+    display: block;
+  }
+
+  .dropend > .dropdown-toggle[aria-expanded="true"] ~ .dropdown-menu {
+    display: block;
+  }
+</style>
+
 {% endblock %}

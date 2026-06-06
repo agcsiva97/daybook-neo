@@ -4,12 +4,24 @@
 <div class="container mt-4">
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">Users</h4>
-      {% if is_super_admin %}
-        <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
-          <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Shop</span>
-        </a>
-    {% endif %}
+      <h4 class="mb-0"><i class="fa-solid fa-store"></i> Shops</h4>
+      <div class="d-flex gap-2">
+        {% if is_super_admin %}
+          <a href="{% url 'manager:add_shop' %}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Shop</span>
+          </a>
+          <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#exportJsonModal">
+            <i class="fa-solid fa-upload"></i> <span class="d-none d-md-inline">Export Shop</span>
+          </button>
+          <button class="btn btn-sm btn-success" onclick="document.getElementById('import_file_input').click();">
+            <i class="fa-solid fa-download"></i> <span class="d-none d-md-inline">Import Shop</span>
+          </button>
+          <form id="import_form" action="{% url 'manager:import_shop' %}" method="POST" enctype="multipart/form-data" style="display:none;">
+            {% csrf_token %}
+            <input type="file" id="import_file_input" name="json_file" accept=".json" onchange="document.getElementById('import_form').submit();" />
+          </form>
+      {% endif %}
+      </div>
     </div>
     <div class="card-body">
       <div class="table-responsive">
@@ -56,4 +68,50 @@
 </div>
 <br>
 </div>
+
+<!-- Export JSON Modal -->
+<div class="modal fade" id="exportJsonModal" tabindex="-1" aria-labelledby="exportJsonModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportJsonModalLabel"><i class="fa-solid fa-file-code"></i> Export Shop as JSON</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="jsonShopSelect" class="form-label"><strong>Select Shop to Export:</strong></label>
+          <select class="form-select" id="jsonShopSelect">
+            <option value="">-- Choose a shop --</option>
+            {% for shop in shops %}
+            <option value="{{ shop.id }}">{{ shop.short_name }} - {{ shop.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="exportJsonBtn"><i class="fa-solid fa-download"></i> Export JSON</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Handle export JSON button click
+  document.getElementById('exportJsonBtn').addEventListener('click', function() {
+    const shopId = document.getElementById('jsonShopSelect').value;
+    
+    if (!shopId) {
+      alert('Please select a shop');
+      return;
+    }
+    
+    // Trigger download
+    window.location.href = `/manager/shops/${shopId}/export/`;
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportJsonModal'));
+    modal.hide();
+  });
+</script>
 {% endblock %}

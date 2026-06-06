@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% load indian_format %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <h4>
+        <i class="fa-solid fa-chart-bar"></i> Balance Sheet for FY{{ fy }}
+      </h4>
+      <div class="d-flex align-items-center gap-2">
+        <div class="btn-group" role="group">
+          <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-chart-bar"></i> <span class="d-none d-md-inline">Reports</span>
+          </button>
+          <ul class="dropdown-menu">
+            <!-- Networth Summary -->
+            <li class="dropend">
+              <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropend" role="button">
+                <i class="fa-solid fa-file-lines me-2"></i>Networth Summary
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'manager:shops_yearly_summary_pdf' %}"><i class="fa-solid fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:shops_yearly_summary_excel' %}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="{% url 'manager:shops_yearly_summary_csv' %}"><i class="fa-solid fa-file-csv me-2 text-info"></i>CSV</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <div class="input-group" style="width: 150px;">
+          <button class="btn btn-primary" onclick="changeYear(-1)">-</button>
+          <input type="text" id="year" class="form-control text-center" readonly>
+          <button class="btn btn-primary" onclick="changeYear(1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-wallet"></i> Group Summary
+      </h5>
+    </div>
+
+    <div class="card-body">
+      {% if group_summaries %}
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="table-light">
+              <tr>
+                <th>Group</th>
+                <th class="text-end">Opening Balance</th>
+                <th class="text-end">Closing Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for group in group_summaries %}
+              <tr>
+                <td class="fw-bold">{{ group.name }}</td>
+                {% if group.opening < 0 %}
+                <td class="text-end text-danger">
+                  ₹{{ group.opening|indian_format }}
+                </td>
+                {% elif group.opening == 0 %}
+                <td class="text-end text-muted">
+                  -
+                </td>
+                {% else %}
+                <td class="text-end text-success">
+                  ₹{{ group.opening|indian_format }}
+                </td>
+                {% endif %}
+                {% if group.closing < 0 %}
+                <td class="text-end text-danger">
+                  ₹{{ group.closing|indian_format }}
+                </td>
+                {% elif group.closing == 0 %}
+                <td class="text-end text-muted">
+                  -
+                </td>
+                {% else %}
+                <td class="text-end text-success">
+                  ₹{{ group.closing|indian_format }}
+                </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+                <tr class="table-light">
+                    <td class="fw-bold">நிகர மதிப்பு </td>
+                    {% if net_worth_opening < 0 %}
+                    <td class="text-end text-danger">
+                    ₹{{ net_worth_opening|indian_format }}
+                    </td>
+                    {% elif net_worth_opening == 0 %}
+                    <td class="text-end text-muted">
+                    -
+                    </td>
+                    {% else %}
+                    <td class="text-end text-success">
+                    ₹{{ net_worth_opening|indian_format }}
+                    </td>
+                    {% endif %}
+                    {% if net_worth_closing < 0 %}
+                    <td class="text-end text-danger">
+                    ₹{{ net_worth_closing|indian_format }}
+                    </td>
+                    {% elif net_worth_closing == 0 %}
+                    <td class="text-end text-muted">
+                    -
+                    </td>
+                    {% else %}
+                    <td class="text-end text-success">
+                    ₹{{ net_worth_closing|indian_format }}
+                    </td>
+                    {% endif %}
+                </tr>
+                <tr class="table-light">
+                    <td class="fw-bold">கை இருப்பு</td>
+                    {% if cash_in_hand_opening < 0 %}
+                    <td class="text-end text-danger">
+                    ₹{{ cash_in_hand_opening|indian_format }}
+                    </td>
+                    {% elif cash_in_hand_opening == 0 %}
+                    <td class="text-end text-muted">
+                    -
+                    </td>
+                    {% else %}
+                    <td class="text-end text-success">
+                    ₹{{ cash_in_hand_opening|indian_format }}
+                    </td>
+                    {% endif %}
+                    {% if cash_in_hand_closing < 0 %}
+                    <td class="text-end text-danger">
+                    ₹{{ cash_in_hand_closing|indian_format }}
+                    </td>
+                    {% elif cash_in_hand_closing == 0 %}
+                    <td class="text-end text-muted">
+                    -
+                    </td>
+                    {% else %}
+                    <td class="text-end text-success">
+                    ₹{{ cash_in_hand_closing|indian_format }}
+                    </td>
+                    {% endif %}
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No data available for this financial year.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Net Worth Trend Chart -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fa-solid fa-chart-line me-2 text-primary"></i>Net Worth Trend
+      </h5>
+    </div>
+    <div class="card-body">
+      <div id="networthChart"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script>
+  const NETWORTH_URL = '{% url "api:networth_chart_data" %}';
+
+  const networthOptions = {
+    chart: {
+      type: 'area',
+      height: 320,
+      toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
+      zoom: { enabled: true },
+    },
+    series: [],
+    xaxis: {
+      type: 'category',
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      forceNiceScale: true,
+      labels: {
+        formatter: (val) => '₹' + Math.floor(val).toLocaleString('en-IN'),
+      },
+    },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2.5 },
+    markers: { size: 4, hover: { size: 7 } },
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 100] },
+    },
+    colors: ['#0d6efd'],
+    legend: { position: 'top', horizontalAlign: 'left' },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      y: { formatter: (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+    },
+    grid: { borderColor: 'rgba(0,0,0,0.05)', xaxis: { lines: { show: false } } },
+    noData: { text: 'Loading chart data…' },
+  };
+
+  const networthChart = new ApexCharts(document.getElementById('networthChart'), networthOptions);
+  networthChart.render();
+
+  fetch(NETWORTH_URL)
+    .then(r => r.json())
+    .then(data => {
+      networthChart.updateOptions({
+        xaxis: { categories: data.labels },
+      });
+      networthChart.updateSeries(data.series);
+    })
+    .catch(() => {
+      networthChart.updateOptions({ noData: { text: 'Failed to load chart data.' } });
+    });
+
+  // ── Year navigation ──
+  const yearInput = document.getElementById("year");
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+    window.location.href = url.toString();
+  }
+
+  // ── Nested dropdown (hover + click) ──
+  document.querySelectorAll('.dropend > .dropdown-toggle').forEach(toggle => {
+    const li = toggle.closest('.dropend');
+    const submenu = li.querySelector('.dropdown-menu');
+
+    // Position submenu to the right of the parent item
+    function positionSubmenu() {
+      const rect = li.getBoundingClientRect();
+      submenu.style.top = '0';
+      submenu.style.left = '100%';
+      submenu.style.right = 'auto';
+      submenu.style.position = 'absolute';
+      // Flip left if not enough space on right
+      if (rect.right + submenu.offsetWidth > window.innerWidth) {
+        submenu.style.left = 'auto';
+        submenu.style.right = '100%';
+      }
+    }
+
+    li.addEventListener('mouseenter', () => {
+      submenu.classList.add('show');
+      positionSubmenu();
+    });
+    li.addEventListener('mouseleave', () => {
+      submenu.classList.remove('show');
+    });
+
+    toggle.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen = submenu.classList.contains('show');
+      // Close all other submenus
+      document.querySelectorAll('.dropend .dropdown-menu.show').forEach(m => m.classList.remove('show'));
+      if (!isOpen) {
+        submenu.classList.add('show');
+        positionSubmenu();
+      }
+    });
+  });
+
+  // Close submenus when clicking outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.dropend .dropdown-menu.show').forEach(m => m.classList.remove('show'));
+  });
+</script>
+
+{% endblock %}

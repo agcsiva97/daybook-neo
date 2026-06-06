@@ -1,0 +1,80 @@
+{% extends "base-report.html" %}
+{% load static %}
+{% load indian_format %}
+
+{% block title %}Group & Type Summary - {{ shop.name }} - FY {{ fy }}{% endblock %}
+
+{% block report_title %}Group &amp; Type Summary{% endblock %}
+
+{% block report_subtitle %}
+  <p class="report-meta">
+    {{ shop.name }}{% if shop.addressline1 %} &mdash; {{ shop.addressline1 }}{% endif %}
+  </p>
+  <p class="report-meta">Financial Year: <strong>{{ fy }}</strong></p>
+{% endblock %}
+
+{% block report_content %}
+  {% for group in group_fy_data %}
+    {% if group.types %}
+    <h5 class="mt-4 mb-2 fw-bold border-bottom pb-1">{{ group.t_name }}</h5>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>Type</th>
+            <th class="text-end">Opening Balance</th>
+            <th class="text-end">Closing Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for acc_type in group.types %}
+          <tr>
+            <td>{{ acc_type.name }}</td>
+            <td class="text-end">
+              {% if acc_type.opening != 0 %}
+                &#8377; {{ acc_type.opening|indian_format }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if acc_type.closing != 0 %}
+                &#8377; {{ acc_type.closing|indian_format }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">No types</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="fw-bold table-light">
+            <td>Total &mdash; {{ group.t_name }}</td>
+            <td class="text-end" style="color:#c0392b;">&#8377; {{ group.opening|indian_format }}</td>
+            <td class="text-end" style="color:#1a7a42;">&#8377; {{ group.closing|indian_format }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+  {% empty %}
+  <p class="text-center text-muted py-4">No data available for this financial year.</p>
+  {% endfor %}
+
+  <!-- Grand Total -->
+  <div class="table-responsive mt-4">
+    <table class="table table-sm">
+      <tfoot>
+        <tr class="fw-bold table-secondary">
+          <td>Grand Total</td>
+          <td class="text-end" style="color:#c0392b;">&#8377; {{ total_opening|indian_format }}</td>
+          <td class="text-end" style="color:#1a7a42;">&#8377; {{ total_closing|indian_format }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% endblock %}
