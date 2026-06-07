@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Transaction create / update helpers
 # ──────────────────────────────────────────────────────────────
 
-def create_transaction(shop, amount, tr_type, remarks, old_balance, chosen_dt, user, account=None):
+def create_transaction(shop, amount, tr_type, remarks, old_balance, chosen_dt, user, account=None,loan_tr_type=None):
     """
     Create a new Transactions record and force its created_at to *chosen_dt*.
     Returns the created transaction instance (with refreshed created_at).
@@ -32,13 +32,14 @@ def create_transaction(shop, amount, tr_type, remarks, old_balance, chosen_dt, u
         acc=account,
         created_by=user,
         updated_by=user,
+        loan_tr_type=loan_tr_type
     )
     # Force transaction_dt (auto_now_add would override it)
     Transactions.objects.filter(pk=txn.pk).update(transaction_dt=chosen_dt)
     txn.refresh_from_db()
     logger.info(
         f"Created transaction [{txn.id}]: tr_type=[{tr_type}] | "
-        f"amount=[{amount}]"
+        f"amount=[{amount}] | loan_tr_type=[{loan_tr_type}]"
     )
     return 1
 
@@ -213,7 +214,7 @@ def _reduce_or_delete_transaction(trans, amount, user, label=""):
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
 
-def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, chosen_dt, user, account, label=""):
+def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, chosen_dt, user, account, loan_tr_type, label=""):
     """
     Same shop + same date: adjust existing transaction by delta (new - old).
     If transaction not found, create a new one with new_amount.
@@ -227,7 +228,8 @@ def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, ch
         create_transaction(
             shop=shop, amount=new_amount,
             tr_type=tr_type, remarks=remark,
-            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user, account=account
+            old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user, account=account,
+            loan_tr_type=loan_tr_type
         )
         return
 
@@ -242,7 +244,7 @@ def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, ch
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
 
-def _add_or_create_transaction(trans, amount, remark, tr_type, shop, chosen_dt, user, account, label=""):
+def _add_or_create_transaction(trans, amount, remark, tr_type, shop, chosen_dt, user, account, label="", loan_tr_type=None):
     """
     Different shop or date: add *amount* to existing transaction on new date,
     or create a fresh transaction if none exists.
@@ -257,7 +259,7 @@ def _add_or_create_transaction(trans, amount, remark, tr_type, shop, chosen_dt, 
         logger.info(f"[{label}] no existing transaction — creating new with amount=[{amount}]")
         create_transaction(
             shop=shop, amount=amount,
-            tr_type=tr_type, remarks=remark,
+            tr_type=tr_type, remarks=remark, loan_tr_type=loan_tr_type,
             old_balance=Decimal('0'), chosen_dt=chosen_dt, user=user, account=account
         )
 
@@ -580,10 +582,6 @@ def append_pawn_no_to_remark(trans, pawn_no: str, user, label=""):
 
 
 def remove_pawn_no_from_remark(trans, pawn_no: str, user, label=""):
-    """
-    Remove pawn_no from the transaction's remark list.
-    Saves the transaction. Does not delete the transaction.
-    """
     if trans is None:
         logger.warning(f"[{label}] transaction not found — cannot remove pawn_no=[{pawn_no}]")
         return
@@ -591,18 +589,48 @@ def remove_pawn_no_from_remark(trans, pawn_no: str, user, label=""):
     base, pawn_nos = _parse_pawn_nos(trans.remarks)
     if pawn_no in pawn_nos:
         pawn_nos.remove(pawn_no)
-        trans.remarks = _build_remark(base, pawn_nos)
+        if len(pawn_nos) == 0:
+            trans.remarks = base
+        elif len(pawn_nos) == 1:
+            trans.remarks = f"{base} [{pawn_nos[0]}]" if base else f"[{pawn_nos[0]}]"
+        else:
+            trans.remarks = f"{base} [{pawn_nos[0]} - {pawn_nos[-1]}]" if base else f"[{pawn_nos[0]} - {pawn_nos[-1]}]"
         trans.updated_by = user
         trans.save()
-        logger.info(f"[{label}] removed pawn_no=[{pawn_no}] from trans id=[{trans.id}] remarks=[{trans.remarks}]")
+        logger.info(f"[{label}] removed pawn_no=[{pawn_no}] remarks=[{trans.remarks}]")
     else:
-        logger.info(f"[{label}] pawn_no=[{pawn_no}] not found in trans id=[{trans.id}] remarks — skipping")
+        logger.info(f"[{label}] pawn_no=[{pawn_no}] not found in trans id=[{trans.id}] — skipping")
 
 def is_loan_transaction(remark: str) -> bool:
     """
     Determine if a transaction remark indicates a loan-related transaction.
     This is a simple heuristic based on the presence of certain keywords.
     """
-    loan_keywords = ['loan principal', 'loan interest', 'release principal', 'release interest']
+    loan_keywords = ['lp', 'li', 'rp', 'ri']
     remark_lower = remark.lower()
     return any(keyword in remark_lower for keyword in loan_keywords)
+
+def append_pawn_no_range_to_remark(trans, pawn_no: str, user, label=""):
+    """
+    Add pawn_no to the transaction's remark list.
+    Remark stores first and last pawn_no as a range: [A100 - A200]
+    If only one pawn_no exists, stored as: [A100]
+    """
+    if trans is None:
+        logger.warning(f"[{label}] transaction not found — cannot append pawn_no=[{pawn_no}]")
+        return
+
+    base, pawn_nos = _parse_pawn_nos(trans.remarks)
+    if pawn_no not in pawn_nos:
+        pawn_nos.append(pawn_no)
+
+    # Store only first and last
+    if len(pawn_nos) == 1:
+        range_str = pawn_nos[0]
+    else:
+        range_str = f"{pawn_nos[0]} - {pawn_nos[-1]}"
+
+    trans.remarks = f"{base} [{range_str}]" if base else f"[{range_str}]"
+    trans.updated_by = user
+    trans.save()
+    logger.info(f"[{label}] updated remarks=[{trans.remarks}] for trans id=[{trans.id}]")

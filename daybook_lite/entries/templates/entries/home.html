@@ -114,7 +114,16 @@
             <div class="row">
               <div class="col">
                 <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
-                {{ form.shop }}
+                {% comment %} {{ form.shop }} {% endcomment %}
+                <select name="shop" class="form-select" id="id_shop" required="">
+                  {% if default_shop.value == "" %}
+                    <option value="">-- Select Shop --</option>
+                  {% endif %}
+                  {% for shop in all_shops %}
+                    <option value="{{ shop.id }}" {% if default_shop and shop.short_name == default_shop.value %} selected {% endif %}>{{ shop.short_name }}</option>
+                  {% endfor %}
+                </select>
+
                 {% if form.shop.errors %}<div class="text-danger small">{{ form.shop.errors|striptags }}</div>{% endif %}
               </div>
               <div class="col">
@@ -123,6 +132,11 @@
                 {% if form.acc.errors %}<div class="text-danger small">{{ form.acc.errors|striptags }}</div>{% endif %}
               </div>
             </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
+            {{ form.remarks }}
+            {% if form.remarks.errors %}<div class="text-danger small">{{ form.remarks.errors|striptags }}</div>{% endif %}
           </div>
           <div class="mb-3">
             <div class="row">
@@ -136,11 +150,7 @@
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="{{ form.remarks.id_for_label }}">Re<u>m</u>arks</label>
-            {{ form.remarks }}
-            {% if form.remarks.errors %}<div class="text-danger small">{{ form.remarks.errors|striptags }}</div>{% endif %}
-          </div>
+          
           {% if form.non_field_errors %}
             <div class="text-danger small mb-2">{{ form.non_field_errors|striptags }}</div>
           {% endif %}
@@ -307,6 +317,13 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && e.key === '2') {
+        e.preventDefault();
+        window.location.href = "{% url 'entries:add_entries' %}";
+    }
+});
+
 // Transaction form - dynamically load accounts based on shop selection
 document.addEventListener('DOMContentLoaded', function() {
     const transShop = document.getElementById('id_shop');
@@ -314,9 +331,34 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (!transShop || !transAccount) return;
 
-    transAccount.disabled = true;
-    transAccount.innerHTML = '<option value="">First select a shop</option>';
-    
+    if (transShop.value) {
+      const shopId = transShop.value;
+        // Fetch accounts for selected shop
+        fetch(`/api/shops/${shopId}/accounts/`)
+            .then(response => response.json())
+            .then(data => {
+                transAccount.innerHTML = '';
+                transAccount.disabled = false;
+                
+                if (data.length === 0) {
+                    transAccount.innerHTML = '<option value="">No accounts available for this shop</option>';
+                    transAccount.disabled = true;
+                } else {
+                    data.forEach(account => {
+                        const option = new Option(account.t_name, account.id);
+                        transAccount.add(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching accounts:', error);
+                transAccount.innerHTML = '<option value="">Error loading accounts</option>';
+                transAccount.disabled = true;
+            });
+    } else {
+      transAccount.disabled = true;
+      transAccount.innerHTML = '<option value="">First select a shop</option>';
+    }
     transShop.addEventListener('change', function() {
         const shopId = this.value;
         

@@ -35,7 +35,14 @@
                   <input type="hidden" name="shop" value="{{ shop.id }}">
                   {% endif %}
                 {% else %}
-                  {{ form.shop }}
+                  <select name="shop" class="form-select" id="id_shop" required="">
+                    {% if default_shop_short_name.value == "" %}
+                      <option value="">-- Select Shop --</option>
+                    {% endif %}
+                    {% for shop in all_shops %}
+                      <option value="{{ shop.id }}" {% if default_shop_short_name and shop.short_name == default_shop_short_name.value %} selected {% endif %}>{{ shop.short_name }}</option>
+                    {% endfor %}
+                  </select>
                 {% endif %}
                 {% if form.shop.errors %}
                   <div class="text-danger small">{{ form.shop.errors|striptags }}</div>

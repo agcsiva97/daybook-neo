@@ -81,6 +81,13 @@
   }
 }
 
+td, th {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Make table text smaller */
 .table-responsive table {
   font-size: 0.85rem;
@@ -152,8 +159,13 @@
           <select class="form-select" id="shop" name="shop">
             <option value="">All Shops</option>
             {% for shop in all_shops %}
-            <option value="{{ shop.id }}" {% if shop_filter == shop.id|stringformat:"s" %}selected{% endif %}>
-              {{ shop.name }}
+            <option value="{{ shop.id }}"
+                {% if shop_filter == shop.id|stringformat:"s" %}
+                    selected
+                {% elif not shop_filter and shop.short_name == default_shop_short_name.value %}
+                    selected
+                {% endif %}>
+                {{ shop.name }}
             </option>
             {% endfor %}
           </select>
@@ -293,9 +305,9 @@
               <th scope="col" class="text-end">DEBIT</th>
               <th scope="col" class="text-end">CREDIT</th>
               {% comment %} <th scope="col" class="text-end">Old Balance</th>
-              <th scope="col" class="text-end">New Balance</th> {% endcomment %}
+              <th scope="col" class="text-end">New Balance</th> 
               <th class="screen-only" scope="col">Created By</th>
-              <th class="screen-only" scope="col">Updated By</th>
+              <th class="screen-only" scope="col">Updated By</th>{% endcomment %}
               <th class="screen-only" scope="col">Actions</th>
             </tr>
           </thead>

@@ -99,7 +99,7 @@ class Configuration(models.Model):
         LOAN_ORIENTATION = 'LOAN_ORIENTATION',   'Loan Orientation'
         DEN_PURGE_DAYS = 'DEN_PURGE_DAYS', 'Denomination Purge Days'
         SESSION_TIMEOUT = 'SESSION_TIMEOUT', 'Session Timeout in Seconds'
-        ACTIVITY_PURGE_DAYS = 'ACTIVITY_PURGE_DAYS', 'Activity Purge Days'
+        DEFAULT_SHOP = 'DEFAULT_SHOP', 'Default Shop short name'
 
     # Default values for each key — blank unless specified
     DEFAULTS = {
@@ -111,7 +111,7 @@ class Configuration(models.Model):
         Key.LOAN_ORIENTATION: 'Portrait',
         Key.DEN_PURGE_DAYS: '7',
         Key.SESSION_TIMEOUT: '1800',
-        Key.ACTIVITY_PURGE_DAYS: '7'
+        Key.DEFAULT_SHOP: ''
     }
 
     # Maps each key to its group
@@ -124,7 +124,7 @@ class Configuration(models.Model):
         Key.LOAN_ORIENTATION: Group.DBK,
         Key.DEN_PURGE_DAYS: Group.DBK,
         Key.SESSION_TIMEOUT: Group.APP,
-        Key.ACTIVITY_PURGE_DAYS: Group.APP,
+        Key.DEFAULT_SHOP: Group.APP,
     }
 
     group = models.CharField(max_length=50, choices=Group.choices)

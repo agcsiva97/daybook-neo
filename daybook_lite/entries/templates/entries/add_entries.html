@@ -26,60 +26,70 @@
               </div>
               <div class="col">
                 <label class="form-label" for="{{ loan_form.shop.id_for_label }}">Shop</label>
-                {{ loan_form.shop }}
+                {% comment %} {{ loan_form.shop }} {% endcomment %}
+                <select name="shop" class="form-control" id="loan_shop" required="">
+                  {% if default_shop_short_name.value == "" %}
+                    <option value="">-- Select Shop --</option>
+                  {% endif %}                  
+                  {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if shop.short_name == default_shop_short_name.value %} selected {% endif %}>{{ shop.short_name }}</option>
+                  {% endfor %}
+                </select>
                 {% if loan_form.shop.errors %}
                   <div class="text-danger small">{{ loan_form.shop.errors|striptags }}</div>
                 {% endif %}
-              </div>
-              <div class="col">
-                <label class="form-label" for="{{ loan_form.ledger.id_for_label }}">Ledger</label>
-                {{ loan_form.ledger }}
-                {% if loan_form.ledger.errors %}
-                  <div class="text-danger small">{{ loan_form.ledger.errors|striptags }}</div>
-                {% endif %}
-              </div>              
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="row">
-              <div class="col">
-                <label class="form-label" for="{{ loan_form.pawn_no.id_for_label }}">Pawn No</label>
-                {{ loan_form.pawn_no }}
-                {% if loan_form.pawn_no.errors %}
-                  <div class="text-danger small">{{ loan_form.pawn_no.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col">
-                <label class="form-label" for="{{ loan_form.principal.id_for_label }}">Principal</label>
-                {{ loan_form.principal }}
-                {% if loan_form.principal.errors %}
-                  <div class="text-danger small">{{ loan_form.principal.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col">
-                <label class="form-label" for="{{ loan_form.interest.id_for_label }}">Intrest</label>
-                {{ loan_form.interest }}
-                {% if loan_form.interest.errors %}
-                  <div class="text-danger small">{{ loan_form.interest.errors|striptags }}</div>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="row">
-              <div class="col-md-4 ms-auto" style="margin-right: 5px;">
-                <button type="button" class="cust-button" onclick="submitLoan('LOAN')"><i class="fa-solid fa-save"></i> Save</button>
-              </div>
+              </div>             
             </div>
           </div>
         </div>
+        <!-- Loan Rows Container -->
+      <div id="loan_rows">
+        <div class="loan-row row mb-2 align-items-end">
+          <div class="col">
+            <label class="form-label">Ledger</label>
+            <select name="ledger[]" class="form-control ledger-select" required>
+              <option value="">Select Ledger</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="form-label">Pawn No</label>
+            <input type="text" name="pawn_no[]" class="form-control" placeholder="Pawn No" maxlength="10" required>
+          </div>
+          <div class="col">
+            <label class="form-label">Principal</label>
+            <input type="number" name="principal[]" class="form-control" step="0.01" placeholder="0.00" required>
+          </div>
+          <div class="col">
+            <label class="form-label">Interest</label>
+            <input type="number" name="interest[]" class="form-control" step="0.01" placeholder="0.00" required>
+          </div>
+          <div class="col-auto">
+              <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn" onclick="removeRow(this)" disabled>
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+        </div>
+      </div>
+
+<div class="row mt-2 mb-2">
+  <div class="col">
+    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLoanRow()">
+      <i class="fa-solid fa-plus"></i> Add
+    </button>
+  </div>
+  <div class="col-auto" style="margin-right: 5px;">
+    <button type="button" class="cust-button" onclick="submitBulkLoan('LOAN')">
+      <i class="fa-solid fa-save"></i> Save
+    </button>
+  </div>
+</div>
         {% if loan_form.non_field_errors %}
           <div class="text-danger small mb-2">{{ loan_form.non_field_errors|striptags }}</div>
         {% endif %}
       </div>
     </div>
     <div class="col-md-3 d-flex flex-column">
-      <h5 class="mb-0" style="margin-bottom: 8px !important;"><i class="fa-solid fa-file-lines"></i> Loans</h5>
+      <h5 class="mb-0" style="margin-bottom: 8px !important;"><a href="{% url 'entries:loans' %}"><i class="fa-solid fa-file-lines"></i> Loans</a></h5>
       <div class="transaction-list" id="transactionList" style="overflow-y: auto; min-height: 0;">
         {% for loan in loans %}
         <div class="transaction-item">
@@ -120,42 +130,56 @@
               <div class="col">
                 <label class="form-label" for="release_shop">Shop</label>
                 <select class="form-control" id="release_shop" name="release_shop">
-                  <option value="">-- Select Shop --</option>
+                  {% if default_shop_short_name.value == "" %}
+                    <option value="">-- Select Shop --</option>
+                  {% endif %}
                   {% for shop in shops %}
-                    <option value="{{ shop.id }}">{{ shop.short_name }}</option>
+                    <option value="{{ shop.id }}" {% if shop.short_name == default_shop_short_name.value %} selected {% endif %}>{{ shop.short_name }}</option>
                   {% endfor %}
                 </select>
               </div>
-              <div class="col">
-                <label class="form-label" for="release_ledger">Ledger</label>
-                <select class="form-control" id="release_ledger" name="release_ledger">
-                  <option value="">First select a shop</option>
-                </select>
-              </div>
             </div>
           </div>
-          <div class="mb-3">
-            <div class="row">
-              <div class="col">
-                <label class="form-label" for="release_pawn_no">Pawn No</label>
-                <input type="text" name="release_pawn_no" id="release_pawn_no" class="form-control" placeholder="Enter Pawn No" maxlength="10">
-              </div>
-              <div class="col">
-                <label class="form-label" for="release_principal">Principal</label>
-                <input type="number" name="release_principal" id="release_principal" class="form-control" step="0.01" placeholder="0.00">
-              </div>
-              <div class="col">
-                <label class="form-label" for="release_interest">Interest</label>
-                <input type="number" name="release_interest" id="release_interest" class="form-control" step="0.01" placeholder="0.00">
-              </div>
+        </div>
+        <!-- Loan Rows Container -->
+        <div id="release_rows">
+          <div class="loan-row row mb-2 align-items-end">
+            <div class="col">
+              <label class="form-label">Ledger</label>
+              <select name="ledger[]" class="form-control ledger-select" required>
+                <option value="">Select Ledger</option>
+              </select>
             </div>
+            <div class="col">
+              <label class="form-label">Pawn No</label>
+              <input type="text" name="pawn_no[]" class="form-control" placeholder="Pawn No" maxlength="10" required>
+            </div>
+            <div class="col">
+              <label class="form-label">Principal</label>
+              <input type="number" name="principal[]" class="form-control" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="col">
+              <label class="form-label">Interest</label>
+              <input type="number" name="interest[]" class="form-control" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn" onclick="removeRow(this)" disabled>
+                  <i class="fa-solid fa-times"></i>
+                </button>
+              </div>
           </div>
-          <div class="mb-3">
-            <div class="row">
-              <div class="col-md-4 ms-auto" style="margin-right: 5px;">
-                <button type="button" class="cust-button" onclick="submitLoan('RELEASE')"><i class="fa-solid fa-save"></i> Save</button>
-              </div>
-            </div>
+        </div>
+
+        <div class="row mt-2 mb-2">
+          <div class="col">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLoanRow('release')">
+              <i class="fa-solid fa-plus"></i> Add
+            </button>
+          </div>
+          <div class="col-auto" style="margin-right: 5px;">
+            <button type="button" class="cust-button" onclick="submitBulkLoan('RELEASE')">
+              <i class="fa-solid fa-save"></i> Save
+            </button>
           </div>
         </div>
         {% if release_form.non_field_errors %}
@@ -228,6 +252,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const loanShop = document.getElementById('loan_shop');
     const loanLedger = document.getElementById('loan_ledger');
     if (loanShop && loanLedger) {
+        if (loanShop.value) {
+            // Trigger change event on page load if a shop is pre-selected (e.g. default shop)
+            loadLedgers(loanShop.value, loanLedger);
+        } else {
+            loanLedger.innerHTML = '<option value="">First select a shop</option>';
+            loanLedger.disabled = true;
+        }
         loanShop.addEventListener('change', function() {
             loadLedgers(this.value, loanLedger);
         });
@@ -237,6 +268,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const releaseShop = document.getElementById('release_shop');
     const releaseLedger = document.getElementById('release_ledger');
     if (releaseShop && releaseLedger) {
+        if (releaseShop.value) {
+            // Trigger change event on page load if a shop is pre-selected (e.g. default shop)
+            loadLedgers(releaseShop.value, releaseLedger);
+        } else {
+            releaseLedger.innerHTML = '<option value="">First select a shop</option>';
+            releaseLedger.disabled = true;
+        }
         releaseShop.addEventListener('change', function() {
             loadLedgers(this.value, releaseLedger);
         });
@@ -340,6 +378,184 @@ function submitLoan(loanType) {
     document.body.appendChild(form);
     form.submit();
 }
+
+function addLoanRow(formType = 'loan') {
+    const containerId = formType === 'loan' ? 'loan_rows' : 'release_rows';
+    const container   = document.getElementById(containerId);
+    const firstRow    = container.querySelector('.loan-row');
+    const newRow      = firstRow.cloneNode(true);
+
+    // Clear values in cloned row
+    newRow.querySelectorAll('input').forEach(i => i.value = '');
+    newRow.querySelector('select').innerHTML = '<option value="">Select Ledger</option>';
+
+    // Show remove button on all rows except first
+    newRow.querySelector('.remove-row-btn').style.display = '';
+
+    // Load ledgers into cloned row's select
+    const shopId = document.getElementById(formType === 'loan' ? 'loan_shop' : 'release_shop').value;
+    if (shopId) {
+        const ledgerSelect = newRow.querySelector('select[name="ledger[]"]');
+        loadLedgersIntoSelect(shopId, ledgerSelect, null);
+    }
+
+    container.appendChild(newRow);
+    updateRemoveButtons(containerId);
+}
+
+function removeRow(btn) {
+    const row       = btn.closest('.loan-row');
+    const container = row.parentElement;
+    if (container.querySelectorAll('.loan-row').length > 1) {
+        row.remove();
+    }
+    updateRemoveButtons(container.id);
+}
+
+function updateRemoveButtons(containerId) {
+    const container = document.getElementById(containerId);
+    const rows      = container.querySelectorAll('.loan-row');
+    rows.forEach((row, idx) => {
+        const btn = row.querySelector('.remove-row-btn');
+        btn.style.display = '';
+        btn.disabled = (rows.length === 1);
+    });
+}
+
+function loadLedgersIntoSelect(shopId, selectEl, selectedId) {
+    selectEl.innerHTML = '<option value="">Loading...</option>';
+    selectEl.disabled  = true;
+    if (!shopId) {
+        selectEl.innerHTML = '<option value="">Select Ledger</option>';
+        return;
+    }
+    fetch(`/api/shops/${shopId}/ledgers/`)
+        .then(r => r.json())
+        .then(data => {
+            selectEl.innerHTML = '';
+            selectEl.disabled  = false;
+            if (data.length === 0) {
+                selectEl.innerHTML = '<option value="">No ledgers</option>';
+                selectEl.disabled  = true;
+            } else {
+                data.forEach(l => {
+                    const opt      = new Option(l.name, l.id);
+                    opt.selected   = (selectedId && String(l.id) === String(selectedId));
+                    selectEl.add(opt);
+                });
+            }
+        })
+        .catch(() => {
+            selectEl.innerHTML = '<option value="">Error loading</option>';
+            selectEl.disabled  = true;
+        });
+}
+
+// On shop change, reload ALL ledger selects in that form's rows
+function onShopChange(formType) {
+    const shopId      = document.getElementById(formType === 'loan' ? 'loan_shop' : 'release_shop').value;
+    const containerId = formType === 'loan' ? 'loan_rows' : 'release_rows';
+    document.querySelectorAll(`#${containerId} select[name="ledger[]"]`).forEach(sel => {
+        loadLedgersIntoSelect(shopId, sel, null);
+    });
+}
+
+function submitBulkLoan(loanType) {
+    const isLoan      = loanType === 'LOAN';
+    const containerId = isLoan ? 'loan_rows' : 'release_rows';
+    const shopId      = document.getElementById(isLoan ? 'loan_shop' : 'release_shop').value;
+    const loanDate    = document.getElementById(isLoan ? 'loan_date' : 'release_date').value;
+    const loanTime    = document.getElementById(isLoan ? 'loan_time' : 'release_time').value;
+
+    if (!loanDate) {
+        alert('Please select a Date');
+        return;
+    }
+    if (!shopId) {
+        alert('Please select a Shop');
+        return;
+    }
+
+    const rows     = document.querySelectorAll(`#${containerId} .loan-row`);
+    const pawnNos  = [];
+    const ledgers  = [];
+    const principals = [];
+    const interests  = [];
+
+    let valid = true;
+    rows.forEach((row, idx) => {
+        const pawnNo    = row.querySelector('input[name="pawn_no[]"]').value.trim();
+        const ledger    = row.querySelector('select[name="ledger[]"]').value;
+        const principal = row.querySelector('input[name="principal[]"]').value.trim();
+        const interest  = row.querySelector('input[name="interest[]"]').value.trim();
+
+        if (!pawnNo)    { alert(`Row ${idx + 1}: Enter Pawn No`);    valid = false; return; }
+        if (!ledger)    { alert(`Row ${idx + 1}: Select Ledger`);    valid = false; return; }
+        if (!principal) { alert(`Row ${idx + 1}: Enter Principal`);  valid = false; return; }
+        if (!interest)  { alert(`Row ${idx + 1}: Enter Interest`);   valid = false; return; }
+
+        pawnNos.push(pawnNo);
+        ledgers.push(ledger);
+        principals.push(principal);
+        interests.push(interest);
+    });
+
+    if (!valid) return;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const form      = document.createElement('form');
+    form.method     = 'POST';
+    form.action     = '{% url "entries:bulk_loan" %}';
+
+    const addHidden = (name, value) => {
+        const el   = document.createElement('input');
+        el.type    = 'hidden';
+        el.name    = name;
+        el.value   = value;
+        form.appendChild(el);
+    };
+
+    addHidden('csrfmiddlewaretoken', csrfToken);
+    addHidden('loan_type', loanType);
+    addHidden('shop',      shopId);
+    addHidden('date',      loanDate);
+    addHidden('time',      loanTime);
+
+    pawnNos.forEach(v    => addHidden('pawn_no[]',   v));
+    ledgers.forEach(v    => addHidden('ledger[]',    v));
+    principals.forEach(v => addHidden('principal[]', v));
+    interests.forEach(v  => addHidden('interest[]',  v));
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Init on page load — load ledgers into first row of each form
+document.addEventListener('DOMContentLoaded', function () {
+    applyHeights();
+    window.addEventListener('resize', applyHeights);
+
+    const loanShop    = document.getElementById('loan_shop');
+    const releaseShop = document.getElementById('release_shop');
+
+    if (loanShop) {
+        if (loanShop.value) {
+            document.querySelectorAll('#loan_rows select[name="ledger[]"]').forEach(sel => {
+                loadLedgersIntoSelect(loanShop.value, sel, null);
+            });
+        }
+        loanShop.addEventListener('change', () => onShopChange('loan'));
+    }
+
+    if (releaseShop) {
+        if (releaseShop.value) {
+            document.querySelectorAll('#release_rows select[name="ledger[]"]').forEach(sel => {
+                loadLedgersIntoSelect(releaseShop.value, sel, null);
+            });
+        }
+        releaseShop.addEventListener('change', () => onShopChange('release'));
+    }
+});
 </script>
 
 {% endblock %}

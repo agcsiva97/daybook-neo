@@ -211,16 +211,25 @@
   const networthChart = new ApexCharts(document.getElementById('networthChart'), networthOptions);
   networthChart.render();
 
-  fetch(NETWORTH_URL)
+// Add loader element inside card body before chart div
+document.getElementById('networthChart').insertAdjacentHTML(
+    'beforebegin',
+    '<div id="networthLoader" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2 small">Loading chart data…</p></div>'
+);
+document.getElementById('networthChart').style.display = 'none';
+
+fetch(NETWORTH_URL)
     .then(r => r.json())
     .then(data => {
-      networthChart.updateOptions({
-        xaxis: { categories: data.labels },
-      });
-      networthChart.updateSeries(data.series);
+        networthChart.updateOptions({ xaxis: { categories: data.labels } });
+        networthChart.updateSeries(data.series);
+        document.getElementById('networthLoader').remove();
+        document.getElementById('networthChart').style.display = '';
     })
     .catch(() => {
-      networthChart.updateOptions({ noData: { text: 'Failed to load chart data.' } });
+        networthChart.updateOptions({ noData: { text: 'Failed to load chart data.' } });
+        document.getElementById('networthLoader').remove();
+        document.getElementById('networthChart').style.display = '';
     });
 
   // ── Year navigation ──
