@@ -1958,6 +1958,10 @@ def activity_logs(request):
     
     if selected_user:
         logs = logs.filter(user__id=selected_user)
+    
+    paginator = Paginator(logs, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'manager/activity_logs.html', {
         'nav_title': 'Activity Logs',
@@ -1967,6 +1971,7 @@ def activity_logs(request):
         'app_name': 'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'page_obj': page_obj,
     })
 
 def sync_grp_typ(request,pk):

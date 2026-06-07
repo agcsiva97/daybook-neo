@@ -10,6 +10,7 @@ urlpatterns = [
     # path('transfer/', views.transfer, name='transfer'),
     path('loan/', views.loan, name='loan'),
     path('loans/', views.loans, name='loans'),
+    path('loan/bulk/', views.bulk_loan, name='bulk_loan'),
     path('loans/<str:pk>/edit/', views.edit_loan, name='edit_loan'),
     path('loans/<str:pk>/delete/', views.delete_loan, name='delete_loan'),
     path('loans/<str:pk>/history/', views.loan_history, name='loan_history'),

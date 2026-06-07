@@ -53,6 +53,7 @@ class Transactions(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_tally = models.BooleanField(default=False)
+    loan_tr_type = models.CharField(max_length=2, blank=True)
     history = HistoricalRecords()
 
     class Meta:

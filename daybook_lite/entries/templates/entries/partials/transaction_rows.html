@@ -38,9 +38,9 @@
     <td class="text-success text-end">{{ transaction.amount|indian_format }}</td>
     {% endif %}
     {% comment %} <td class="text-end">{{ transaction.old_balance|default:"-" }}</td>
-    <td class="text-end">{{ transaction.new_balance|default:"-" }}</td> {% endcomment %}
+    <td class="text-end">{{ transaction.new_balance|default:"-" }}</td> 
     <td class="screen-only">{{ transaction.created_by.username }}</td>
-    <td class="screen-only">{{ transaction.updated_by.username }}</td>
+    <td class="screen-only">{{ transaction.updated_by.username }}</td>{% endcomment %}
     <td class="screen-only">
       <a href="{% url 'entries:edit_transaction' transaction.pk %}" class="btn btn-sm btn-outline-primary">
         <i class="fa-solid fa-pen-to-square"></i>

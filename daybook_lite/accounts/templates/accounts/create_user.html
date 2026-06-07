@@ -68,7 +68,14 @@
             </div>
             <div class="mb-3">
               <label class="form-label" for="{{ form.group.id_for_label }}"><i class="fa-solid fa-users"></i> User Group</label>
-              {{ form.group }}
+              <select name="group" class="form-select" required="" id="id_group">
+                <option value="" selected="">---------</option>
+                <option value="1">Admin</option>
+                <option value="2">Staff</option>
+                {% if is_super_admin %}
+                  <option value="3">Super Admin</option>
+                {% endif %}
+              </select>
               {% if form.group.errors %}
                 <div class="text-danger small">{{ form.group.errors|striptags }}</div>
               {% endif %}

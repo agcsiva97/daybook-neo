@@ -4,10 +4,10 @@
 <div class="container mt-4">
   <div class="no-print">
     <div class="d-flex justify-content-between align-items-center">
-      <a href="?date={{ prev_day|date:'Y-m-d' }}&shop={{ shop.id }}" class="btn btn-outline-secondary">
+      <a href="?date={{ prev_day|date:'Y-m-d' }}&shop={{ selected_shop }}" class="btn btn-outline-secondary">
           <i class="bi bi-chevron-left"></i> {{ prev_day }}
       </a>
-      <a href="?date={{ next_day|date:'Y-m-d' }}&shop={{ shop.id }}" class="btn btn-outline-secondary">
+      <a href="?date={{ next_day|date:'Y-m-d' }}&shop={{ selected_shop }}" class="btn btn-outline-secondary">
           {{ next_day }} <i class="bi bi-chevron-right"></i>
       </a>
     </div>
@@ -34,7 +34,6 @@
         <div class="col-md-5">
           <label class="form-label">Shop</label>
           <select name="shop" class="form-select">
-            <option value="">All Shops</option>
             {% for shop in all_shops %}
               <option value="{{ shop.id }}" {% if selected_shop == shop.id|stringformat:"s" %}selected{% endif %}>
                 {{ shop.name }}

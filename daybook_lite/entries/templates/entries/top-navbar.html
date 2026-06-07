@@ -12,10 +12,13 @@
       <li class="nav-item {% if nav_title == 'Home' %} active-nav {% endif %}">
         <a class="nav-link" aria-current="page" href="{% url 'entries:home' %}"><i class="fa-solid fa-house"></i> Home</a>
       </li>
-      <li class="nav-item {% if nav_title == 'Add Entries' %} active-nav {% endif %}">
+      {% comment %} <li class="nav-item {% if nav_title == 'Add Entries' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'entries:add_entries' %}"><i class="fa-solid fa-file-circle-plus"></i> Add Loans</a>
+      </li> {% endcomment %}
+      <li class="nav-item {% if nav_title == 'Transactions' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:transactions' %}"><i class="fa-solid fa-list-ul"></i>Transactions</a>
       </li>
-      <li class="nav-item dropdown">
+      {% comment %} <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fa-solid fa-search"></i> Query Transactions
         </a>
@@ -23,13 +26,14 @@
           <li><a class="dropdown-item" href="{% url 'entries:loans' %}"><i class="fa-solid fa-money-bill-transfer"></i> Loan Transactions</a></li>
           <li><a class="dropdown-item" href="{% url 'entries:transactions' %}"><i class="fa-solid fa-list-ul"></i> Other Transactions</a></li>
         </ul>
+      </li> {% endcomment %}
+      <li class="nav-item {% if nav_title == 'Denomination' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:denominations' %}"><i class="fa-solid fa-coins"></i> Denomination</a>
       </li>
       <li class="nav-item {% if nav_title == 'Report' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'entries:report' %}"><i class="fa-solid fa-chart-area"></i> Report</a>
       </li>
-      <li class="nav-item {% if nav_title == 'Denomination' %} active-nav {% endif %}">
-        <a class="nav-link" href="{% url 'entries:denominations' %}"><i class="fa-solid fa-coins"></i> Denomination</a>
-      </li>
+
     </ul>
     <ul class="navbar-nav ms-auto">
       <li class="nav-item {% if nav_title == 'About' %} active-nav {% endif %}">
