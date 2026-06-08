@@ -35,10 +35,26 @@
       </li>
 
     </ul>
+    
     <ul class="navbar-nav ms-auto">
+      <li class="nav-item">
+        <select class="form-select" id="default_shop" name="default_shop" style="width:200px">
+          {% if default_shop_short_name.value == "" %} <option value="">All Shops</option> {% endif %}
+          {% for shop in all_shops %}
+          <option value="{{ shop.id }}"
+              {% if shop.short_name == default_shop_short_name.value %}
+                  selected
+              {% endif %}>
+              {{ shop.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </li>
+      <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
       <li class="nav-item {% if nav_title == 'About' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'entries:about' %}"><i class="fa-solid fa-circle-info"></i></a>
       </li>
+      <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
       {% if user and user.is_authenticated %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

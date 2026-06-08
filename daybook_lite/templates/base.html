@@ -16,9 +16,8 @@
     <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
         <!-- PNG format (modern browsers) -->
     <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
-
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
 
     <!-- For desktop shortcut / PWA on mobile -->
     <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
@@ -163,6 +162,7 @@
     <script src="{% static 'js/htmx.min.js' %}"></script>
     <script src="{% static 'js/select2.min.js' %}"></script>
     <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
       if (typeof htmx === 'undefined') {
@@ -230,6 +230,45 @@ $(document).ready(function () {
 document.addEventListener('DOMContentLoaded', function () {
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
   const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+  const shopSelect = document.getElementById('default_shop');
+  if (!shopSelect) return;
+
+  shopSelect.addEventListener('change', function () {
+    const shopId = this.value;
+
+    fetch("{% url 'api:update_default_shop' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: JSON.stringify({ shop_id: shopId }),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        console.error('Failed to update shop:', data.error);
+      }
+    })
+    .catch(err => console.error('Request error:', err));
+  });
+
+  // Standard Django CSRF cookie helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      document.cookie.split(';').forEach(cookie => {
+        const [key, val] = cookie.trim().split('=');
+        if (key === name) cookieValue = decodeURIComponent(val);
+      });
+    }
+    return cookieValue;
+  }
 });
 </script>
   </body>

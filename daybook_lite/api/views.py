@@ -3,6 +3,7 @@ from django.db.models import Sum, Q
 from datetime import datetime, timedelta, date as date_type
 from os import name
 import logging
+import json
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 
@@ -16,6 +17,7 @@ from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.timezone import get_current_timezone
+from django.views.decorators.http import require_POST
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -49,6 +51,37 @@ def get_session_timeout(request):
     
     return JsonResponse({'timeout_seconds': timeout_seconds})
 
+@login_required
+@require_POST
+def update_default_shop(request):
+    try:
+        data = json.loads(request.body)
+        shop_id = data.get('shop_id', '')
+
+        # Resolve short_name from shop_id
+        if shop_id:
+            try:
+                shop = Shop.objects.get(id=shop_id)
+                short_name = shop.short_name
+            except Shop.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Shop not found'}, status=404)
+        else:
+            short_name = ''  # "All Shops" selected
+
+        config, _ = Configuration.objects.get_or_create(
+            key=Configuration.Key.DEFAULT_SHOP,
+            defaults={
+                'group': Configuration.Group.APP,
+                'value': short_name,
+            }
+        )
+        config.value = short_name
+        config.save()
+
+        return JsonResponse({'success': True, 'short_name': short_name})
+
+    except (json.JSONDecodeError, Exception) as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 # ──────────────────────────────────────────────────────────────
 # Shop CRUD API endpoints

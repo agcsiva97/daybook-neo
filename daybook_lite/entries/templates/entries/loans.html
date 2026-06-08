@@ -113,18 +113,23 @@
           <label for="to_date" class="form-label">To Date</label>
           <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
         </div>
-        <div class="col-md-1">
+        <div class="col-md-2">
           <label for="shop" class="form-label">Shop</label>
           <select class="form-select" id="shop" name="shop">
-            <option value="">All Shops</option>
+            <option value="all">All Shops</option>
             {% for shop in all_shops %}
-            <option value="{{ shop.id }}" {% if shop_filter == shop.id|stringformat:"s" %}selected{% endif %}>
-              {{ shop.short_name }}
+            <option value="{{ shop.id }}"
+                {% if shop_filter == shop.id|stringformat:"s" %}
+                    selected
+                {% elif not shop_filter and shop.short_name == default_shop_short_name.value %}
+                    selected
+                {% endif %}>
+                {{ shop.name }}
             </option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-1">
+        <div class="col-md-2">
           <label for="ledger" class="form-label">Ledger</label>
           <select class="form-select" id="ledger" name="ledger">
             <option value="">All Ledgers</option>
@@ -143,12 +148,14 @@
             <option value="RELEASE" {% if type_filter == 'RELEASE' %}selected{% endif %}>Release</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label for="search" class="form-label">Search Pawn No</label>
           <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search pawn no...">
         </div>
-        <div class="col-md-1 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i> Filter</button>
+        <div class="col-md-2 col-lg-2 d-flex align-items-end ms-auto d-grid gap-2">
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="fa-solid fa-filter"></i> Filter
+          </button>
         </div>
       </form>
 
@@ -373,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ledgerSelect.innerHTML = '<option value="">No ledgers available for this shop</option>';
                     ledgerSelect.disabled = true;
                 } else {
-                    const option = new Option('All Ledgers', '');
+                    const option = new Option('All', '');
                     ledgerSelect.add(option);
                     data.forEach(ledger => {
                         const option = new Option(ledger.name, ledger.id);
@@ -383,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(error => {
                 console.error('Error fetching ledgers:', error);
-                ledgerSelect.innerHTML = '<option value="">Error loading ledgers</option>';
+                ledgerSelect.innerHTML = '<option value="">Select a shop</option>';
                 ledgerSelect.disabled = true;
         });
     }
@@ -407,7 +414,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ledgerSelect.innerHTML = '<option value="">No ledgers available for this shop</option>';
                     ledgerSelect.disabled = true;
                 } else {
-                    const option = new Option('All Ledgers', '');
+                    const option = new Option('All', '');
                     ledgerSelect.add(option);
                     data.forEach(ledger => {
                         const option = new Option(ledger.name, ledger.id);
