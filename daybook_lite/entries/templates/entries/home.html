@@ -116,11 +116,11 @@
                 <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
                 {% comment %} {{ form.shop }} {% endcomment %}
                 <select name="shop" class="form-select" id="id_shop" required="">
-                  {% if default_shop.value == "" %}
+                  {% if default_shop_short_name.value == "" %}
                     <option value="">-- Select Shop --</option>
                   {% endif %}
                   {% for shop in all_shops %}
-                    <option value="{{ shop.id }}" {% if default_shop and shop.short_name == default_shop.value %} selected {% endif %}>{{ shop.short_name }}</option>
+                    <option value="{{ shop.id }}" {% if default_shop_short_name and shop.short_name == default_shop_short_name.value %} selected {% endif %}>{{ shop.short_name }}</option>
                   {% endfor %}
                 </select>
 

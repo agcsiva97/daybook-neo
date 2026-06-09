@@ -7,6 +7,7 @@ app_name = 'api'
 urlpatterns = [
     # Configuration endpoints
     path('config/session-timeout/', views.get_session_timeout, name='get_session_timeout'),
+    path('config/update-default-shop/', views.update_default_shop, name='update_default_shop'),
     # Dashboard endpoints
     path('dashboard/chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
     path('dashboard/transaction-pie/', views.transaction_pie_data, name='transaction_pie_data'),

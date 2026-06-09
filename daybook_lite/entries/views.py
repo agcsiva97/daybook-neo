@@ -161,7 +161,7 @@ def home(request):
         'is_admin': is_admin(request.user),
         'form': form,
         'all_shops': all_shops,
-        'default_shop': default_shop_short_name,
+        'default_shop_short_name': default_shop_short_name,
     }
     
     return render(request, 'entries/home.html',context)
@@ -280,6 +280,7 @@ def add_entries(request):
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
         'default_shop_short_name': default_shop_short_name,
+        'all_shops': shops,
     })
 
 
@@ -293,7 +294,7 @@ def transactions(request):
     shop_filter = request.GET.get('shop')
     type_filter = request.GET.get('type')
     search_query = request.GET.get('search', '')
-    account_filter = request.GET.get('account')
+    account_filter = request.GET.getlist('account')
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
@@ -307,6 +308,9 @@ def transactions(request):
     query_params = request.GET.copy()
     query_params.pop('page', None)
     filter_query = query_params.urlencode()
+
+    if clear_filters == 'true':
+        shop_filter = 'all'
 
     # Note: No longer setting default from_date to allow users to see all data if desired
     
@@ -359,7 +363,7 @@ def transactions(request):
             )
             transactions_list = transactions_list.filter(transaction_dt__lte=to_date_dt)
     
-    if shop_filter:
+    if shop_filter != 'all':
         transactions_list = transactions_list.filter(shop_id=shop_filter)
         shop = Shop.objects.filter(pk=shop_filter).first()
     
@@ -367,7 +371,7 @@ def transactions(request):
         transactions_list = transactions_list.filter(tr_type=type_filter)
     
     if account_filter:
-        transactions_list = transactions_list.filter(acc_id=account_filter)
+        transactions_list = transactions_list.filter(acc_id__in=account_filter)
     
     if account_type_filter:
         transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
@@ -458,6 +462,7 @@ def transactions(request):
         'shop_filter': shop_filter,
         'type_filter': type_filter,
         'account_filter': account_filter,
+        'clear_filters': clear_filters,
         'account_type_filter': account_type_filter,
         'amount_value': amount_value,
         'amount_operator': amount_operator,
@@ -902,6 +907,8 @@ def export_transactions_excel(request):
 def edit_transaction(request, pk):
     """Edit an existing transaction"""
     transaction = get_object_or_404(Transactions, pk=pk)
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+    all_shops = Shop.objects.all()
 
     # ── Snapshot old values ──────────────────────────────────────────
     old_amount  = transaction.amount
@@ -1009,6 +1016,8 @@ def edit_transaction(request, pk):
         'transaction': transaction,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     })
 
 @login_required
@@ -1402,7 +1411,8 @@ def denominations(request):
     is_super_admin = request.user.is_superuser
     is_admin_group_user = request.user.groups.filter(name='Admin').exists()
     is_staff_group_user = request.user.groups.filter(name='Staff').exists()
-
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+    all_shops = Shop.objects.all()
     denominations_qs = Denomination.objects.select_related('created_by')
 
     # Admin group users and super admins can view all; staff/others can view only their own
@@ -1438,6 +1448,8 @@ def denominations(request):
         'is_admin': is_admin(request.user),
         'is_admin_group_user': is_admin_group_user,
         'is_staff_group_user': is_staff_group_user,
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     }
     return render(request, 'entries/denominations.html', context)
 
@@ -1677,7 +1689,8 @@ def edit_denomination(request, key):
     
     # Get the most recent updated_at timestamp
     updated_at = denominations.order_by('-updated_at').first().updated_at
-    
+    all_shops = Shop.objects.all().order_by('name')
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     context = {
         'nav_title': 'Denomination',
         'form': form,
@@ -1692,6 +1705,8 @@ def edit_denomination(request, key):
         'is_edit_mode': True,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     }
     return render(request, 'entries/denomination.html', context)
 
@@ -1768,7 +1783,8 @@ def view_denomination(request, key):
     
     # Get the most recent updated_at timestamp
     updated_at = denominations.order_by('-updated_at').first().updated_at
-    
+    all_shops = Shop.objects.all().order_by('name')
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     context = {
         'nav_title': 'Denomination',
         'form': form,
@@ -1783,6 +1799,8 @@ def view_denomination(request, key):
         'is_view_mode': True,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin,
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     }
     return render(request, 'entries/denomination.html', context)
 
@@ -2127,6 +2145,13 @@ def loans(request):
     query_params.pop('page', None)
     filter_query = query_params.urlencode()
 
+    if not shop_filter:
+        default_shop_short_name = Configuration.get_value(Configuration.Key.DEFAULT_SHOP, default='')
+        if default_shop_short_name:
+            default_shop = Shop.objects.filter(short_name=default_shop_short_name).first()
+            if default_shop:
+                shop_filter = str(default_shop.id)
+
     if from_date:
         try:
             from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
@@ -2141,11 +2166,9 @@ def loans(request):
         except ValueError:
             to_date = ''
     
-    if shop_filter:
+    if shop_filter != 'all':
         print(f"Filtering by shop: {shop_filter}")
         loans_list = loans_list.filter(shop_id=shop_filter)
-    elif shop_filter:
-        shop_filter = ''
 
     if ledger_filter:
         loans_list = loans_list.filter(ledger_id=ledger_filter)
@@ -2178,12 +2201,14 @@ def loans(request):
     # Get all ledgers for filter dropdown
     all_ledgers = Ledger.objects.all().order_by('name')
     all_shops = Shop.objects.all().order_by('name')
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     
     context = {
         'nav_title': 'Loan Transactions',
         'page_obj': page_obj,
         'all_ledgers': all_ledgers,
         'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
         'from_date': from_date,
         'to_date': to_date,
         'ledger_filter': ledger_filter,
@@ -2455,12 +2480,16 @@ def edit_loan(request, pk):
             }
         )
 
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+    all_shops = Shop.objects.all()
     return render(request, 'entries/edit-loan.html', {
         'nav_title': 'Loan Transactions',
         'form': form,
         'loan': loan,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     })
 
 
@@ -2567,13 +2596,16 @@ def transaction_history(request, pk):
     )
     # Exclude creation record to avoid duplication with current record
     history_records = transaction.history.all().order_by('-history_date') 
-
+    all_shops = Shop.objects.all().order_by('name')
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     context = {
         'nav_title': 'Other Transactions',
         'transaction': transaction,
         'history_records': history_records,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     }
     return render(request, 'entries/transaction_history.html', context)
 
@@ -2587,13 +2619,17 @@ def loan_history(request, pk):
         pk=pk
     )
     history_records = loan.history.all().order_by('-history_date')
-
+    all_shops = Shop.objects.all().order_by('name')
+    default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+    
     context = {
         'nav_title': 'Loan Transactions',
         'loan': loan,
         'history_records': history_records,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'all_shops': all_shops,
+        'default_shop_short_name': default_shop_short_name,
     }
     return render(request, 'entries/loan_history.html', context)
 

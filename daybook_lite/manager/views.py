@@ -519,6 +519,22 @@ def export_shop(request, pk):
         logger.error(f"Error exporting shop {pk}: {str(e)}", exc_info=True)
         return JsonResponse({'error': f'Error exporting shop: {str(e)}'}, status=500)
 
+# ── Helper to serialize a loan ───────────────────────────────
+def _serialize_loan(loan_obj):
+    return {
+        'id': loan_obj.id,
+        'pawn_no': loan_obj.pawn_no,
+        'shop_id': loan_obj.shop_id,
+        'ledger_id': loan_obj.ledger_id,
+        'type': loan_obj.type,
+        'principal': str(loan_obj.principal),
+        'interest': str(loan_obj.interest),
+        'transaction_dt': loan_obj.transaction_dt.isoformat(),
+        'created_at': loan_obj.created_at.isoformat(),
+        'updated_at': loan_obj.updated_at.isoformat() if loan_obj.updated_at else '',
+        'created_by': loan_obj.created_by.username if loan_obj.created_by else '',
+        'updated_by': loan_obj.updated_by.username if loan_obj.updated_by else '',
+    }
 
 @login_required
 @admin_required
@@ -580,6 +596,7 @@ def export_transactions(request, pk):
                         'transaction_dt': trans.transaction_dt.isoformat(),
                         'amount': str(trans.amount),
                         'tr_type': trans.tr_type,
+                        'loan_tr_type': trans.loan_tr_type,
                         'remarks': trans.remarks or '',
                         'is_tally': trans.is_tally,
                         'created_at': trans.created_at.isoformat(),
@@ -600,6 +617,10 @@ def export_transactions(request, pk):
                         'account_id': linked_acc.account_id,
                     })
                 
+                # Loans — all
+                loans_qs   = Loan.objects.filter(shop=shop).order_by('transaction_dt')
+                loans_data = [_serialize_loan(l) for l in loans_qs]
+                
                 export_data.update({
                     'types_count': len(types_data),
                     'types': types_data,
@@ -609,6 +630,11 @@ def export_transactions(request, pk):
                     'transactions': transactions_data,
                     'linked_accounts_count': len(linked_accounts_data),
                     'linked_accounts': linked_accounts_data,
+                })
+
+                export_data.update({
+                    'loans_count': len(loans_data),
+                    'loans': loans_data,
                 })
                 
             elif export_mode == 'date_range':
@@ -643,6 +669,7 @@ def export_transactions(request, pk):
                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
                         'created_by': trans.created_by.username if trans.created_by else '',
                         'updated_by': trans.updated_by.username if trans.updated_by else '',
+                        'loan_tr_type': trans.loan_tr_type,
                     })
                 
                 # Get all linked accounts for this shop (always export current state)
@@ -657,6 +684,10 @@ def export_transactions(request, pk):
                         'account_id': linked_acc.account_id,
                     })
                 
+                # Loans — date range
+                loans_qs   = Loan.objects.filter(shop=shop, transaction_dt__date__range=[from_dt, to_dt]).order_by('transaction_dt')
+                loans_data = [_serialize_loan(l) for l in loans_qs]
+
                 export_data.update({
                     'date_from': from_date,
                     'date_to': to_date,
@@ -664,6 +695,11 @@ def export_transactions(request, pk):
                     'transactions': transactions_data,
                     'linked_accounts_count': len(linked_accounts_data),
                     'linked_accounts': linked_accounts_data,
+                })
+
+                export_data.update({
+                    'loans_count': len(loans_data),
+                    'loans': loans_data,
                 })
                 
             elif export_mode == 'after_last_export':
@@ -674,7 +710,7 @@ def export_transactions(request, pk):
                 if last_export_time is None:
                     activity_logs = ActivityLog.objects.filter(
                         shop=shop,
-                        model_name__in=['Type', 'Accounts', 'Transaction'],
+                        model_name__in=['Type', 'Accounts', 'Transaction', 'Loan'],
                         action__in=['CREATE', 'UPDATE', 'DELETE']
                     ).order_by('created_at')
                 else:
@@ -684,7 +720,7 @@ def export_transactions(request, pk):
                     activity_logs = ActivityLog.objects.filter(
                         shop=shop,
                         created_at__gte=last_export_time,
-                        model_name__in=['Type', 'Accounts', 'Transaction'],
+                        model_name__in=['Type', 'Accounts', 'Transaction', 'Loan'],
                         action__in=['CREATE', 'UPDATE', 'DELETE']
                     ).order_by('created_at')
                 
@@ -698,6 +734,9 @@ def export_transactions(request, pk):
                 transactions_created = []
                 transactions_updated = []
                 transactions_deleted = []
+                loans_created = []
+                loans_updated = []
+                loans_deleted = []
                 
                 for log in activity_logs:
                     try:
@@ -783,6 +822,7 @@ def export_transactions(request, pk):
                                         'transaction_dt': trans.transaction_dt.isoformat(),
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
+                                        'loan_tr_type': trans.loan_tr_type,
                                         'remarks': trans.remarks or '',
                                         'is_tally': trans.is_tally,
                                         'created_at': trans.created_at.isoformat(),
@@ -801,6 +841,7 @@ def export_transactions(request, pk):
                                         'transaction_dt': trans.transaction_dt.isoformat(),
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
+                                        'loan_tr_type': trans.loan_tr_type,
                                         'remarks': trans.remarks or '',
                                         'is_tally': trans.is_tally,
                                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
@@ -810,6 +851,25 @@ def export_transactions(request, pk):
                                     pass
                             elif log.action == 'DELETE':
                                 transactions_deleted.append({
+                                    'id': log.object_id,
+                                    'description': log.description,
+                                    'deleted_at': log.created_at.isoformat(),
+                                })
+                        elif log.model_name.lower() == 'loan':
+                            if log.action == 'CREATE':
+                                try:
+                                    loan_obj = Loan.objects.get(id=log.object_id, shop=shop)
+                                    loans_created.append(_serialize_loan(loan_obj))
+                                except Loan.DoesNotExist:
+                                    pass
+                            elif log.action == 'UPDATE':
+                                try:
+                                    loan_obj = Loan.objects.get(id=log.object_id, shop=shop)
+                                    loans_updated.append(_serialize_loan(loan_obj))
+                                except Loan.DoesNotExist:
+                                    pass
+                            elif log.action == 'DELETE':
+                                loans_deleted.append({
                                     'id': log.object_id,
                                     'description': log.description,
                                     'deleted_at': log.created_at.isoformat(),
@@ -849,6 +909,11 @@ def export_transactions(request, pk):
                     },
                     'linked_accounts_count': len(linked_accounts_data),
                     'linked_accounts': linked_accounts_data,
+                    'loans': {
+                        'created': loans_created,
+                        'updated': loans_updated,
+                        'deleted': loans_deleted,
+                    },
                 })
             
             elif export_mode == 'export_from':
@@ -868,7 +933,7 @@ def export_transactions(request, pk):
                 activity_logs = ActivityLog.objects.filter(
                     shop=shop,
                     created_at__gte=export_from_dt,
-                    model_name__in=['Type', 'Accounts', 'Transaction'],
+                    model_name__in=['Type', 'Accounts', 'Transaction', 'Loan'],
                     action__in=['CREATE', 'UPDATE', 'DELETE']
                 ).order_by('created_at')
                 
@@ -882,6 +947,9 @@ def export_transactions(request, pk):
                 transactions_created = []
                 transactions_updated = []
                 transactions_deleted = []
+                loans_created = []
+                loans_updated = []
+                loans_deleted = []
                 
                 for log in activity_logs:
                     try:
@@ -966,6 +1034,7 @@ def export_transactions(request, pk):
                                         'transaction_dt': trans.transaction_dt.isoformat(),
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
+                                        'loan_tr_type': trans.loan_tr_type,
                                         'remarks': trans.remarks or '',
                                         'is_tally': trans.is_tally,
                                         'created_at': trans.created_at.isoformat(),
@@ -984,6 +1053,7 @@ def export_transactions(request, pk):
                                         'transaction_dt': trans.transaction_dt.isoformat(),
                                         'amount': str(trans.amount),
                                         'tr_type': trans.tr_type,
+                                        'loan_tr_type': trans.loan_tr_type,
                                         'remarks': trans.remarks or '',
                                         'is_tally': trans.is_tally,
                                         'updated_at': trans.updated_at.isoformat() if trans.updated_at else '',
@@ -993,6 +1063,25 @@ def export_transactions(request, pk):
                                     pass
                             elif log.action == 'DELETE':
                                 transactions_deleted.append({
+                                    'id': log.object_id,
+                                    'description': log.description,
+                                    'deleted_at': log.created_at.isoformat(),
+                                })
+                        elif log.model_name.lower() == 'loan':
+                            if log.action == 'CREATE':
+                                try:
+                                    loan_obj = Loan.objects.get(id=log.object_id, shop=shop)
+                                    loans_created.append(_serialize_loan(loan_obj))
+                                except Loan.DoesNotExist:
+                                    pass
+                            elif log.action == 'UPDATE':
+                                try:
+                                    loan_obj = Loan.objects.get(id=log.object_id, shop=shop)
+                                    loans_updated.append(_serialize_loan(loan_obj))
+                                except Loan.DoesNotExist:
+                                    pass
+                            elif log.action == 'DELETE':
+                                loans_deleted.append({
                                     'id': log.object_id,
                                     'description': log.description,
                                     'deleted_at': log.created_at.isoformat(),
@@ -1032,6 +1121,11 @@ def export_transactions(request, pk):
                     },
                     'linked_accounts_count': len(linked_accounts_data),
                     'linked_accounts': linked_accounts_data,
+                    'loans': {
+                        'created': loans_created,
+                        'updated': loans_updated,
+                        'deleted': loans_deleted,
+                    },
                 })
             
             # Update last export timestamp (use the time captured at the start for consistency)
@@ -1083,6 +1177,13 @@ def export_transactions(request, pk):
                             record_type='BT_Ledger_Accounts',
                             status='success'
                         )
+                    for loan_data in loans_data:
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
+                            status='success'
+                        )
                 elif export_mode == 'date_range':
                     # Create details for transactions in date range
                     for trans_data in export_data.get('transactions', []):
@@ -1097,6 +1198,13 @@ def export_transactions(request, pk):
                             export_history=export_history,
                             record_id=linked_acc_data['id'],
                             record_type='BT_Ledger_Accounts',
+                            status='success'
+                        )
+                    for loan_data in loans_data:
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
                             status='success'
                         )
                 elif export_mode == 'after_last_export':
@@ -1170,6 +1278,30 @@ def export_transactions(request, pk):
                             export_history=export_history,
                             record_id=trans_data['id'],
                             record_type='Transaction',
+                            status='success',
+                            message='Deleted'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('created', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
+                            status='success',
+                            message='Created'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('updated', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
+                            status='success',
+                            message='Updated'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('deleted', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
                             status='success',
                             message='Deleted'
                         )
@@ -1251,6 +1383,30 @@ def export_transactions(request, pk):
                             export_history=export_history,
                             record_id=trans_data['id'],
                             record_type='Transaction',
+                            status='success',
+                            message='Deleted'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('created', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
+                            status='success',
+                            message='Created'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('updated', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
+                            status='success',
+                            message='Updated'
+                        )
+                    for loan_data in export_data.get('loans', {}).get('deleted', []):
+                        ExportDetails.objects.create(
+                            export_history=export_history,
+                            record_id=loan_data['id'],
+                            record_type='Loan',
                             status='success',
                             message='Deleted'
                         )
@@ -1552,6 +1708,12 @@ def configurations(request):
         'is_admin': is_admin(request.user),
     })
 
+def _deleted_count(import_data, key):
+    val = import_data.get(key, {})
+    if isinstance(val, dict):
+        return len(val.get('deleted', []))
+    return 0
+
 @login_required
 @admin_required
 def import_transactions(request):
@@ -1601,29 +1763,29 @@ def import_transactions(request):
                 accounts_updated = 0
                 transactions_created = 0
                 transactions_updated = 0
+                # ── Import Loans ─────────────────────────────────────────────
+                loans_created = 0
+                loans_updated = 0
                 
                 # Handle both formats: flat (direct arrays) and nested (created/updated/deleted)
                 types_data = []
                 accounts_data = []
                 transactions_data = []
+                loans_data = []
                 
                 # Check if it's nested format (with created/updated/deleted)
                 if 'types' in import_data and isinstance(import_data['types'], dict):
                     # Nested format from incremental export
-                    types_data = (import_data['types'].get('created', []) + 
-                                 import_data['types'].get('updated', []) + 
-                                 import_data['types'].get('deleted', []))
-                    accounts_data = (import_data['accounts'].get('created', []) + 
-                                    import_data['accounts'].get('updated', []) + 
-                                    import_data['accounts'].get('deleted', []))
-                    transactions_data = (import_data['transactions'].get('created', []) + 
-                                        import_data['transactions'].get('updated', []) + 
-                                        import_data['transactions'].get('deleted', []))
+                    types_data        = import_data['types'].get('created', [])        + import_data['types'].get('updated', [])
+                    accounts_data     = import_data['accounts'].get('created', [])     + import_data['accounts'].get('updated', [])
+                    transactions_data = import_data['transactions'].get('created', []) + import_data['transactions'].get('updated', [])
+                    loans_data        = import_data['loans'].get('created', [])        + import_data['loans'].get('updated', [])
                 else:
                     # Flat format from full export
                     types_data = import_data.get('types', [])
                     accounts_data = import_data.get('accounts', [])
                     transactions_data = import_data.get('transactions', [])
+                    loans_data = import_data.get('loans', [])
                 
                 # Import Types
                 for type_data in types_data:
@@ -1866,6 +2028,7 @@ def import_transactions(request):
                             trans.remarks = trans_data.get('remarks', '')
                             trans.is_tally = trans_data.get('is_tally', False)
                             trans.shop = shop
+                            trans.loan_tr_type = trans_data.get('loan_tr_type', '')
                             # Always set updated_by to system_user, ignore any user data from import
                             trans.updated_by = system_user
                             trans.save()
@@ -1891,6 +2054,7 @@ def import_transactions(request):
                                 tr_type=trans_data.get('tr_type', 'DEBIT'),
                                 remarks=trans_data.get('remarks', ''),
                                 is_tally=trans_data.get('is_tally', False),
+                                loan_tr_type=trans_data.get('loan_tr_type', ''),
                                 shop=shop,
                                 created_by=system_user,
                                 updated_by=system_user
@@ -1915,6 +2079,190 @@ def import_transactions(request):
                             message=f'Error: {str(e)}'
                         )
                 
+                for loan_data in loans_data:
+                    try:
+                        loan_id    = loan_data.get('id', '').strip()
+                        ledger_id  = loan_data.get('ledger_id')
+
+                        try:
+                            ledger = Ledger.objects.get(id=ledger_id)
+                        except Ledger.DoesNotExist:
+                            logger.warning(f"Ledger {ledger_id} not found, skipping loan {loan_id}")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=loan_id or 'unknown',
+                                record_type='Loan',
+                                status='failed',
+                                message=f'Ledger {ledger_id} not found'
+                            )
+                            continue
+
+                        # Parse datetime
+                        trans_dt = loan_data.get('transaction_dt')
+                        if isinstance(trans_dt, str):
+                            trans_dt = datetime.fromisoformat(trans_dt.replace('Z', '+00:00'))
+
+                        principal = Decimal(str(loan_data.get('principal', 0)))
+                        interest  = Decimal(str(loan_data.get('interest', 0)))
+
+                        if loan_id and Loan.objects.filter(id=loan_id).exists():
+                            # Update existing
+                            loan_obj = Loan.objects.get(id=loan_id)
+                            loan_obj.pawn_no        = loan_data.get('pawn_no', loan_obj.pawn_no)
+                            loan_obj.ledger         = ledger
+                            loan_obj.shop           = shop
+                            loan_obj.type           = loan_data.get('type', loan_obj.type)
+                            loan_obj.principal      = principal
+                            loan_obj.interest       = interest
+                            loan_obj.transaction_dt = trans_dt
+                            loan_obj.updated_by     = system_user
+                            loan_obj.save()
+                            loans_updated += 1
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=loan_id,
+                                record_type='Loan',
+                                status='success',
+                                message='Updated'
+                            )
+                        else:
+                            # Create new
+                            Loan.objects.create(
+                                id=loan_id if loan_id else None,
+                                pawn_no=loan_data.get('pawn_no', ''),
+                                ledger=ledger,
+                                shop=shop,
+                                type=loan_data.get('type', 'LOAN'),
+                                principal=principal,
+                                interest=interest,
+                                transaction_dt=trans_dt,
+                                created_by=system_user,
+                                updated_by=system_user,
+                            )
+                            loans_created += 1
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=loan_id if loan_id else 'auto',
+                                record_type='Loan',
+                                status='success',
+                                message='Created'
+                            )
+
+                    except Exception as e:
+                        logger.error(f"Error importing loan {loan_data.get('id')}: {str(e)}")
+                        ImportDetails.objects.create(
+                            import_history=import_history,
+                            record_id=loan_data.get('id', 'unknown'),
+                            record_type='Loan',
+                            status='failed',
+                            message=f'Error: {str(e)}'
+                        )
+                # ── Handle Deletions (only for incremental export modes) ─────
+                if isinstance(import_data.get('types'), dict):
+
+                    # ── Delete Types ─────────────────────────────────────────
+                    for type_data in import_data.get('types', {}).get('deleted', []):
+                        try:
+                            type_id = type_data.get('id', '').strip()
+                            if type_id and Type.objects.filter(id=type_id, shop=shop).exists():
+                                Type.objects.filter(id=type_id, shop=shop).delete()
+                                ImportDetails.objects.create(
+                                    import_history=import_history,
+                                    record_id=type_id,
+                                    record_type='Type',
+                                    status='success',
+                                    message='Deleted'
+                                )
+                                logger.info(f"Deleted Type {type_id}")
+                            else:
+                                logger.warning(f"Type {type_id} not found for deletion — skipping")
+                        except Exception as e:
+                            logger.error(f"Error deleting type {type_data.get('id')}: {str(e)}")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=type_data.get('id', 'unknown'),
+                                record_type='Type',
+                                status='failed',
+                                message=f'Delete error: {str(e)}'
+                            )
+
+                    # ── Delete Accounts ───────────────────────────────────────
+                    for account_data in import_data.get('accounts', {}).get('deleted', []):
+                        try:
+                            account_id = account_data.get('id', '').strip()
+                            if account_id and Accounts.objects.filter(id=account_id, shop=shop).exists():
+                                Accounts.objects.filter(id=account_id, shop=shop).delete()
+                                ImportDetails.objects.create(
+                                    import_history=import_history,
+                                    record_id=account_id,
+                                    record_type='Account',
+                                    status='success',
+                                    message='Deleted'
+                                )
+                                logger.info(f"Deleted Account {account_id}")
+                            else:
+                                logger.warning(f"Account {account_id} not found for deletion — skipping")
+                        except Exception as e:
+                            logger.error(f"Error deleting account {account_data.get('id')}: {str(e)}")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=account_data.get('id', 'unknown'),
+                                record_type='Account',
+                                status='failed',
+                                message=f'Delete error: {str(e)}'
+                            )
+
+                    # ── Delete Transactions ───────────────────────────────────
+                    for trans_data in import_data.get('transactions', {}).get('deleted', []):
+                        try:
+                            trans_id = trans_data.get('id', '').strip()
+                            if trans_id and Transactions.objects.filter(id=trans_id, shop=shop).exists():
+                                Transactions.objects.filter(id=trans_id, shop=shop).delete()
+                                ImportDetails.objects.create(
+                                    import_history=import_history,
+                                    record_id=trans_id,
+                                    record_type='Transaction',
+                                    status='success',
+                                    message='Deleted'
+                                )
+                                logger.info(f"Deleted Transaction {trans_id}")
+                            else:
+                                logger.warning(f"Transaction {trans_id} not found for deletion — skipping")
+                        except Exception as e:
+                            logger.error(f"Error deleting transaction {trans_data.get('id')}: {str(e)}")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=trans_data.get('id', 'unknown'),
+                                record_type='Transaction',
+                                status='failed',
+                                message=f'Delete error: {str(e)}'
+                            )
+
+                    # ── Delete Loans ──────────────────────────────────────────
+                    for loan_data in import_data.get('loans', {}).get('deleted', []):
+                        try:
+                            loan_id = loan_data.get('id', '').strip()
+                            if loan_id and Loan.objects.filter(id=loan_id, shop=shop).exists():
+                                Loan.objects.filter(id=loan_id, shop=shop).delete()
+                                ImportDetails.objects.create(
+                                    import_history=import_history,
+                                    record_id=loan_id,
+                                    record_type='Loan',
+                                    status='success',
+                                    message='Deleted'
+                                )
+                                logger.info(f"Deleted Loan {loan_id}")
+                            else:
+                                logger.warning(f"Loan {loan_id} not found for deletion — skipping")
+                        except Exception as e:
+                            logger.error(f"Error deleting loan {loan_data.get('id')}: {str(e)}")
+                            ImportDetails.objects.create(
+                                import_history=import_history,
+                                record_id=loan_data.get('id', 'unknown'),
+                                record_type='Loan',
+                                status='failed',
+                                message=f'Delete error: {str(e)}'
+                            )
                 # Update shop's last import timestamp
                 shop.last_transaction_imported_at = timezone.now()
                 shop.save(update_fields=['last_transaction_imported_at'])
@@ -1924,17 +2272,23 @@ def import_transactions(request):
                     f"Types(C:{types_created}/U:{types_updated}), "
                     f"Accounts(C:{accounts_created}/U:{accounts_updated}), "
                     f"Linked Accounts(C:{linked_accounts_created}/U:{linked_accounts_updated}), "
-                    f"Transactions(C:{transactions_created}/U:{transactions_updated})"
+                    f"Transactions(C:{transactions_created}/U:{transactions_updated}), "
+                    f"Loans(C:{loans_created}/U:{loans_updated}), "
+                    f"Deletions — "
+                    f"Types:{_deleted_count(import_data, 'types')}, "
+                    f"Accounts:{_deleted_count(import_data, 'accounts')}, "
+                    f"Transactions:{_deleted_count(import_data, 'transactions')}, "
+                    f"Loans:{_deleted_count(import_data, 'loans')}"
                 )
                 
                 return JsonResponse({
                     'success': True,
                     'message': f'Import completed successfully',
                     'summary': {
-                        'types': {'created': types_created, 'updated': types_updated},
-                        'accounts': {'created': accounts_created, 'updated': accounts_updated},
-                        'linked_accounts': {'created': linked_accounts_created, 'updated': linked_accounts_updated},
-                        'transactions': {'created': transactions_created, 'updated': transactions_updated},
+                        'types':        {'created': types_created,        'updated': types_updated,        'deleted': _deleted_count(import_data, 'types')},
+                        'accounts':     {'created': accounts_created,     'updated': accounts_updated,     'deleted': _deleted_count(import_data, 'accounts')},
+                        'transactions': {'created': transactions_created, 'updated': transactions_updated, 'deleted': _deleted_count(import_data, 'transactions')},
+                        'loans':        {'created': loans_created,        'updated': loans_updated,        'deleted': _deleted_count(import_data, 'loans')},
                     }
                 })
         
