@@ -13,11 +13,11 @@ class ConfigurationAdmin(admin.ModelAdmin):
 
 @admin.register(ActivityLog)
 class ActivityLogAdmin(admin.ModelAdmin):
-    list_display   = ['created_at', 'user', 'action', 'model_name', 'object_id', 'description', 'ip_address']
+    list_display   = ['created_at', 'user', 'action', 'model_name', 'object_id', 'description']
     list_filter    = ['action', 'model_name', 'created_at']
     search_fields  = ['user__username', 'description', 'object_id', 'model_name']
     ordering       = ['-created_at']
-    readonly_fields = ['user', 'action', 'model_name', 'object_id', 'description', 'ip_address', 'created_at']
+    readonly_fields = ['user', 'action', 'model_name', 'object_id', 'description', 'created_at']
     date_hierarchy = 'created_at'
 
     def has_add_permission(self, request):

@@ -20,7 +20,6 @@ def get_fy_dates(financial_year: str):
         financial_year = get_current_fy_string()
 
     financial_year = str(financial_year).strip()
-    print("Input FY string:", financial_year)
     parts = financial_year.split('-')
     year_str = parts[0]
 

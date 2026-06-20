@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <div class="no-print">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="input-group" style="width: 150px;">
+        <button class="btn btn-primary" onclick="changeYear(-1)">-</button>
+        <input type="text" id="year" class="form-control text-center" readonly>
+        <button class="btn btn-primary" onclick="changeYear(1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-start">      
+      <!-- LEFT SIDE -->
+      <div>
+        <h4 class="mb-0">
+          <i class="fa-solid fa-wallet"></i> PL accounts summary of {{ shop.short_name }} for FY{{fy}}
+        </h4>
+      </div>
+      <!-- RIGHT SIDE (buttons) -->
+      <div class="d-flex gap-2">
+        <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ shop.short_name }}</span>
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      {% if items %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">Account Name</th>
+                <th scope="col" class="text-end">Net Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  <a href="{% url 'manager:account_info' item.id %}?fy={{ fy }}">
+                     {{ item.name }}
+                  </a>
+                </td>
+                <td class="text-end">
+                  {% if item.net_balance >= 0 %}
+                    <span class="text-success"><strong>₹{{ item.net_balance|indian_format }}CR</strong></span>
+                  {% else %}
+                    <span class="text-danger">
+                        <strong>₹{{ item.net_balance|indian_format }}DB</strong>
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %} 
+              <tr>
+                <td> <strong>Total</strong> </td>
+                <td class="text-end {% if total > 0 %} text-success {% else %} text-danger {% endif %} "> 
+                  {% if total > 0 %}
+                  ₹{{ total|indian_format }}CR 
+                  {% else %}
+                  ₹{{ total|indian_format }}DB 
+                  {% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- Button trigger modal -->
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+  Close Account
+</button>
+
+        </div>
+      {% else %}
+        <p class="text-muted">No account types found for this shop.</p>
+      {% endif %}
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">Summary</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group list-group-flush">
+        <form method="POST" action="{% url 'manager:close-pl-accounts' shop.pk %}">
+        {% csrf_token %}
+        {% for acc in capital_accounts %}
+        <div style="margin-top:10px">
+          <label class="form-check-label" for="{{acc.id}}_amount">
+              {{ acc.t_name }}
+          </label>
+          <input class="form-control form-control-sm account-amount-input" type="number" id="{{acc.id}}_amount" value="{{each_share}}" oninput="updateTotal()">
+        </div>
+        {% endfor %}
+        </ul>
+        <div class="col-md-12 text-end" style="margin-top:10px">
+          <strong> Total: </strong> <span id="calc_total" class="fw-bold text-primary" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const yearInput = document.getElementById("year");
+
+  // Get fy from URL
+  const params = new URLSearchParams(window.location.search);
+  const fy = params.get('fy');
+
+  // Set initial year
+  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  yearInput.value = year;
+
+  function changeYear(step) {
+    year += step;
+    yearInput.value = year;
+    
+    // Update URL with fy param
+    const url = new URL(window.location.href);
+    url.searchParams.set('fy', year);
+
+    // Reload page with new param
+    window.location.href = url.toString();
+  }
+
+  // Helper function to extract numeric value from strings safely
+  function getNumericValue(value) {
+      return parseFloat(value) || 0;
+  }
+
+  // Core function to sum all input rows dynamically
+  function updateTotal(){
+    let total = 0;
+    
+    // Grab all inputs matching our class
+    const inputs = document.querySelectorAll('.account-amount-input');
+    
+    inputs.forEach(input => {
+        total += getNumericValue(input.value);
+    });
+
+    // Update the inner total text string formatted as Indian Currency
+    document.getElementById('calc_total').textContent = '₹ ' + indianFormat(total);
+  }
+
+  // Indian number format helper function
+  function indianFormat(value) {
+      let isNegative = value < 0;
+      value = Math.abs(value);
+
+      let [intPart, decPart] = value.toFixed(2).split('.');
+
+      if (intPart.length > 3) {
+          let last3 = intPart.slice(-3);
+          let remaining = intPart.slice(0, -3);
+          let pairs = [];
+          while (remaining.length > 2) {
+              pairs.unshift(remaining.slice(-2));
+              remaining = remaining.slice(0, -2);
+          }
+          if (remaining) pairs.unshift(remaining);
+          intPart = pairs.join(',') + ',' + last3;
+      }
+
+      let formatted = intPart + '.' + decPart;
+      return (isNegative ? '-' : '') + formatted;
+  }
+
+  // Run calculation once on page setup to cleanly format the initial loop summary values
+  document.addEventListener('DOMContentLoaded', function() {
+      updateTotal();
+  });
+</script>
+
+{% endblock %}

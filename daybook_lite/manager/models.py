@@ -191,7 +191,6 @@ class ActivityLog(models.Model):
     model_name  = models.CharField(max_length=50, blank=True)  # e.g. 'Loan', 'Transaction'
     object_id   = models.CharField(max_length=50, blank=True)  # pk of affected record
     description = models.TextField(blank=True)
-    ip_address  = models.GenericIPAddressField(null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:

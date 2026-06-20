@@ -2381,6 +2381,8 @@ def account_info(request, pk):
     
     start_date, end_date = date_helper.get_fy_dates(fy)
     openning_balance = transaction_helper.get_account_balance(account, start_date)
+    if account.acc_type.group_order == 2:
+        openning_balance = 0
     # Get transactions for pagination
     transactions_qs = Transactions.objects.filter(
         acc=account,
@@ -2701,6 +2703,59 @@ def type_balance_sheet(request, pk):
         'is_admin':       is_admin(request.user),
         'cash_in_hand': cash_in_hand['closing_balance'],
     })
+
+def close_pl_accounts(request, pk):
+    shop = Shop.objects.get(pk=pk)
+    fy = request.GET.get('fy')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+
+    accounts = Accounts.objects.filter(
+        shop=shop,
+        acc_type__group_order=2
+    )
+    account_balances = []
+    total = 0
+
+    capital_accounts = Accounts.objects.filter(
+        shop=shop,
+        acc_type__group_order=1
+    )
+
+    for account in accounts:
+        summary = transaction_helper.get_account_summary(account, fy)
+        if summary['net_balance'] > 0 or summary['net_balance'] < 0:
+            account_balances.append({
+                'id':      account.id,
+                'name':    account.t_name,
+                'type': account.acc_type,
+                'opening': summary['opening'],
+                'credits': abs(summary['credits']),
+                'debits':  abs(summary['debits']),
+                'closing': summary['closing'],
+                'net_balance': summary['net_balance'],
+                'cur_balance': summary['cur_balance'],
+            })
+            total = total + summary['net_balance']
+    
+    capital_accounts_count = capital_accounts.count()
+    each_share = round(total/capital_accounts_count,2)
+
+    return render(request, 'manager/close_pl_accounts.html', {
+        'nav_title': 'Shops',
+        'fy': fy,
+        'shop': shop,
+        'items': account_balances,
+        'item_type': 'Account',
+        'app_name': 'manager',
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+        'total': total,
+        'each_share': each_share,
+        'capital_accounts': capital_accounts,
+        'capital_accounts_count': capital_accounts_count,
+    })
+
 
 def account_balance_sheet(request, pk, type_pk):
     shop = Shop.objects.get(pk=pk)

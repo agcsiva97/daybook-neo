@@ -21,6 +21,10 @@
           <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-arrows-rotate"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
           </a>
+          <a href="{% url 'manager:close-pl-accounts' shop.pk %}" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-calendar-xmark"></i>
+            <span class="d-none d-md-inline">Close PL Accounts</span>
+          </a>
 
         {% if is_admin %}
           <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-teal">
