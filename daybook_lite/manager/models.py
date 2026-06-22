@@ -191,7 +191,6 @@ class ActivityLog(models.Model):
     model_name  = models.CharField(max_length=50, blank=True)  # e.g. 'Loan', 'Transaction'
     object_id   = models.CharField(max_length=50, blank=True)  # pk of affected record
     description = models.TextField(blank=True)
-    ip_address  = models.GenericIPAddressField(null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -273,3 +272,8 @@ class BT_Ledger_Accounts(models.Model):
             shop_name = self.shop.short_name if self.shop_id and self.shop else 'BTL'
             self.id = _generate_bt_id(shop_name)
         super().save(*args, **kwargs)    
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['ledger', 'rel_type'], name='unique_ledger_rel_type')
+        ]

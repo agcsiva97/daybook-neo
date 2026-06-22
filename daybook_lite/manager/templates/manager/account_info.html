@@ -1,9 +1,45 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .tallied {
+    color: grey;
+    background-color: red;
+  }
+  .active-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    background: #e8f4f1;
+    color: #085041;
+    border: 1px solid #9FE1CB;
+    border-radius: 99px;
+    padding: 2px 10px 2px 8px;
+    font-weight: 500;
+  }
+  .active-filter-badge .remove-filter {
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    color: #0F6E56;
+    text-decoration: none;
+    margin-left: 2px;
+  }
+  .active-filter-badge .remove-filter:hover {
+    color: #dc3545;
+  }
+  #active-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+</style>
+
 <div class="container mt-4">
   <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-start">      
+    <div class="card-header d-flex justify-content-between align-items-start">
       <!-- LEFT SIDE -->
       <div>
         <h4 class="mb-0">
@@ -12,17 +48,18 @@
       </div>
       <!-- RIGHT SIDE (buttons) -->
       <div class="d-flex gap-2">
-          <a href="{% url 'manager:account_edit' account.pk %}" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
-          </a>
-          <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger">
-            <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
-          </a>
+        <a href="{% url 'manager:account_edit' account.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
+        </a>
+        <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger">
+          <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
+        </a>
         <a href="{% url 'manager:shop_info' account.shop.id %}" class="btn btn-sm btn-secondary">
           <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ account.shop.name }}</span>
         </a>
       </div>
     </div>
+
     <div class="card-body">
       <div class="row">
         <div class="col-md-6">
@@ -62,6 +99,12 @@
           </h4>
         </div>
         <div class="d-flex gap-2 flex-wrap align-items-center">
+          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+            <i class="fa-solid fa-filter"></i> Filter
+            {% if has_active_filters %}
+              <span class="badge bg-warning text-dark ms-1">{{ active_filter_count }}</span>
+            {% endif %}
+          </button>
           <button type="button" class="btn btn-sm btn-outline-info" id="moveBtn" data-bs-toggle="modal" data-bs-target="#moveTransactionsModal" disabled title="Move selected transactions">
             <i class="fa-solid fa-arrow-right"></i> <span class="d-none d-md-inline">Move</span>
           </button>
@@ -69,50 +112,102 @@
             <i class="fa-solid fa-check-double"></i> <span class="d-none d-md-inline">Tally</span>
           </button>
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="showTalliedCheckbox">
-            <label class="form-check-label" for="showTalliedCheckbox">
-              Show Tallied
-            </label>
+            <input class="form-check-input" type="checkbox" id="showTalliedCheckbox" checked>
+            <label class="form-check-label" for="showTalliedCheckbox">Show Tallied</label>
           </div>
+          <!-- Year picker — preserves all active filters when switching FY -->
           <div class="input-group" style="width: 120px;">
             <button class="btn btn-sm btn-outline-primary" onclick="changeYear(-1)">-</button>
             <input type="text" id="year" class="form-control form-control-sm text-center" readonly>
             <button class="btn btn-sm btn-outline-primary" onclick="changeYear(1)">+</button>
           </div>
         </div>
-      </div>  
+      </div>
+
+      <!-- Active filter badges -->
+      {% if has_active_filters %}
+      <div class="mt-2" id="active-filters-bar">
+        <span class="text-muted small me-1">Active filters:</span>
+
+        {% if from_date %}
+        <span class="active-filter-badge">
+          From: {{ from_date }}
+          <a href="?fy={{ fy }}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if type_filter %}&tr_type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if amount_value %}&amount_operator={{ amount_operator }}&amount_value={{ amount_value }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="remove-filter" title="Remove">×</a>
+        </span>
+        {% endif %}
+
+        {% if to_date %}
+        <span class="active-filter-badge">
+          To: {{ to_date }}
+          <a href="?fy={{ fy }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if type_filter %}&tr_type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if amount_value %}&amount_operator={{ amount_operator }}&amount_value={{ amount_value }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="remove-filter" title="Remove">×</a>
+        </span>
+        {% endif %}
+
+        {% if type_filter %}
+        <span class="active-filter-badge">
+          Type: {{ type_filter }}
+          <a href="?fy={{ fy }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if amount_value %}&amount_operator={{ amount_operator }}&amount_value={{ amount_value }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="remove-filter" title="Remove">×</a>
+        </span>
+        {% endif %}
+
+        {% if search_query %}
+        <span class="active-filter-badge">
+          Remarks: "{{ search_query }}"
+          <a href="?fy={{ fy }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if type_filter %}&tr_type={{ type_filter }}{% endif %}{% if amount_value %}&amount_operator={{ amount_operator }}&amount_value={{ amount_value }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="remove-filter" title="Remove">×</a>
+        </span>
+        {% endif %}
+
+        {% if amount_value %}
+        <span class="active-filter-badge">
+          Amount {% if amount_operator == 'greater' %}&gt;{% elif amount_operator == 'lesser' %}&lt;{% else %}={% endif %} {{ amount_value }}
+          <a href="?fy={{ fy }}{% if from_date %}&from_date={{ from_date }}{% endif %}{% if to_date %}&to_date={{ to_date }}{% endif %}{% if type_filter %}&tr_type={{ type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="remove-filter" title="Remove">×</a>
+        </span>
+        {% endif %}
+
+        <!-- Clear all filters — keeps fy intact -->
+        <a href="?fy={{ fy }}" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 11px;">
+          <i class="fa-solid fa-xmark"></i> Clear all
+        </a>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Financial Summary Card -->
+    <!-- Financial Summary -->
     <div class="container-fluid px-3 py-3 border-bottom">
       <div class="row">
         <div class="col-md">
-          <div class="p-3 bg-light rounded">
-            <h6 class="text-muted mb-2 text-end">Opening Balance (FY)</h6>
+          <div class="p-3 bg-light rounded text-end">
+            <h7 class="text-muted mb-2 text-end">Opening Balance (FY)</h7>
             <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ opening_balance|indian_format }}</p>
           </div>
         </div>
         <div class="col-md">
-          <div class="p-3 bg-light rounded">
-            <h6 class="text-muted mb-2 text-end">Total Debits (FY)</h6>
+          <div class="p-3 bg-light rounded text-end">
+            <h7 class="text-muted mb-2 text-end">Total Debits (FY)
+            {% if has_active_filters %} <i class="fa-solid fa-circle-info"  data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Updated based on the applied filters"></i> {% endif %}
+            </h7>
             <p class="h5 text-danger mb-0 text-end">₹ {{ total_debit|indian_format }}</p>
           </div>
         </div>
         <div class="col-md">
-          <div class="p-3 bg-light rounded">
-            <h6 class="text-muted mb-2 text-end">Total Credits (FY)</h6>
+          <div class="p-3 bg-light rounded text-end">
+            <h7 class="text-muted mb-2 text-end">Total Credits (FY)
+              {% if has_active_filters %} <i class="fa-solid fa-circle-info"  data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Updated based on the applied filters"></i> {% endif %}
+            </h7>
             <p class="h5 text-success mb-0 text-end">₹ {{ total_credit|indian_format }}</p>
           </div>
         </div>
         <div class="col-md">
-          <div class="p-3 bg-light rounded">
-            <h6 class="text-muted mb-2 text-end">Net Balance (FY)</h6>
+          <div class="p-3 bg-light rounded text-end">
+            <h7 class="text-muted mb-2 text-end">Net Balance (FY)
+              {% if has_active_filters %} <i class="fa-solid fa-circle-info"  data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Updated based on the applied filters"></i> {% endif %}
+            </h7>
             <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ net_balance|indian_format }}</p>
           </div>
         </div>
         <div class="col-md">
-          <div class="p-3 bg-light rounded">
-            <h6 class="text-muted mb-2 text-end">Closing Balance (FY)</h6>
+          <div class="p-3 bg-light rounded text-end">
+            <h7 class="text-muted mb-2">Closing Balance (FY)</h7>
             <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ closing_balance|indian_format }}</p>
           </div>
         </div>
@@ -120,33 +215,32 @@
     </div>
 
     <div class="card-body">
-        <div class="table-responsive">
+      <div class="table-responsive">
         <table class="table">
-            <thead>
+          <thead>
             <tr>
-                <th scope="col">
-                  <input type="checkbox" id="selectAll" class="form-check-input" title="Select all">
-                </th>
-                <th scope="col">Date</th>
-                <th scope="col">Remarks</th>
-                <th scope="col" class="text-end">DEBIT</th>
-                <th scope="col" class="text-end">CREDIT</th>
-                <th scope="col">Tally</th>
-                <th scope="col">Created By</th>
-                <th scope="col">Updated By</th>
-                <th scope="col">Actions</th>
+              <th scope="col">
+                <input type="checkbox" id="selectAll" class="form-check-input" title="Select all">
+              </th>
+              <th scope="col">Date</th>
+              <th scope="col">Remarks</th>
+              <th scope="col" class="text-end">DEBIT</th>
+              <th scope="col" class="text-end">CREDIT</th>
+              <th scope="col">Tally</th>
+              <th scope="col">Created By</th>
+              <th scope="col">Updated By</th>
+              <th scope="col">Actions</th>
             </tr>
-            </thead>
-            <tbody id="transaction-tbody"
-                   hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&fy={{ fy }}"
-                   hx-trigger="load"
-                   hx-swap="innerHTML"
-                   hx-target="this">
-                <!-- HTMX will load transactions here -->
-                <tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>
-            </tbody>
+          </thead>
+          <tbody id="transaction-tbody"
+                 hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&{{ filter_querystring }}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"
+                 hx-target="this">
+            <tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>
+          </tbody>
         </table>
-      </div>  
+      </div>
     </div>
   </div>
 </div>
@@ -165,11 +259,15 @@
           <select class="form-select" id="accountSelect">
             <option value="">-- Select an Account --</option>
             {% for shop_account in shop_accounts %}
-            <option value="{{ shop_account.id }}" data-name="{{ shop_account.t_name }}" data-ename="{{ shop_account.e_name }}" data-group="{{ shop_account.group_name }}">{{ shop_account.t_name }} ({{ shop_account.e_name }})</option>
+            <option value="{{ shop_account.id }}"
+                    data-name="{{ shop_account.t_name }}"
+                    data-ename="{{ shop_account.e_name }}"
+                    data-group="{{ shop_account.group_name }}">
+              {{ shop_account.t_name }} ({{ shop_account.e_name }})
+            </option>
             {% endfor %}
           </select>
         </div>
-        
         <div id="accountInfo" class="card" style="display: none;">
           <div class="card-body">
             <h6 class="card-title">Account Information</h6>
@@ -214,55 +312,120 @@
   </div>
 </div>
 
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="filterModalLabel">Filter Transactions</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get">
+        <!-- FIX 1: Always carry fy through the filter form so the selected FY is never lost -->
+        <input type="hidden" name="fy" value="{{ fy }}">
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="from_date" class="form-label">From Date</label>
+              <input type="date" class="form-control" id="from_date" name="from_date" value="{{ from_date }}">
+            </div>
+            <div class="col-md-6">
+              <label for="to_date" class="form-label">To Date</label>
+              <input type="date" class="form-control" id="to_date" name="to_date" value="{{ to_date }}">
+            </div>
+            <div class="col-md-6">
+              <label for="tr_type" class="form-label">Transaction Type</label>
+              <select class="form-select" id="tr_type" name="tr_type">
+                <option value="">All Types</option>
+                <option value="DEBIT" {% if type_filter == 'DEBIT' %}selected{% endif %}>DEBIT</option>
+                <option value="CREDIT" {% if type_filter == 'CREDIT' %}selected{% endif %}>CREDIT</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="search" class="form-label">Search Remarks</label>
+              <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Search remarks...">
+            </div>
+            <div class="col-md-4">
+              <label for="amount_operator" class="form-label">Amount</label>
+              <select class="form-select" id="amount_operator" name="amount_operator">
+                <option value="equals" {% if amount_operator == 'equals' %}selected{% endif %}>=</option>
+                <option value="greater" {% if amount_operator == 'greater' %}selected{% endif %}>&gt;</option>
+                <option value="lesser" {% if amount_operator == 'lesser' %}selected{% endif %}>&lt;</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label for="amount_value" class="form-label">&nbsp;</label>
+              <input type="number" class="form-control" id="amount_value" name="amount_value" value="{{ amount_value }}" placeholder="Amount" step="0.01">
+            </div>
+            <div class="col-12">
+              <label for="sort" class="form-label">Sort By</label>
+              <select class="form-select" id="sort" name="sort">
+                <option value="date_desc" {% if sort == 'date_desc' or not sort %}selected{% endif %}>Date (Newest First)</option>
+                <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Oldest First)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer justify-content-between">
+          <!-- Clear filter: only preserves fy, wipes everything else -->
+          <a href="?fy={{ fy }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-xmark"></i> Clear Filters
+          </a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-filter"></i> Apply
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   const yearInput = document.getElementById("year");
-
-  // Get fy from URL
   const params = new URLSearchParams(window.location.search);
   const fy = params.get('fy');
 
-  // Set initial year
   let year = fy ? parseInt(fy) : new Date().getFullYear();
   yearInput.value = year;
 
   function changeYear(step) {
     year += step;
     yearInput.value = year;
-    
-    // Update URL with fy param
+
+    // FIX 2: Preserve all active filters when switching year — only replace fy
     const url = new URL(window.location.href);
     url.searchParams.set('fy', year);
-
-    // Reload page with new param
     window.location.href = url.toString();
   }
 
-  // Checkbox handling
+  // ── Checkbox & button state ──────────────────────────────────────────────
   const selectAllCheckbox = document.getElementById('selectAll');
-  const moveBtn = document.getElementById('moveBtn');
-  const tallyBtn = document.getElementById('tallyBtn');
-  const accountSelect = document.getElementById('accountSelect');
-  const accountInfo = document.getElementById('accountInfo');
-  const moveConfirmBtn = document.getElementById('moveConfirmBtn');
-  const tallySuccessBtn = document.getElementById('tallySuccessBtn');
-  const tallyFailBtn = document.getElementById('tallyFailBtn');
+  const moveBtn           = document.getElementById('moveBtn');
+  const tallyBtn          = document.getElementById('tallyBtn');
+  const accountSelect     = document.getElementById('accountSelect');
+  const accountInfo       = document.getElementById('accountInfo');
+  const moveConfirmBtn    = document.getElementById('moveConfirmBtn');
+  const tallySuccessBtn   = document.getElementById('tallySuccessBtn');
+  const tallyFailBtn      = document.getElementById('tallyFailBtn');
   const showTalliedCheckbox = document.getElementById('showTalliedCheckbox');
   const selectedCountInfo = document.getElementById('selectedCountInfo');
-  const transactionTbody = document.getElementById('transaction-tbody');
+  const transactionTbody  = document.getElementById('transaction-tbody');
 
-  // Function to get all transaction checkboxes
   function getTransactionCheckboxes() {
     return document.querySelectorAll('.transaction-checkbox');
   }
 
-  // Function to update button states
   function updateMoveTallyButtonState() {
     const anySelected = Array.from(getTransactionCheckboxes()).some(cb => cb.checked);
-    moveBtn.disabled = !anySelected;
+    moveBtn.disabled  = !anySelected;
     tallyBtn.disabled = !anySelected;
   }
 
-  // Function to filter tallied transactions based on checkbox state
   function applyTalliedFilter() {
     const transactionRows = document.querySelectorAll('.transaction-row');
     transactionRows.forEach(row => {
@@ -274,51 +437,37 @@
     });
   }
 
-  // Bind events to transaction checkboxes using event delegation
   transactionTbody.addEventListener('change', function(e) {
     if (e.target.classList.contains('transaction-checkbox')) {
       updateMoveTallyButtonState();
-      // Update select all checkbox state
       const allCheckboxes = getTransactionCheckboxes();
-      const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+      const allChecked  = Array.from(allCheckboxes).every(cb => cb.checked);
       const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
-      selectAllCheckbox.checked = allChecked;
+      selectAllCheckbox.checked       = allChecked;
       selectAllCheckbox.indeterminate = someChecked && !allChecked;
     }
   });
 
-  // HTMX event listener for when content is swapped/loaded
-  transactionTbody.addEventListener('htmx:afterSwap', function(e) {
+  transactionTbody.addEventListener('htmx:afterSwap', function() {
     applyTalliedFilter();
   });
 
-  // Select all checkbox handler
   selectAllCheckbox.addEventListener('change', function() {
-    getTransactionCheckboxes().forEach(checkbox => {
-      checkbox.checked = this.checked;
-    });
+    getTransactionCheckboxes().forEach(cb => { cb.checked = this.checked; });
     updateMoveTallyButtonState();
   });
 
-  // Filter tallied transactions
   showTalliedCheckbox.addEventListener('change', function() {
-    const transactionRows = document.querySelectorAll('.transaction-row');
-    transactionRows.forEach(row => {
-      if (!this.checked && row.dataset.tallyStatus === 'true') {
-        row.style.display = 'none';
-      } else {
-        row.style.display = '';
-      }
-    });
+    applyTalliedFilter();
   });
 
-  // Account select change handler
+  // ── Move modal ───────────────────────────────────────────────────────────
   accountSelect.addEventListener('change', function() {
     if (this.value) {
-      const selectedOption = this.options[this.selectedIndex];
-      document.getElementById('infoTName').textContent = selectedOption.dataset.name;
-      document.getElementById('infoEName').textContent = selectedOption.dataset.ename;
-      document.getElementById('infoGroup').textContent = selectedOption.dataset.group;
+      const opt = this.options[this.selectedIndex];
+      document.getElementById('infoTName').textContent = opt.dataset.name;
+      document.getElementById('infoEName').textContent = opt.dataset.ename;
+      document.getElementById('infoGroup').textContent = opt.dataset.group;
       accountInfo.style.display = 'block';
       moveConfirmBtn.disabled = false;
     } else {
@@ -327,41 +476,29 @@
     }
   });
 
-  // Move confirm button handler
   moveConfirmBtn.addEventListener('click', function() {
     const selectedTransactions = Array.from(getTransactionCheckboxes())
-      .filter(cb => cb.checked)
-      .map(cb => cb.value);
+      .filter(cb => cb.checked).map(cb => cb.value);
     const targetAccountId = accountSelect.value;
 
-    if (selectedTransactions.length === 0 || !targetAccountId) {
+    if (!selectedTransactions.length || !targetAccountId) {
       alert('Please select transactions and an account');
       return;
     }
 
-    // Show loading state
     moveConfirmBtn.disabled = true;
     const originalText = moveConfirmBtn.innerHTML;
     moveConfirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Moving...';
 
-    // Send AJAX request
     fetch('{% url "manager:move_transactions" %}', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({
-        transaction_ids: selectedTransactions,
-        target_account_id: targetAccountId
-      })
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ transaction_ids: selectedTransactions, target_account_id: targetAccountId })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
       if (data.success) {
-        // Close modal and reload page
-        const modal = bootstrap.Modal.getInstance(document.getElementById('moveTransactionsModal'));
-        modal.hide();
+        bootstrap.Modal.getInstance(document.getElementById('moveTransactionsModal')).hide();
         setTimeout(() => window.location.reload(), 500);
       } else {
         alert('Error: ' + (data.message || 'Failed to move transactions'));
@@ -369,70 +506,49 @@
         moveConfirmBtn.innerHTML = originalText;
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
+    .catch(() => {
       alert('An error occurred while moving transactions');
       moveConfirmBtn.disabled = false;
       moveConfirmBtn.innerHTML = originalText;
     });
   });
 
-  // Reset modal when it closes
   document.getElementById('moveTransactionsModal').addEventListener('hidden.bs.modal', function() {
     accountSelect.value = '';
     accountInfo.style.display = 'none';
     moveConfirmBtn.disabled = true;
   });
 
-  // Tally modal handlers
+  // ── Tally modal ──────────────────────────────────────────────────────────
   document.getElementById('tallyTransactionsModal').addEventListener('show.bs.modal', function() {
     const selectedCount = Array.from(getTransactionCheckboxes()).filter(cb => cb.checked).length;
     selectedCountInfo.textContent = `${selectedCount} transaction(s) selected`;
     document.getElementById('tallySelectedInfo').style.display = 'block';
   });
 
-  tallySuccessBtn.addEventListener('click', function() {
-    updateTransactionsTally(true);
-  });
-
-  tallyFailBtn.addEventListener('click', function() {
-    updateTransactionsTally(false);
-  });
+  tallySuccessBtn.addEventListener('click', () => updateTransactionsTally(true));
+  tallyFailBtn.addEventListener('click',    () => updateTransactionsTally(false));
 
   function updateTransactionsTally(isTallied) {
     const selectedTransactions = Array.from(getTransactionCheckboxes())
-      .filter(cb => cb.checked)
-      .map(cb => cb.value);
+      .filter(cb => cb.checked).map(cb => cb.value);
 
-    if (selectedTransactions.length === 0) {
-      alert('Please select transactions');
-      return;
-    }
+    if (!selectedTransactions.length) { alert('Please select transactions'); return; }
 
-    // Show loading state
     const activeBtn = isTallied ? tallySuccessBtn : tallyFailBtn;
     activeBtn.disabled = true;
     const originalText = activeBtn.innerHTML;
     activeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
 
-    // Send AJAX request
     fetch('{% url "manager:update_tally_transactions" %}', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({
-        transaction_ids: selectedTransactions,
-        is_tally: isTallied
-      })
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ transaction_ids: selectedTransactions, is_tally: isTallied })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
       if (data.success) {
-        // Close modal and reload page
-        const modal = bootstrap.Modal.getInstance(document.getElementById('tallyTransactionsModal'));
-        modal.hide();
+        bootstrap.Modal.getInstance(document.getElementById('tallyTransactionsModal')).hide();
         setTimeout(() => window.location.reload(), 500);
       } else {
         alert('Error: ' + (data.message || 'Failed to update transactions'));
@@ -440,20 +556,18 @@
         activeBtn.innerHTML = originalText;
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
+    .catch(() => {
       alert('An error occurred while updating transactions');
       activeBtn.disabled = false;
       activeBtn.innerHTML = originalText;
     });
   }
 
-  // Reset tally modal when it closes
   document.getElementById('tallyTransactionsModal').addEventListener('hidden.bs.modal', function() {
     tallySuccessBtn.disabled = false;
     tallyFailBtn.disabled = false;
     tallySuccessBtn.innerHTML = '<i class="fa-solid fa-check"></i> Tallied';
-    tallyFailBtn.innerHTML = '<i class="fa-solid fa-times"></i> Not Tallied';
+    tallyFailBtn.innerHTML    = '<i class="fa-solid fa-times"></i> Not Tallied';
   });
 </script>
 {% endblock %}

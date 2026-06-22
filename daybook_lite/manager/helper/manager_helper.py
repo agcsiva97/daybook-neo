@@ -7,10 +7,12 @@ import requests
 from django.contrib import messages
 from django.conf import settings
 from ..models import ActivityLog, Configuration, Ledger, Shop, Type, Accounts
+from django.contrib.auth import get_user_model
 import requests
 
 from entries.models import GLDSLRPriceHistory
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 def create_shop(short_name, name, d_no, addressline1, addressline2, place, pincode, proprietor, god, pan):
@@ -50,20 +52,19 @@ def log_activity(request, action, model_name='', object_id='', description='',sh
         log_activity(request, 'CREATE', 'Loan', loan.id, f'Loan created: {loan.pawn_no}')
     """
     try:
-        ip_address = (
-            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-            or request.META.get('REMOTE_ADDR')
-        )
+        if request == None:
+            t_user = User.objects.filter(username='system').first()
+        else:
+            t_user = request.user
         ActivityLog.objects.create(
-            user        = request.user if request.user.is_authenticated else None,
+            user        = t_user,
             action      = action,
             shop        = shop,
             model_name  = model_name,
             object_id   = str(object_id),
             description = description,
-            ip_address  = ip_address,
         )
-        logger.info(f"Activity logged -> user=[{request.user}] | action=[{action}] | model=[{model_name}] | id=[{object_id}]")
+        logger.info(f"Activity logged -> user=[{t_user}] | action=[{action}] | model=[{model_name}] | id=[{object_id}]")
         return True
     except Exception as e:
         logger.error(f"Error logging activity: {str(e)}", exc_info=True)

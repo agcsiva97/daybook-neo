@@ -31,5 +31,7 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('fetchmetalprice/gold/', views.update_gold_price, name='update_gold_price'),
     path('fetchmetalprice/silver/', views.update_silver_price, name='update_silver_price'),
+    path("docs/<str:filename>/",views.document_view,name="document_view"),
+    path("docs/",views.document_view,name="document_home"),
 
 ]

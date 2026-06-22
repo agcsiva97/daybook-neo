@@ -12,35 +12,59 @@
       </div>
       <!-- RIGHT SIDE (buttons) -->
       <div class="d-flex gap-2">
-          <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="btn btn-sm btn-primary">
-            <i class="fa-solid fa-file-invoice-dollar"></i> <span class="d-none d-md-inline">Types Summary</span>
-          </a>
-          <a href="{% url 'manager:shop_meta' shop.pk %}" class="btn btn-sm btn-outline-secondary">
-            <i class="fa-solid fa-sitemap"></i> <span class="d-none d-md-inline">Account Tree</span>
-          </a>
-          <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="btn btn-sm btn-primary">
-            <i class="fa-solid fa-arrows-rotate"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
-          </a>
-
-        {% if is_admin %}
-          <a href="{% url 'manager:edit_shop' shop.pk %}" class="btn btn-sm btn-teal">
-            <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
-          </a>
-        {% endif %}
-        {% if is_super_admin %}
-          <a href="{% url 'manager:delete_shop' shop.pk %}" class="btn btn-sm btn-red">
-            <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
-          </a>
-        {% endif %}
         <a href="{% url 'manager:shops_list' %}" class="btn btn-sm btn-secondary">
           <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Shops List</span>
         </a>
+        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+          <span>More Options</span>
+        </button>
+        <ul class="dropdown-menu">
+          {% if is_admin %}
+          <li>
+            <a href="{% url 'manager:edit_shop' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-pencil primary-color"></i> <span class="d-none d-md-inline">Edit</span>
+            </a>
+          </li>
+          {% endif %}
+          {% if is_super_admin %}
+          <li>
+            <a href="{% url 'manager:delete_shop' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-trash primary-color"></i> <span class="d-none d-md-inline">Delete</span>
+            </a>
+          </li>
+          {% endif %}
+          <li>
+            <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-file-invoice-dollar  primary-color"></i> <span class="d-none d-md-inline">Types Summary</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'manager:shop_meta' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-sitemap primary-color"></i> <span class="d-none d-md-inline">Shop Meta</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-arrows-rotate primary-color"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'manager:close-pl-accounts' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-calendar-xmark primary-color"></i>
+              <span class="d-none d-md-inline">Close PL Accounts</span>
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
     <div class="card-body">
       <div class="row">
         <div class="col-md-3">
-          {% comment %} <center><img src="{{ shop.logo.url if shop.logo else '/static/images/default_shop_logo.png' }}" alt="Shop Logo" class="img-fluid rounded mb-2" style="max-height: 150px;"></center> {% endcomment %}
+          {% if ledgers %}
+            {% for ledger in ledgers %}
+              <h5 style="text-align: left;">{{ledger.license_number}}</h5>
+            {% endfor %}
+          {% endif %}
         </div>
         <div class="col-md-6">
           <center><h6>{{shop.god|default:"-"}}</h6></center>

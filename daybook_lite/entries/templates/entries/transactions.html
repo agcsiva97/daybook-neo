@@ -95,7 +95,7 @@ td, th {
 
 .table-responsive table th,
 .table-responsive table td {
-  padding: 0.4rem;
+  padding: 0.1rem;
   vertical-align: middle;
 }
 
@@ -362,17 +362,17 @@ td, th {
           Showing {{ page_obj.paginator.count }} transaction{{ page_obj.paginator.count|pluralize }}
         </p>
         <div class="btn-group" role="group">
-             <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
+             <a href="{% url 'entries:export_transactions_csv' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% for acc in account_filter %}&account={{ acc }}{% endfor %}&{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
                class="btn btn-sm btn-outline-success">
               <i class="fa-solid fa-file-csv"></i> 
               <span class="d-none d-md-inline"> CSV</span>
             </a>
-             <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
+             <a href="{% url 'entries:export_transactions_excel' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% for acc in account_filter %}&account={{ acc }}{% endfor %}&{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" 
                class="btn btn-sm btn-outline-success">
               <i class="fa-solid fa-file-excel"></i> 
               <span class="d-none d-md-inline"> Excel </span>
             </a>
-            <a href="{% url 'entries:transactions_print' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if account_filter %}account={{ account_filter }}&{% endif %}{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" class="btn btn-sm btn-outline-primary">
+            <a href="{% url 'entries:transactions_print' %}?{% if from_date %}from_date={{ from_date }}&{% endif %}{% if to_date %}to_date={{ to_date }}&{% endif %}{% if shop_filter %}shop={{ shop_filter }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% for acc in account_filter %}&account={{ acc }}{% endfor %}&{% if account_type_filter %}account_type={{ account_type_filter }}&{% endif %}{% if amount_value %}amount_value={{ amount_value }}&amount_operator={{ amount_operator }}&{% endif %}{% if search_query %}search={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}{% endif %}" class="btn btn-sm btn-outline-primary">
               <i class="fa-solid fa-print"></i> 
               <span class="d-none d-md-inline"> Print</span>
             </a>
@@ -415,7 +415,7 @@ td, th {
       <!-- Transactions Table -->
       <div class="table-responsive">
         <!-- Screen version with pagination -->
-        <table class="table table-hover table-striped-columns">
+        <table class="table table-hover table-sm">
           <thead>
             <tr>
               <th scope="col">Date</th>

@@ -1,0 +1,11 @@
+<h1>Documentation</h1>
+
+<ul>
+{% for file in files %}
+    <li>
+        <a href="{% url 'entries:document_view' file %}">
+            {{ file }}
+        </a>
+    </li>
+{% endfor %}
+</ul>

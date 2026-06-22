@@ -64,8 +64,12 @@
               <th class="text-end">Opening Balance</th>
               <th class="text-end">Day's Debit</th>
               <th class="text-end">Day's Credit</th>
-              <th class="text-end">Closing Balance</th>
-              <th class="text-end">Denomination Total</th>
+              <th class="text-end">Expected Balance</th>
+              <th style="text-align:center;">
+                Actual Balance 
+                <br><small>(From Denomination)</smaall>
+              </th>
+              <th class="text-end">Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +81,7 @@
               <td class="text-success text-end">{{ summary.credit_total|indian_format }}</td>
               <td class="text-end"><strong>{{ summary.closing_balance|indian_format }}</strong></td>
               <td class="text-end"><strong>{{ summary.denomination_total|indian_format }}</strong></td>
+              <td class="text-end {% if summary.balance > 0 %} text-danger {% else %} text-success {% endif %}"><strong>{{ summary.balance|indian_format }}</strong></td>
             </tr>
             {% endfor %}
           </tbody>

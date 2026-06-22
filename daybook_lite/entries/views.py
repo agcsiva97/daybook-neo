@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import csv
 import logging
-import time
+import json
 import openpyxl
 from functools import wraps
 from openpyxl.styles import Font, Alignment, PatternFill
+import markdown
 
+from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
@@ -19,29 +21,20 @@ from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
-import requests
 
-from manager.helper import manager_helper
+from manager.helper import manager_helper, date_helper
 
 from .forms import TransactionForm, TransactionEditForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
 from .models import Transactions, Denomination, Loan
 from manager.models import Shop, Ledger, Configuration, Accounts, Type
 from .helpers import transactions as transaction_helper
 from manager.helper.manager_helper import log_activity
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def parse_date_string(date_str):
-    if not date_str:
-        return None
-    for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d-%m-%Y', '%d/%m/%Y'):
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 def is_admin(user):
@@ -86,12 +79,22 @@ def admin_or_staff_required(view_func):
 @login_required
 def home(request):
     today = timezone.localdate()
-    form = TransactionForm()
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
     all_shops = Shop.objects.all().order_by('name')
     default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     
+    latest_transaction = Transactions.objects.filter(
+        shop__short_name = default_shop_short_name.value
+    ).order_by('-transaction_dt').first()
+
+    if latest_transaction:
+        latest_date = timezone.localtime(latest_transaction.transaction_dt).date() if hasattr(latest_transaction.transaction_dt, 'date') else timezone.localtime(latest_transaction.transaction_dt)
+    else:
+        latest_date = today  
+
+    form = TransactionForm(initial={'date': latest_date})
+
     # Apply permission-based filtering (same as transactions view)
     if is_admin(request.user) or is_super_admin(request.user):
         transactions = Transactions.objects.filter(transaction_dt__date=today).select_related(
@@ -162,6 +165,7 @@ def home(request):
         'form': form,
         'all_shops': all_shops,
         'default_shop_short_name': default_shop_short_name,
+        'latest_date': latest_date,
     }
     
     return render(request, 'entries/home.html',context)
@@ -200,6 +204,15 @@ def add_entries(request):
     shops = Shop.objects.all().order_by('short_name')
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
+
+    latest_transaction = Transactions.objects.filter(
+        shop__short_name = default_shop_short_name.value
+    ).order_by('-transaction_dt').first()
+
+    if latest_transaction:
+        latest_date = latest_date = timezone.localtime(latest_transaction.transaction_dt).date() if hasattr(latest_transaction.transaction_dt, 'date') else timezone.localtime(latest_transaction.transaction_dt)
+    else:
+        latest_date = today 
     
     if request.method == 'POST':
         form = TransactionForm(request.POST)
@@ -261,6 +274,7 @@ def add_entries(request):
                     'loan_form': LoanForm(),
                     'release_form': LoanForm(),
                     'shops': shops,
+                    'latest_date': latest_date,
                 })
 
             return redirect('entries:home')
@@ -281,6 +295,7 @@ def add_entries(request):
         'is_admin': is_admin(request.user),
         'default_shop_short_name': default_shop_short_name,
         'all_shops': shops,
+        'latest_date': latest_date,
     })
 
 
@@ -292,9 +307,9 @@ def transactions(request):
     from_date = (request.GET.get('from_date') or '').strip()
     to_date = (request.GET.get('to_date') or '').strip()
     shop_filter = request.GET.get('shop')
-    type_filter = request.GET.get('type')
+    type_filter = request.GET.get('tr_type')
     search_query = request.GET.get('search', '')
-    account_filter = request.GET.getlist('account')
+    account_filter = [a for a in request.GET.getlist('account') if a]
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
@@ -346,7 +361,7 @@ def transactions(request):
 
     # Apply filters
     if from_date:
-        from_date_obj = parse_date_string(from_date)
+        from_date_obj = date_helper.parse_date_string(from_date)
         if from_date_obj:
             from_date_dt = timezone.make_aware(
                 datetime.combine(from_date_obj, datetime.min.time()),
@@ -355,7 +370,7 @@ def transactions(request):
             transactions_list = transactions_list.filter(transaction_dt__gte=from_date_dt)
     
     if to_date:
-        to_date_obj = parse_date_string(to_date)
+        to_date_obj = date_helper.parse_date_string(to_date)
         if to_date_obj:
             to_date_dt = timezone.make_aware(
                 datetime.combine(to_date_obj, datetime.max.time()),
@@ -485,7 +500,6 @@ def transactions(request):
 @login_required
 def transactions_print(request):
     # Use same filters as transactions but return all matching data for reporting
-    sort_option = request.GET.get('sort', 'date_desc')
     shop_filter = request.GET.get('shop')
     all_configs = Configuration.objects.all()
     configs={}
@@ -494,15 +508,15 @@ def transactions_print(request):
             configs[config.key] = config.value
             print(f"Config: {config.key} = {config.value}")
     transactions = _get_filtered_transactions(request)
-    if sort_option == 'date_asc':
-        transactions = transactions.order_by('transaction_dt')
-    else:
-        transactions = transactions.order_by('-transaction_dt')
 
     shop = None
     if shop_filter:
         shop = Shop.objects.filter(pk=shop_filter).first()
 
+    if transactions.count() > 1000:
+        messages.error(request, 'Filter transaction less than 1000')
+        return redirect('entries:transactions')
+    
     context = {
         'transactions': transactions,
         'from_date': request.GET.get('from_date', ''),
@@ -510,12 +524,11 @@ def transactions_print(request):
         'shop_filter': shop_filter,
         'shop': shop,
         'type_filter': request.GET.get('type', ''),
-        'account_filter': request.GET.get('account', ''),
+        'account_filter': request.GET.getlist('account', ''),
         'account_type_filter': request.GET.get('account_type', ''),
         'amount_value': request.GET.get('amount_value', ''),
         'amount_operator': request.GET.get('amount_operator', 'equals'),
         'search_query': request.GET.get('search', ''),
-        'sort': sort_option,
         'configs': configs,
     }
     return render(request, 'entries/transactions_print.html', context)
@@ -528,17 +541,18 @@ def _get_filtered_transactions(request):
     shop_filter = request.GET.get('shop')
     type_filter = request.GET.get('type')
     search_query = request.GET.get('search', '')
-    account_filter = request.GET.get('account')
+    account_filter = [a for a in request.GET.getlist('account') if a]
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
+    sort_option = request.GET.get('sort', 'date_desc')
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by').order_by('transaction_dt','updated_at')
+    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by')
     
     # Apply filters
     if from_date:
-        from_date_obj = parse_date_string(from_date)
+        from_date_obj = date_helper.parse_date_string(from_date)
         if from_date_obj:
             from_date_dt = timezone.make_aware(
                 datetime.combine(from_date_obj, datetime.min.time()),
@@ -547,7 +561,7 @@ def _get_filtered_transactions(request):
             transactions_list = transactions_list.filter(transaction_dt__gte=from_date_dt)
     
     if to_date:
-        to_date_obj = parse_date_string(to_date)
+        to_date_obj = date_helper.parse_date_string(to_date)
         if to_date_obj:
             to_date_dt = timezone.make_aware(
                 datetime.combine(to_date_obj, datetime.max.time()),
@@ -560,9 +574,6 @@ def _get_filtered_transactions(request):
     
     if type_filter and type_filter in ['DEBIT', 'CREDIT']:
         transactions_list = transactions_list.filter(tr_type=type_filter)
-    
-    if account_filter:
-        transactions_list = transactions_list.filter(acc_id=account_filter)
     
     if account_type_filter:
         transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
@@ -583,6 +594,17 @@ def _get_filtered_transactions(request):
     if search_query:
         transactions_list = transactions_list.filter(remarks__icontains=search_query)
     
+    if account_filter:
+        if sort_option == 'date_asc':
+            transactions_list = transactions_list.filter(acc_id__in=account_filter).order_by('acc__t_name','transaction_dt')
+        else:
+            transactions_list = transactions_list.filter(acc_id__in=account_filter).order_by('acc__t_name','-transaction_dt')
+    else:
+        if sort_option == 'date_asc':
+            transactions_list = transactions_list.order_by('transaction_dt')
+        else:
+            transactions_list = transactions_list.order_by('-transaction_dt')
+
     return transactions_list
 
 @login_required
@@ -1171,6 +1193,11 @@ def report(request):
         else:
             denom_total = Decimal('0.00')
         
+        if denom_total > 0:
+            balance = data['closing_balance'] - denom_total
+        else:
+            balance = 0
+        
         shop_summaries.append({
             'shop': shop,
             'opening_balance': data['opening_balance'],
@@ -1178,6 +1205,7 @@ def report(request):
             'debit_total': data['day_total_debit'],
             'credit_total': data['day_total_credit'],
             'denomination_total': denom_total,
+            'balance': balance,
         })
     
     all_shops = Shop.objects.all().order_by('name')
@@ -1394,6 +1422,14 @@ def denomination(request):
         default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
         form = DenominationForm()
     
+    cookie_data = request.COOKIES.get('hidden_fields', '[]')
+    
+    try:
+        # 2. Parse JSON string into a native Python list
+        hidden_fields = json.loads(cookie_data)
+    except json.JSONDecodeError:
+        hidden_fields = []
+
     context = {
         'nav_title': 'Denomination',
         'form': form,
@@ -1401,6 +1437,7 @@ def denomination(request):
         'is_admin': is_admin(request.user),
         'all_shops': all_shops,
         'default_shop_short_name': default_shop_short_name,
+        'hidden_fields_list': hidden_fields,
     }
     return render(request, 'entries/denomination.html', context)
 
@@ -1485,8 +1522,6 @@ def delete_denomination(request, key):
 @login_required
 def get_users_for_denomination(request):
     """Get all users who have created denominations"""
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
     
     # Admin can see all users, Staff can see only themselves
     if request.user.groups.filter(name='Admin').exists():
@@ -1600,9 +1635,9 @@ def edit_denomination(request, key):
                     '50': (note_50, note_50 * 50),
                     '20': (note_20, note_20 * 20),
                     '10': (note_10, note_10 * 10),
-                    'Coins': (1, coins),
-                    'Damage': (1, damage),
-                    'Inside': (1, inside),
+                    'Coins': (1 if coins > 0 else 0, coins),
+                    'Damage': (1 if damage > 0 else 0, damage),
+                    'Inside': (1 if inside > 0 else 0, inside),
                     '500 Bundle': (bundle_500, bundle_500 * 500 * 100),
                     '200 Bundle': (bundle_200, bundle_200 * 200 * 100),
                     '100 Bundle': (bundle_100, bundle_100 * 100 * 100),
@@ -1613,19 +1648,25 @@ def edit_denomination(request, key):
                 
                 # Update or create denominations with new key and date
                 for denom_name, (count, amount) in denomination_updates.items():
-                    Denomination.objects.update_or_create(
-                        key=key,
-                        denomination=denom_name,
-                        defaults={
-                            'count': count,
-                            'amount': Decimal(str(amount)),
-                            'denomination_dt': new_denomination_dt,
-                            'time_period': time_period,
-                            'shop': shop,
-                            'updated_by': request.user,
-                            'created_by': created_by,
-                        }
-                    )
+                    if count > 0 or amount > 0:
+                        Denomination.objects.update_or_create(
+                            key=key,
+                            denomination=denom_name,
+                            defaults={
+                                'count': count,
+                                'amount': Decimal(str(amount)),
+                                'denomination_dt': new_denomination_dt,
+                                'time_period': time_period,
+                                'shop': shop,
+                                'updated_by': request.user,
+                                'created_by': created_by,
+                            }
+                        )
+                    else:
+                        Denomination.objects.filter(
+                            key=key,
+                            denomination=denom_name,
+                        ).delete()
                 
                 log_activity(request, 'UPDATE', 'Denomination', key, f'Denomination updated: {key}', shop=shop)
                 logger.info(f"Denomination {key} updated by {request.user.username}")
@@ -2009,7 +2050,7 @@ def bulk_loan(request):
         interest_rel_type   = 'RELEASE_INTEREST'
 
     created_loans = []
-
+    t_user = User.objects.filter(username='system').first()
     try:
         with db_transaction.atomic():
             for idx, (pawn_no, ledger_id, principal, interest) in enumerate(
@@ -2079,7 +2120,7 @@ def bulk_loan(request):
                         tr_type=principal_tr_type,
                         shop=shop,
                         chosen_dt=chosen_dt,
-                        user=request.user,
+                        user=t_user,
                         account=principal_account,
                         label=f"row{idx} principal",
                     )
@@ -2093,7 +2134,7 @@ def bulk_loan(request):
                         tr_type='CREDIT',
                         shop=shop,
                         chosen_dt=chosen_dt + timedelta(milliseconds=10),
-                        user=request.user,
+                        user=t_user,
                         account=interest_account,
                         label=f"row{idx} interest",
                     )
@@ -2239,6 +2280,7 @@ def edit_loan(request, pk):
     old_shop         = old_ledger.shop
     old_date         = timezone.localtime(loan.transaction_dt).date()
     old_pawn_no      = loan.pawn_no
+    t_user = User.objects.filter(username='system').first()
 
     if request.method == 'POST':
         logger.info("============ Loan Update Started ============")
@@ -2337,8 +2379,8 @@ def edit_loan(request, pk):
                     # Only needed when shop or date changed
                     if not (same_shop and same_date):
                         logger.info("Shop or date changed — reversing old transactions")
-                        transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, request.user, label="old principal")
-                        transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  request.user, label="old interest")
+                        transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, t_user, label="old principal")
+                        transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  t_user, label="old interest")
 
                     # ── Step 5: Apply new amounts to new transactions ────────
                     if same_shop and same_date:
@@ -2348,8 +2390,8 @@ def edit_loan(request, pk):
                             # Type changed — delete old transactions and create new ones
                             logger.info(f"Loan type changed [{old_type}] -> [{new_type}] — removing old, creating new")
 
-                            transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, request.user, label="old principal (type change)")
-                            transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  request.user, label="old interest (type change)")
+                            transaction_helper._reduce_or_delete_transaction(old_principal_trans, old_principal, t_user, label="old principal (type change)")
+                            transaction_helper._reduce_or_delete_transaction(old_interest_trans,  old_interest,  t_user, label="old interest (type change)")
 
                             transaction_helper._add_or_create_transaction(
                                 trans=new_principal_trans,
@@ -2358,7 +2400,7 @@ def edit_loan(request, pk):
                                 tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
                                 shop=new_shop,
                                 chosen_dt=new_dt,
-                                user=request.user,
+                                user=t_user,
                                 account=new_principal_account,
                                 loan_tr_type='LP' if new_type == 'LOAN' else 'RP',
                                 label="new principal (type change)"
@@ -2370,7 +2412,7 @@ def edit_loan(request, pk):
                                 tr_type='CREDIT',
                                 shop=new_shop,
                                 chosen_dt=new_dt,
-                                user=request.user,
+                                user=t_user,
                                 account=new_interest_account,
                                 loan_tr_type='LI' if new_type == 'LOAN' else 'RI',
                                 label="new interest (type change)"
@@ -2386,7 +2428,7 @@ def edit_loan(request, pk):
                                 tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
                                 shop=new_shop,
                                 chosen_dt=new_dt,
-                                user=request.user,
+                                user=t_user,
                                 account=new_principal_account,
                                 loan_tr_type='LP' if new_type == 'LOAN' else 'RP',
                                 label="principal"
@@ -2399,7 +2441,7 @@ def edit_loan(request, pk):
                                 tr_type='CREDIT',
                                 shop=new_shop,
                                 chosen_dt=new_dt,
-                                user=request.user,
+                                user=t_user,
                                 account=new_interest_account,
                                 loan_tr_type='LI' if new_type == 'LOAN' else 'RI',
                                 label="interest"
@@ -2414,7 +2456,7 @@ def edit_loan(request, pk):
                             tr_type='DEBIT' if new_type == 'LOAN' else 'CREDIT',
                             shop=new_shop,
                             chosen_dt=new_dt,
-                            user=request.user,
+                            user=t_user,
                             account=new_principal_account,
                             loan_tr_type='LP' if new_type == 'LOAN' else 'RP',
                             label="new principal"
@@ -2426,7 +2468,7 @@ def edit_loan(request, pk):
                             tr_type='CREDIT',
                             shop=new_shop,
                             chosen_dt=new_dt,
-                            user=request.user,
+                            user=t_user,
                             account=new_interest_account,
                             loan_tr_type='LI' if new_type == 'LOAN' else 'RI',
                             label="new interest"
@@ -2435,19 +2477,13 @@ def edit_loan(request, pk):
                     # ── Step 6: Save updated loan ───────────────────────────
                     # Always remove old pawn_no first, then append new one below
                     old_p = Transactions.objects.filter(**old_principal_filter).first()
-                    old_i = Transactions.objects.filter(**old_interest_filter).first()
                     if old_p:
                         transaction_helper.remove_pawn_no_from_remark(
                             old_p, old_pawn_no, request.user, label="old principal remark"
                         )
-                    if old_i:
-                        transaction_helper.remove_pawn_no_from_remark(
-                            old_i, old_pawn_no, request.user, label="old interest remark"
-                        )
 
                     # Add pawn_no to new/updated transactions
                     new_p = Transactions.objects.filter(**new_principal_filter).first()
-                    new_i = Transactions.objects.filter(**new_interest_filter).first()
                     if new_p:
                         transaction_helper.append_pawn_no_to_remark(
                             new_p, updated_loan.pawn_no, request.user, label="new principal remark"
@@ -2508,6 +2544,7 @@ def delete_loan(request, pk):
         loan_date      = timezone.localtime(loan.transaction_dt).date()
         loan_principal = loan.principal
         loan_interest  = loan.interest
+        t_user = User.objects.filter(username='system').first()
 
         principal_remark = 'LP' if loan_type == 'LOAN' else 'RP'
         interest_remark  = 'LI' if loan_type == 'LOAN' else 'RI'
@@ -2552,7 +2589,7 @@ def delete_loan(request, pk):
                 transaction_helper._reduce_or_delete_transaction(
                     trans=principal_trans,
                     amount=loan_principal,
-                    user=request.user,
+                    user=t_user,
                     label="principal"
                 )
 
@@ -2560,7 +2597,7 @@ def delete_loan(request, pk):
                 transaction_helper._reduce_or_delete_transaction(
                     trans=interest_trans,
                     amount=loan_interest,
-                    user=request.user,
+                    user=t_user,
                     label="interest"
                 )
 
@@ -2651,3 +2688,40 @@ def about(request):
         'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/about.html', context)
+
+def document_view(request, filename=None):
+    docs_dir = Path("docs")
+
+    # File list is always needed (for the sidebar)
+    files = sorted(f.stem for f in docs_dir.glob("*.md"))
+
+    content = None
+    title = None
+
+    if filename is None:
+        filename = files[0]
+    file_path = docs_dir / f"{filename}.md"
+    if not file_path.exists():
+        return render(request, "404.html", status=404)
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+
+    content = markdown.markdown(
+        md_content,
+        extensions=["fenced_code", "tables", "toc"],
+    )
+    title = filename  # matched against `file` in sidebar loop
+
+    return render(
+        request,
+        "entries/doc-view.html",      # ← single template now
+        {
+            "files": files,
+            "content": content,
+            "title": title,
+            'nav_title': 'Help',
+            'is_super_admin': request.user.is_superuser,
+            'is_admin': is_admin(request.user),
+        },
+    )

@@ -1,17 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .hidden{
+    display: none;
+  }
+</style>
+
 <div class="container mt-4">
   <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-12">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h4 class="mb-0">{% if is_edit_mode %}Edit Denomination{% elif is_view_mode %}View Denomination{% else %}Add Denomination{% endif %}</h4>
-          {% if not is_edit_mode and not is_view_mode %}
-          <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#searchDenominationModal">
-            <i class="fas fa-search me-1"></i> Search/Edit
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fieldsVisibilityModal">
+            <i class="fa-solid fa-eye-slash"></i> Hide Fields
           </button>
-          {% endif %}
         </div>
         <div class="card-body">
           {% if is_edit_mode or is_view_mode %}
@@ -87,205 +91,235 @@
             </div>
 
             <hr class="my-4">
-            
-            <!-- 2000 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_2000.id_for_label }}">{{ form.note_2000.label }}</label>
-                {{ form.note_2000 }}
-                {% if form.note_2000.errors %}
-                  <div class="text-danger small">{{ form.note_2000.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_2000" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.inside.id_for_label }}">{{ form.inside.label }}</label>
-                {{ form.inside }}
-                {% if form.inside.errors %}
-                  <div class="text-danger small">{{ form.inside.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_inside" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
             <!-- 500 -->
             <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_500.id_for_label }}">{{ form.note_500.label }}</label>
-                {{ form.note_500 }}
-                {% if form.note_500.errors %}
-                  <div class="text-danger small">{{ form.note_500.errors|striptags }}</div>
-                {% endif %}
+              
+              <div class="col-md-4 {% if '500' in hidden_fields_list %}hidden{% endif %} " id="field-500-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_500.id_for_label }}">{{ form.note_500.label }}</label>
+                    {{ form.note_500 }}
+                    {% if form.note_500.errors %}
+                      <div class="text-danger small">{{ form.note_500.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+              
+              <div class="col-md-4 {% if '500-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-500-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_500.id_for_label }}">{{ form.bundle_500.label }}</label>
+                    {{ form.bundle_500 }}
+                    {% if form.bundle_500.errors %}
+                      <div class="text-danger small">{{ form.bundle_500.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_500.id_for_label }}">{{ form.bundle_500.label }}</label>
-                {{ form.bundle_500 }}
-                {% if form.bundle_500.errors %}
-                  <div class="text-danger small">{{ form.bundle_500.errors|striptags }}</div>
-                {% endif %}
+              
+              <div class="col-md-4 {% if 'inside' in hidden_fields_list %}hidden{% endif %}" id="field-inside-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.inside.id_for_label }}">{{ form.inside.label }}</label>
+                    {{ form.inside }}
+                    {% if form.inside.errors %}
+                      <div class="text-danger small">{{ form.inside.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_inside" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_500" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- 200 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_200.id_for_label }}">{{ form.note_200.label }}</label>
-                {{ form.note_200 }}
-                {% if form.note_200.errors %}
-                  <div class="text-danger small">{{ form.note_200.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if '200' in hidden_fields_list %}hidden{% endif %}" id="field-200-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_200.id_for_label }}">{{ form.note_200.label }}</label>
+                    {{ form.note_200 }}
+                    {% if form.note_200.errors %}
+                      <div class="text-danger small">{{ form.note_200.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_200.id_for_label }}">{{ form.bundle_200.label }}</label>
-                {{ form.bundle_200 }}
-                {% if form.bundle_200.errors %}
-                  <div class="text-danger small">{{ form.bundle_200.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- 100 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_100.id_for_label }}">{{ form.note_100.label }}</label>
-                {{ form.note_100 }}
-                {% if form.note_100.errors %}
-                  <div class="text-danger small">{{ form.note_100.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if '200-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-200-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_200.id_for_label }}">{{ form.bundle_200.label }}</label>
+                    {{ form.bundle_200 }}
+                    {% if form.bundle_200.errors %}
+                      <div class="text-danger small">{{ form.bundle_200.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_200" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_100.id_for_label }}">{{ form.bundle_100.label }}</label>
-                {{ form.bundle_100 }}
-                {% if form.bundle_100.errors %}
-                  <div class="text-danger small">{{ form.bundle_100.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- 50 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_50.id_for_label }}">{{ form.note_50.label }}</label>
-                {{ form.note_50 }}
-                {% if form.note_50.errors %}
-                  <div class="text-danger small">{{ form.note_50.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if 'damage' in hidden_fields_list %}hidden{% endif %}" id="field-damage-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.damage.id_for_label }}">{{ form.damage.label }}</label>
+                    {{ form.damage }}
+                    {% if form.damage.errors %}
+                      <div class="text-danger small">{{ form.damage.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_damage" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
-                {{ form.bundle_50 }}
-                {% if form.bundle_50.errors %}
-                  <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- 20 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
-                {{ form.note_20 }}
-                {% if form.note_20.errors %}
-                  <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if '100' in hidden_fields_list %}hidden{% endif %}" id="field-100-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_100.id_for_label }}">{{ form.note_100.label }}</label>
+                    {{ form.note_100 }}
+                    {% if form.note_100.errors %}
+                      <div class="text-danger small">{{ form.note_100.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_20.id_for_label }}">{{ form.bundle_20.label }}</label>
-                {{ form.bundle_20 }}
-                {% if form.bundle_20.errors %}
-                  <div class="text-danger small">{{ form.bundle_20.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- 10 -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.note_10.id_for_label }}">{{ form.note_10.label }}</label>
-                {{ form.note_10 }}
-                {% if form.note_10.errors %}
-                  <div class="text-danger small">{{ form.note_10.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if '100-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-100-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_100.id_for_label }}">{{ form.bundle_100.label }}</label>
+                    {{ form.bundle_100 }}
+                    {% if form.bundle_100.errors %}
+                      <div class="text-danger small">{{ form.bundle_100.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_100" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.bundle_10.id_for_label }}">{{ form.bundle_10.label }}</label>
-                {{ form.bundle_10 }}
-                {% if form.bundle_10.errors %}
-                  <div class="text-danger small">{{ form.bundle_10.errors|striptags }}</div>
-                {% endif %}
-              </div>
-              <div class="col-md-3 text-end">
-                <span id="bundle_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-              </div>
-            </div>
 
-            <!-- Coins -->
-            <div class="row mb-3 align-items-center">
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.coins.id_for_label }}">{{ form.coins.label }}</label>
-                {{ form.coins }}
-                {% if form.coins.errors %}
-                  <div class="text-danger small">{{ form.coins.errors|striptags }}</div>
-                {% endif %}
+              <div class="col-md-4 {% if 'coins' in hidden_fields_list %}hidden{% endif %}" id="field-coins-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.coins.id_for_label }}">{{ form.coins.label }}</label>
+                    {{ form.coins }}
+                    {% if form.coins.errors %}
+                      <div class="text-danger small">{{ form.coins.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_coins" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_coins" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+
+              <div class="col-md-4 {% if '50' in hidden_fields_list %}hidden{% endif %}" id="field-50-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_50.id_for_label }}">{{ form.note_50.label }}</label>
+                    {{ form.note_50 }}
+                    {% if form.note_50.errors %}
+                      <div class="text-danger small">{{ form.note_50.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-1"></div>
-              <div class="col-md-2">
-                <label class="form-label mb-0" for="{{ form.damage.id_for_label }}">{{ form.damage.label }}</label>
-                {{ form.damage }}
-                {% if form.damage.errors %}
-                  <div class="text-danger small">{{ form.damage.errors|striptags }}</div>
-                {% endif %}
+
+              <div class="col-md-4 {% if '20' in hidden_fields_list %}hidden{% endif %}" id="field-20-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
+                    {{ form.note_20 }}
+                    {% if form.note_20.errors %}
+                      <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
-              <div class="col-md-3 text-end">
-                <span id="calc_damage" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+
+              <div class="col-md-4 {% if '10' in hidden_fields_list %}hidden{% endif %}" id="field-10-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.note_10.id_for_label }}">{{ form.note_10.label }}</label>
+                    {{ form.note_10 }}
+                    {% if form.note_10.errors %}
+                      <div class="text-danger small">{{ form.note_10.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="calc_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
               </div>
+
+              <div class="col-md-4 {% if '50-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-50-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
+                    {{ form.bundle_50 }}
+                    {% if form.bundle_50.errors %}
+                      <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4 {% if '20-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-20-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_20.id_for_label }}">{{ form.bundle_20.label }}</label>
+                    {{ form.bundle_20 }}
+                    {% if form.bundle_20.errors %}
+                      <div class="text-danger small">{{ form.bundle_20.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4 {% if '10-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-10-bundle-container">
+                <div class="row">
+                  <div class="col-md">
+                    <label class="form-label mb-0" for="{{ form.bundle_10.id_for_label }}">{{ form.bundle_10.label }}</label>
+                    {{ form.bundle_10 }}
+                    {% if form.bundle_10.errors %}
+                      <div class="text-danger small">{{ form.bundle_10.errors|striptags }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md text-end">
+                    <span id="bundle_10" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                  </div>
+                </div>
+              </div>
+            
             </div>
 
             <!-- Total -->
@@ -319,40 +353,108 @@
   </div>
 </div>
 
-<!-- Search Denomination Modal -->
-<div class="modal fade" id="searchDenominationModal" tabindex="-1" aria-labelledby="searchDenominationModalLabel" aria-hidden="true">
+<div class="modal fade" id="fieldsVisibilityModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="searchDenominationModalLabel">Search Denomination</h5>
+        <h5 class="modal-title">Hide Fields</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3">
-          <label for="searchDate" class="form-label">Date *</label>
-          <input type="date" class="form-control" id="searchDate" required>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="500">
+          <label class="form-check-label" for="checkDefault">
+            500
+          </label>
         </div>
-        <div class="mb-3">
-          <label for="searchTimePeriod" class="form-label">Time Period *</label>
-          <select class="form-select" id="searchTimePeriod" required>
-            <option value="">Select Time Period</option>
-            <option value="MORNING">Morning</option>
-            <option value="AFTERNOON">Afternoon</option>
-            <option value="EVENING">Evening</option>
-            <option value="NIGHT">Night</option>
-          </select>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="200">
+          <label class="form-check-label" for="checkDefault">
+            200
+          </label>
         </div>
-        <div class="mb-3">
-          <label for="searchUser" class="form-label">User *</label>
-          <select class="form-select" id="searchUser" required>
-            <option value="">Select User</option>
-          </select>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="100">
+          <label class="form-check-label" for="checkDefault">
+            100
+          </label>
         </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="50">
+          <label class="form-check-label" for="checkDefault">
+            50
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="20">
+          <label class="form-check-label" for="checkDefault">
+            20
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="10">
+          <label class="form-check-label" for="checkDefault">
+            10
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="500-bundle">
+          <label class="form-check-label" for="checkDefault">
+            500 bundle
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="200-bundle">
+          <label class="form-check-label" for="checkDefault">
+            200 bundle
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="100-bundle">
+          <label class="form-check-label" for="checkDefault">
+            100 bundle
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="50-bundle">
+          <label class="form-check-label" for="checkDefault">
+            50 bundle
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="20-bundle">
+          <label class="form-check-label" for="checkDefault">
+            20 bundle 
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="10-bundle">
+          <label class="form-check-label" for="checkDefault">
+            10 bundle 
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="inside">
+          <label class="form-check-label" for="checkDefault">
+            Inside 
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="damage">
+          <label class="form-check-label" for="checkDefault">
+            Damage 
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input visibility-toggle" type="checkbox" data-field="coins">
+          <label class="form-check-label" for="checkDefault">
+            Coins 
+          </label>
+        </div> 
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-info" onclick="searchDenominationView()"><i class="fas fa-eye me-1"></i> View</button>
-        <button type="button" class="btn btn-primary" onclick="searchDenominationEdit()"><i class="fas fa-edit me-1"></i> Edit</button>
+        <button type="button" class="btn btn-primary" onclick="savePreferences()">Save changes</button>
       </div>
     </div>
   </div>
@@ -375,7 +477,6 @@ function getNumericValue(text) {
   
   // Function to calculate total
   function updateTotal() {
-      const calc2000   = getNumericValue(document.getElementById('calc_2000').textContent);
       const calc500    = getNumericValue(document.getElementById('calc_500').textContent);
       const calc200    = getNumericValue(document.getElementById('calc_200').textContent);
       const calc100    = getNumericValue(document.getElementById('calc_100').textContent);
@@ -392,7 +493,7 @@ function getNumericValue(text) {
       const bundle20   = getNumericValue(document.getElementById('bundle_20').textContent);
       const bundle10   = getNumericValue(document.getElementById('bundle_10').textContent);
 
-      const total = calc2000 + calc500 + calc200 + calc100 + calc50 + calc20 + calc10
+      const total = calc500 + calc200 + calc100 + calc50 + calc20 + calc10
                   + calcCoins + calcDamage + calcInside
                   + bundle500 + bundle200 + bundle100 + bundle50 + bundle20 + bundle10;
 
@@ -457,7 +558,6 @@ function displaySameValue(inputId, displayId) {
 }
   
   // Setup calculations for note denominations
-  calculateDenomination('id_note_2000', 2000, 'calc_2000');
   calculateDenomination('id_note_500', 500, 'calc_500');
   calculateDenomination('id_note_200', 200, 'calc_200');
   calculateDenomination('id_note_100', 100, 'calc_100');
@@ -480,7 +580,7 @@ function displaySameValue(inputId, displayId) {
   // Trigger initial calculations if form has values (edit or view mode)
   {% if is_edit_mode or is_view_mode %}
   const triggerCalculations = function() {
-    const fields = ['id_note_2000', 'id_note_500', 'id_note_200', 'id_note_100', 'id_note_50', 'id_note_20', 'id_note_10', 'id_coins', 'id_damage', 'id_inside', 'id_bundle_500', 'id_bundle_200', 'id_bundle_100', 'id_bundle_50', 'id_bundle_20', 'id_bundle_10'];
+    const fields = ['id_note_500', 'id_note_200', 'id_note_100', 'id_note_50', 'id_note_20', 'id_note_10', 'id_coins', 'id_damage', 'id_inside', 'id_bundle_500', 'id_bundle_200', 'id_bundle_100', 'id_bundle_50', 'id_bundle_20', 'id_bundle_10'];
     fields.forEach(fieldId => {
       const field = document.getElementById(fieldId);
       if (field && field.value) {
@@ -586,6 +686,47 @@ function indianFormat(value) {
     let formatted = intPart + '.' + decPart;
     return (isNegative ? '-' : '') + formatted;
 }
+
+
+function savePreferences() {
+    let hiddenFields = [];
+    const checkboxes = document.querySelectorAll('.visibility-toggle');
+    
+    checkboxes.forEach(checkbox => {
+        const fieldName = checkbox.getAttribute('data-field');
+        const container = document.getElementById(`field-${fieldName}-container`);
+        
+        if (checkbox.checked) {
+            container.classList.add('hidden');
+            hiddenFields.push(fieldName); // Add to hidden list
+        } else {
+            container.classList.remove('hidden');
+        }
+    });
+    
+    // Save the array as a JSON string in a single cookie valid for 30 days
+    document.cookie = `hidden_fields=${JSON.stringify(hiddenFields)}; max-age=${3600 * 24 * 30}; path=/`;
+    
+    // Close the modal
+    const modalElement = document.getElementById('fieldsVisibilityModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
+}
+
+// Apply saved settings on initial page load (Fallback if cookie updates client-side)
+window.addEventListener('DOMContentLoaded', (event) => {
+    // Read the server-rendered values or apply logic if needed
+    const checkboxes = document.querySelectorAll('.visibility-toggle');
+    checkboxes.forEach(checkbox => {
+        const fieldName = checkbox.getAttribute('data-field');
+        const container = document.getElementById(`field-${fieldName}-container`);
+        if(container.classList.contains('hidden')) {
+            checkbox.checked = true;
+        }
+    });
+});
 </script>
 
 {% endblock %}

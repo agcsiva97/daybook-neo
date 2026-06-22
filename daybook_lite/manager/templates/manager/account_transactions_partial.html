@@ -1,16 +1,16 @@
 {% for transaction in transactions %}
-<tr class="transaction-row {% if transaction.is_tally %}tallied-row{% endif %}" data-tally-status="{{ transaction.is_tally|lower }}">
+<tr class="transaction-row {% if transaction.is_tally %}tallied{% endif %}" data-tally-status="{{ transaction.is_tally|lower }}">
     <td>
       <input type="checkbox" class="form-check-input transaction-checkbox" value="{{ transaction.pk }}" data-transaction-id="{{ transaction.pk }}">
     </td>
     <td>{{ transaction.transaction_dt |date:"d-m-Y" }}</td>
     <td>{{ transaction.remarks|default:"-" }}</td>
     {% if transaction.tr_type == 'DEBIT' %}
-    <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>
+    <td class="{% if not transaction.is_tally %} text-danger {% endif %} text-end">{{ transaction.amount|indian_format }}</td>
     <td class="text-end"></td>
     {% else %}
     <td class="text-end"></td>
-    <td class="text-success text-end">{{ transaction.amount|indian_format }}</td>
+    <td class="{% if not transaction.is_tally %} text-success {% endif %} text-end">{{ transaction.amount|indian_format }}</td>
     {% endif %}
     <td>
       {% if transaction.is_tally %}
@@ -70,7 +70,8 @@
 
 {% if transactions.has_next %}
 <tr id="sentinel-row"
-    hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&fy={{ fy }}"
+    {# CORRECT — fetches the actual next page #}
+    hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&{{ filter_querystring }}"
     hx-trigger="intersect once"
     hx-target="#sentinel-row"
     hx-swap="outerHTML"

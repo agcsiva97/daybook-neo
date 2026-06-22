@@ -8,7 +8,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">
         <i class="fa-solid fa-shop me-2"></i>{{ shop.name }}
-        <small class="text-muted ms-2 fs-6">Account Hierarchy</small>
+        <small class="text-muted ms-2 fs-6">Shop Summary</small>
       </h5>
       <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
         <i class="fa-solid fa-arrow-left"></i>
@@ -19,7 +19,7 @@
       <div class="row g-3">
         <div class="col-6 col-md-3">
           <div class="p-3 bg-light rounded text-center">
-            <div class="text-muted small">Total Balance</div>
+            <div class="text-muted small">Current Balance</div>
             {% if shop_balance >= 0 %}
               <div class="h5 mb-0 text-success fw-bold">{{ shop_balance|indian_format }} CR</div>
             {% else %}
@@ -117,11 +117,6 @@
                                 <span class="badge bg-warning text-dark ms-1 small">Admin</span>
                               {% endif %}
                             </div>
-                            {% if account.balance >= 0 %}
-                              <span class="text-success fw-semibold small">{{ account.balance|indian_format }} CR</span>
-                            {% else %}
-                              <span class="text-danger fw-semibold small">{{ account.balance|indian_format }} DB</span>
-                            {% endif %}
                           </li>
                           {% endfor %}
                         </ul>

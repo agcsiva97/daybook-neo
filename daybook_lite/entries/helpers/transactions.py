@@ -8,6 +8,7 @@ from ..models import Transactions, Denomination, Loan
 from django.db.models.functions import Coalesce
 from django.db.models import Case, DecimalField, F, Min, Sum, Value, When, Q
 from manager.helper import date_helper, manager_helper
+from manager.helper.manager_helper import log_activity
 from manager.models import BT_Ledger_Accounts, Shop, Type, Accounts
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def create_transaction(shop, amount, tr_type, remarks, old_balance, chosen_dt, u
     # Force transaction_dt (auto_now_add would override it)
     Transactions.objects.filter(pk=txn.pk).update(transaction_dt=chosen_dt)
     txn.refresh_from_db()
+    log_activity(None, 'CREATE', 'Transaction', txn.id, f'Transaction created: {txn.remarks} ({txn.amount} {txn.tr_type}) for {txn.shop.short_name}', shop=shop)
     logger.info(
         f"Created transaction [{txn.id}]: tr_type=[{tr_type}] | "
         f"amount=[{amount}] | loan_tr_type=[{loan_tr_type}]"
@@ -207,9 +209,11 @@ def _reduce_or_delete_transaction(trans, amount, user, label=""):
     trans.updated_by = user
 
     if trans.amount == 0:
+        log_activity(None, 'DELETE', 'Transaction', trans.id, f'Transaction created: {trans.remarks} ({trans.amount} {trans.tr_type}) for {trans.shop.short_name}', shop=trans.shop)
         logger.info(f"[{label}] amount is 0 after reduction — deleting trans id=[{trans.id}]")
         trans.delete()
     else:
+        log_activity(None, 'UPDATE', 'Transaction', trans.id, f'Transaction created: {trans.remarks} ({trans.amount} {trans.tr_type}) for {trans.shop.short_name}', shop=trans.shop)
         trans.save()
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
@@ -237,9 +241,11 @@ def _apply_amount_delta(trans, old_amount, new_amount, remark, tr_type, shop, ch
     trans.updated_by = user
 
     if trans.amount == 0:
+        log_activity(None, 'DELETE', 'Transaction', trans.id, f'Transaction created: {trans.remarks} ({trans.amount} {trans.tr_type}) for {trans.shop.short_name}', shop=trans.shop)
         logger.info(f"[{label}] amount is 0 after delta — deleting trans id=[{trans.id}]")
         trans.delete()
     else:
+        log_activity(None, 'UPDATE', 'Transaction', trans.id, f'Transaction created: {trans.remarks} ({trans.amount} {trans.tr_type}) for {trans.shop.short_name}', shop=trans.shop)
         trans.save()
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
 
@@ -253,6 +259,7 @@ def _add_or_create_transaction(trans, amount, remark, tr_type, shop, chosen_dt, 
         logger.info(f"[{label}] existing transaction found id=[{trans.id}] — adding amount=[{amount}]")
         trans.amount += amount
         trans.updated_by = user
+        log_activity(None, 'UPDATE', 'Transaction', trans.id, f'Transaction created: {trans.remarks} ({trans.amount} {trans.tr_type}) for {trans.shop.short_name}', shop=trans.shop)
         trans.save()
         logger.info(f"[{label}] updated trans id=[{trans.id}] new amount=[{trans.amount}]")
     else:
