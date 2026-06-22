@@ -316,9 +316,9 @@ def transactions(request):
     from_date = (request.GET.get('from_date') or '').strip()
     to_date = (request.GET.get('to_date') or '').strip()
     shop_filter = request.GET.get('shop')
-    type_filter = request.GET.get('type')
+    type_filter = request.GET.get('tr_type')
     search_query = request.GET.get('search', '')
-    account_filter = request.GET.getlist('account')
+    account_filter = [a for a in request.GET.getlist('account') if a]
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
@@ -538,7 +538,7 @@ def transactions_print(request):
         'shop_filter': shop_filter,
         'shop': shop,
         'type_filter': request.GET.get('type', ''),
-        'account_filter': request.GET.get('account', ''),
+        'account_filter': request.GET.getlist('account', ''),
         'account_type_filter': request.GET.get('account_type', ''),
         'amount_value': request.GET.get('amount_value', ''),
         'amount_operator': request.GET.get('amount_operator', 'equals'),
@@ -556,7 +556,7 @@ def _get_filtered_transactions(request):
     shop_filter = request.GET.get('shop')
     type_filter = request.GET.get('type')
     search_query = request.GET.get('search', '')
-    account_filter = request.GET.get('account')
+    account_filter = [a for a in request.GET.getlist('account') if a]
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
@@ -590,7 +590,7 @@ def _get_filtered_transactions(request):
         transactions_list = transactions_list.filter(tr_type=type_filter)
     
     if account_filter:
-        transactions_list = transactions_list.filter(acc_id=account_filter)
+        transactions_list = transactions_list.filter(acc_id__in=account_filter)
     
     if account_type_filter:
         transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)

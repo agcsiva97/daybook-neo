@@ -88,25 +88,42 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <ul class="list-group list-group-flush">
-        <form method="POST" action="{% url 'manager:close-pl-accounts' shop.pk %}">
-        {% csrf_token %}
-        {% for acc in capital_accounts %}
-        <div style="margin-top:10px">
-          <label class="form-check-label" for="{{acc.id}}_amount">
-              {{ acc.t_name }}
-          </label>
-          <input class="form-control form-control-sm account-amount-input" type="number" id="{{acc.id}}_amount" value="{{each_share}}" oninput="updateTotal()">
-        </div>
-        {% endfor %}
-        </ul>
-        <div class="col-md-12 text-end" style="margin-top:10px">
-          <strong> Total: </strong> <span id="calc_total" class="fw-bold text-primary" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <form method="POST" action="{% url 'manager:close-pl-accounts' shop.pk %}{% if fy %}?fy={{fy}}{% endif %}" id="closeAccountForm">
+          {% csrf_token %}
+          <ul class="list-group list-group-flush">
+            {% for acc in capital_accounts %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <label class="form-check-label" for="{{ acc.id }}_amount">
+                {{ acc.t_name }}
+              </label>
+              <input
+                class="form-control form-control-sm account-amount-input"
+                type="number"
+                step="0.01"
+                id="{{ acc.id }}_amount"
+                name="amount_{{ acc.id }}"
+                value="{{ each_share }}"
+                oninput="updateTotal()"
+                style="max-width: 150px;"
+              >
+            </li>
+            {% endfor %}
+          </ul>
+
+          <div class="col-md-12 text-end" style="margin-top:10px">
+            <strong>Total:</strong>
+            <span id="calc_total" class="fw-bold text-primary" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+          </div>
+
+          <div id="totalMismatchError" class="text-danger small mt-1" style="display: none;">
+            Total of entered amounts (₹<span id="enteredTotalDisplay"></span>) does not match the expected total (₹<span id="expectedTotalDisplay"></span>).
+          </div>
+
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -114,6 +131,7 @@
 
 <script>
   const yearInput = document.getElementById("year");
+  const expectedTotal = parseFloat("{{ total|default:0 }}");
 
   // Get fy from URL
   const params = new URLSearchParams(window.location.search);
@@ -177,6 +195,33 @@
       let formatted = intPart + '.' + decPart;
       return (isNegative ? '-' : '') + formatted;
   }
+
+  function calculateEnteredTotal() {
+      let total = 0;
+      document.querySelectorAll('.account-amount-input').forEach(input => {
+          total += getNumericValue(input.value);
+      });
+      return total;
+  }
+
+  document.getElementById('closeAccountForm').addEventListener('submit', function (e) {
+    const enteredTotal = calculateEnteredTotal();
+    const errorBox = document.getElementById('totalMismatchError');
+
+    // Round both to 2 decimals to avoid floating point mismatch issues
+    const enteredRounded = Math.round(enteredTotal * 100) / 100;
+    const expectedRounded = Math.round(expectedTotal * 100) / 100;
+
+    if (enteredRounded !== expectedRounded) {
+        e.preventDefault();
+        document.getElementById('enteredTotalDisplay').textContent = indianFormat(enteredTotal);
+        document.getElementById('expectedTotalDisplay').textContent = indianFormat(expectedTotal);
+        errorBox.style.display = 'block';
+    } else {
+        errorBox.style.display = 'none';
+    }
+});
+
 
   // Run calculation once on page setup to cleanly format the initial loop summary values
   document.addEventListener('DOMContentLoaded', function() {

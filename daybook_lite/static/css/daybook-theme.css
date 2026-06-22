@@ -69,6 +69,10 @@
   font-style: normal;
 }
 
+.primary-color{
+  color: var(--daybook-primary);
+}
+
 .text-end, .text-start{
   font-family: "Google Sans Code", monospace;
   font-optical-sizing: auto;

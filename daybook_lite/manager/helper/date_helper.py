@@ -1,14 +1,23 @@
 from datetime import date, datetime
+from django.utils import timezone
 
 def get_current_fy_string():
     """
-    Returns current financial year in 'YY-YY' format (e.g., '24-25')
+    Returns the current Indian financial year string in 'YYYY' format.
+    April 1st starts the new FY, while Jan-Mar belongs to the previous year's FY.
     """
-    today = datetime.now()
+    # 1. Get today's date localized to Asia/Kolkata
+    today = timezone.localdate()
     current_month = today.month
     current_year = today.year
 
-    return str(current_year)
+    # 2. If it is Jan, Feb, or March, subtract 1 from the calendar year
+    if current_month in [1, 2, 3]:
+        fy_year = current_year - 1
+    else:
+        fy_year = current_year
+
+    return str(fy_year)
 
 
 def get_fy_dates(financial_year: str):
@@ -29,7 +38,7 @@ def get_fy_dates(financial_year: str):
     elif len(year_str) == 3:
         start_year = int("2" + year_str)
     else:
-        print("Year: " + year_str)
+        # print("Year: " + year_str)
         start_year = int(year_str)
 
     start_date = date(start_year, 4, 1)       # April 1st
@@ -76,3 +85,20 @@ def get_available_fy_years(shop=None):
         fy_set.add(d.year if d.month >= 4 else d.year - 1)
 
     return [str(y) for y in sorted(fy_set)]
+
+def get_fy_last_date(fy_string):
+    """
+    Given a starting FY year string (e.g., '2024'), 
+    returns March 31st of the following year (e.g., 2025-03-31)
+    as a timezone-aware datetime object localized to Asia/Kolkata (IST).
+    """
+    start_year = int(fy_string)
+    end_year = start_year + 1
+    
+    # 1. Create a naive datetime for the end of March 31st
+    naive_date = datetime(end_year, 3, 31, 23, 59, 59)
+    
+    # 2. Make it aware using Django's default timezone (Asia/Kolkata from settings.py)
+    localized_date = timezone.make_aware(naive_date)
+    
+    return localized_date

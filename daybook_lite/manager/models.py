@@ -272,3 +272,8 @@ class BT_Ledger_Accounts(models.Model):
             shop_name = self.shop.short_name if self.shop_id and self.shop else 'BTL'
             self.id = _generate_bt_id(shop_name)
         super().save(*args, **kwargs)    
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['ledger', 'rel_type'], name='unique_ledger_rel_type')
+        ]
