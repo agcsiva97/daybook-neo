@@ -3,7 +3,7 @@ import json
 import logging
 from pyexpat.errors import messages
 from decimal import Decimal, ROUND_HALF_UP
-from urllib import response
+import urllib.parse
 from django.urls import reverse
 
 
@@ -1521,6 +1521,7 @@ def shop_meta(request, pk):
         'total_types': total_types,
         'total_accounts': total_accounts,
         'shop_balance': shop_balance,
+        'app_name': 'manager',
     })
 
 @login_required
@@ -2384,6 +2385,13 @@ def add_account(request, pk):
 def account_info(request, pk):
     account = get_object_or_404(Accounts, pk=pk)
     fy = request.GET.get('fy')
+    from_date = (request.GET.get('from_date') or '').strip()
+    to_date = (request.GET.get('to_date') or '').strip()
+    type_filter = request.GET.get('tr_type')
+    search_query = request.GET.get('search', '')
+    amount_value = request.GET.get('amount_value', '')
+    amount_operator = request.GET.get('amount_operator', 'equals')
+    sort_option = request.GET.get('sort', 'date_desc')
     if fy is None:
         fy = date_helper.get_current_fy_string()
     
@@ -2403,10 +2411,64 @@ def account_info(request, pk):
         total_debit=Sum('amount', filter=Q(tr_type='DEBIT')),
         total_credit=Sum('amount', filter=Q(tr_type='CREDIT'))
     )
+
+    # Apply ordering based on sort option (default: date descending)
+    if sort_option == 'date_asc':
+        transactions_qs = transactions_qs.order_by('transaction_dt')
+    else:
+        transactions_qs = transactions_qs.order_by('-transaction_dt')
     
+
+    # Apply filters
+    if from_date:
+        from_date_obj = date_helper.parse_date_string(from_date)
+        if from_date_obj:
+            from_date_dt = timezone.make_aware(
+                datetime.combine(from_date_obj, datetime.min.time()),
+                timezone=timezone.get_current_timezone()
+            )
+            transactions_qs = transactions_qs.filter(transaction_dt__gte=from_date_dt)
+    
+    if to_date:
+        to_date_obj = date_helper.parse_date_string(to_date)
+        if to_date_obj:
+            to_date_dt = timezone.make_aware(
+                datetime.combine(to_date_obj, datetime.max.time()),
+                timezone=timezone.get_current_timezone()
+            )
+            transactions_qs = transactions_qs.filter(transaction_dt__lte=to_date_dt)
+    
+    if type_filter and type_filter in ['DEBIT', 'CREDIT']:
+        transactions_qs = transactions_qs.filter(tr_type=type_filter)
+    
+    if amount_value:
+        try:
+            amount_val = Decimal(amount_value)
+            if amount_operator == 'greater':
+                transactions_qs = transactions_qs.filter(amount__gt=amount_val)
+            elif amount_operator == 'lesser':
+                transactions_qs = transactions_qs.filter(amount__lt=amount_val)
+            elif amount_operator == 'equals':
+                transactions_qs = transactions_qs.filter(amount=amount_val)
+        except (ValueError, TypeError):
+            pass
+    
+    if search_query:
+        transactions_qs = transactions_qs.filter(remarks__icontains=search_query)
+
     total_debit = trans_stats['total_debit'] or Decimal('0')
     total_credit = trans_stats['total_credit'] or Decimal('0')
     closing_balance = openning_balance + total_credit - total_debit
+
+    # Calculate total debit and credit
+    trans_stats = transactions_qs.aggregate(
+        total_debit=Sum('amount', filter=Q(tr_type='DEBIT')),
+        total_credit=Sum('amount', filter=Q(tr_type='CREDIT'))
+    )
+
+    total_debit = trans_stats['total_debit'] or Decimal('0')
+    total_credit = trans_stats['total_credit'] or Decimal('0')
+    
     # Paginate transactions (10 per page)
     paginator = Paginator(transactions_qs, 10)
     page_number = request.GET.get('page', 1)
@@ -2427,6 +2489,29 @@ def account_info(request, pk):
         })
     account_group_name = manager_helper.get_group(account.acc_type.group_order)[2] if account.acc_type else 'Unknown'
     net_balance = total_credit - total_debit
+
+    active_filter_count = sum([
+        bool(from_date),
+        bool(to_date),
+        bool(type_filter),
+        bool(search_query),
+        bool(amount_value),
+    ])
+    has_active_filters = active_filter_count > 0
+
+    filter_params = {'fy': fy}
+    if from_date:      filter_params['from_date']        = from_date
+    if to_date:        filter_params['to_date']          = to_date
+    if type_filter:    filter_params['tr_type']          = type_filter
+    if search_query:   filter_params['search']           = search_query
+    if amount_value:
+                    filter_params['amount_value']     = amount_value
+                    filter_params['amount_operator']  = amount_operator
+    if sort_option != 'date_desc':
+                    filter_params['sort']             = sort_option
+
+    filter_querystring = urllib.parse.urlencode(filter_params)
+
     return render(request, 'manager/account_info.html', {
         'nav_title': 'Shops',
         'account': account,
@@ -2445,6 +2530,17 @@ def account_info(request, pk):
         'closing_balance': closing_balance,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'from_date': from_date,
+        'to_date': to_date,
+        'type_filter': type_filter,
+        # 'clear_filters': clear_filters,
+        'amount_value': amount_value,
+        'amount_operator': amount_operator,
+        'search_query': search_query,
+        'sort': sort_option,
+        'active_filter_count':active_filter_count,
+        'has_active_filters': has_active_filters,
+        'filter_querystring': filter_querystring,
     })
 
 
@@ -2454,6 +2550,14 @@ def account_info_transactions(request, pk):
     """AJAX endpoint for HTMX to load more transactions"""
     account = get_object_or_404(Accounts, pk=pk)
     fy = request.GET.get('fy')
+    from_date = (request.GET.get('from_date') or '').strip()
+    to_date = (request.GET.get('to_date') or '').strip()
+    type_filter = request.GET.get('tr_type')
+    search_query = request.GET.get('search', '')
+    amount_value = request.GET.get('amount_value', '')
+    amount_operator = request.GET.get('amount_operator', 'equals')
+    sort_option = request.GET.get('sort', 'date_desc')
+    
     if not fy:
         fy = date_helper.get_current_fy_string()
     
@@ -2464,13 +2568,59 @@ def account_info_transactions(request, pk):
         transaction_dt__date__gte=start_date,
         transaction_dt__date__lte=end_date,
     ).order_by('-transaction_dt')
+
+    # Apply ordering based on sort option (default: date descending)
+    if sort_option == 'date_asc':
+        transactions_qs = transactions_qs.order_by('transaction_dt')
+    else:
+        transactions_qs = transactions_qs.order_by('-transaction_dt')
+    
+
+    # Apply filters
+    if from_date:
+        from_date_obj = date_helper.parse_date_string(from_date)
+        if from_date_obj:
+            from_date_dt = timezone.make_aware(
+                datetime.combine(from_date_obj, datetime.min.time()),
+                timezone=timezone.get_current_timezone()
+            )
+            transactions_qs = transactions_qs.filter(transaction_dt__gte=from_date_dt)
+    
+    if to_date:
+        to_date_obj = date_helper.parse_date_string(to_date)
+        if to_date_obj:
+            to_date_dt = timezone.make_aware(
+                datetime.combine(to_date_obj, datetime.max.time()),
+                timezone=timezone.get_current_timezone()
+            )
+            transactions_qs = transactions_qs.filter(transaction_dt__lte=to_date_dt)
+    
+    if type_filter and type_filter in ['DEBIT', 'CREDIT']:
+        transactions_qs = transactions_qs.filter(tr_type=type_filter)
+    
+    if amount_value:
+        try:
+            amount_val = Decimal(amount_value)
+            if amount_operator == 'greater':
+                transactions_qs = transactions_qs.filter(amount__gt=amount_val)
+            elif amount_operator == 'lesser':
+                transactions_qs = transactions_qs.filter(amount__lt=amount_val)
+            elif amount_operator == 'equals':
+                transactions_qs = transactions_qs.filter(amount=amount_val)
+        except (ValueError, TypeError):
+            pass
+    
+    if search_query:
+        transactions_qs = transactions_qs.filter(remarks__icontains=search_query)
     
     # Paginate transactions (10 per page)
     paginator = Paginator(transactions_qs, 10)
     page_number = request.GET.get('page', 1)
     transactions = paginator.get_page(page_number)
     shop_accounts = Accounts.objects.filter(shop=account.shop).exclude(pk=account.pk).order_by('t_name')
-    print(shop_accounts)
+    
+    params = request.GET.copy()
+    params.pop('page', None)
     return render(request, 'manager/account_transactions_partial.html', {
         'transactions': transactions,
         'account': account,
@@ -2478,6 +2628,7 @@ def account_info_transactions(request, pk):
         'fy': fy,
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'filter_querystring':  params.urlencode(),
     })
 
 

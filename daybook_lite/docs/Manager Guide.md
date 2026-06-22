@@ -1,4 +1,4 @@
-# Daybook Lite — `manager` App
+# Daybook neo — `manager` App
 
 > Reference doc compiled from project development history. Confirm against the live codebase if anything here looks out of date.
 
@@ -51,7 +51,7 @@ The hierarchy is presented to the user as a **three-level Bootstrap accordion** 
 
 ## 3. What Is "Sync"?
 
-Daybook Lite is **offline-first** — there's no central server each installation talks to. "Sync" here doesn't mean live, real-time replication between devices. It means a **JSON-based export/import mechanism**:
+Daybook neo is **offline-first** — there's no central server each installation talks to. "Sync" here doesn't mean live, real-time replication between devices. It means a **JSON-based export/import mechanism**:
 
 - **Export** turns a shop's data into a JSON file/snapshot.
 - **Import** reads that JSON file back into a (potentially different) installation's database, reconciling it against whatever is already there.

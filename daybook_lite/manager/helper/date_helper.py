@@ -102,3 +102,13 @@ def get_fy_last_date(fy_string):
     localized_date = timezone.make_aware(naive_date)
     
     return localized_date
+
+def parse_date_string(date_str):
+    if not date_str:
+        return None
+    for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d-%m-%Y', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    return None

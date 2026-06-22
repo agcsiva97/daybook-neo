@@ -37,6 +37,7 @@
     </ul>
     
     <ul class="navbar-nav ms-auto">
+      {% if nav_title not in 'About,Help,Users' %}
       <li class="nav-item">
         <select class="form-select" id="default_shop" name="default_shop" style="width:200px">
           {% if default_shop_short_name.value == "" %} <option value="">All Shops</option> {% endif %}
@@ -50,15 +51,23 @@
           {% endfor %}
         </select>
       </li>
+      {% endif %}
       <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
       <li class="nav-item {% if nav_title == 'About' %} active-nav {% endif %}">
-        <a class="nav-link" href="{% url 'entries:about' %}"><i class="fa-solid fa-circle-info"></i></a>
+        <a class="nav-link" href="{% url 'entries:about' %}"><i class="fa-solid fa-circle-info"></i> About</a>
+      </li>
+      <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
+      <li class="nav-item {% if nav_title == 'Help' %} active-nav {% endif %}">
+        <a class="nav-link" href="{% url 'entries:document_home' %}"><i class="fa-solid fa-circle-question"></i> Help</a>
       </li>
       <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
       {% if user and user.is_authenticated %}
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-           <i class="fa-solid fa-user"></i> {{ user.first_name }} {{ user.last_name }}
+          <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="user-avatar">
+              {{ request.user.username|slice:":2"|upper }}
+            </div> 
+            <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
           </a>
           <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
             <li><a class="dropdown-item" href="{% url 'user_settings' %}"><i class="fa-solid fa-gear"></i> User Settings</a></li>

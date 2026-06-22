@@ -7,7 +7,7 @@
 {% block extra_head %}
 <style>
 /* ── Screen: hide print-only elements ── */
-.no-print  { display: block; }
+.no-print   { display: block; }
 .print-only { display: none; }
 
 /* ── Screen: hide card-header only for transactions report ── */
@@ -17,7 +17,6 @@
 
 @media print {
 
-    /* 1. Page setup — generous margins give breathing room above/below content */
     @page {
         size: {{ configs.TRANS_PAPER|default:"A5" }} {{ configs.TRANS_ORIENTATION|default:"portrait" }};
         margin-top: 12mm;
@@ -26,48 +25,30 @@
         margin-right: 8mm;
     }
 
-    /* 2. Body/page resets */
     body {
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
     }
 
-    /* 3. Strip base-report chrome that creates blank space on page 1 */
     .report-card-header { display: none !important; }
     .report-card        { border: none !important; box-shadow: none !important; }
     .report-card-body   { padding: 0 !important; }
     .report-page        { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
 
-    /* 4. Show/hide helpers */
     .no-print   { display: none !important; }
     .print-only { display: block !important; }
 
-    /* 5. Outer wrapper table — makes header/footer repeat via
-          table-header-group / table-footer-group.
-          This is the ONLY cross-browser reliable way to get
-          repeating page headers in browser print. */
-    .print-wrapper-table {
-        display: table;
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    /* Header row — repeats at top of every page */
-    .print-wrapper-thead {
-        display: table-header-group;
-    }
+    /* Outer wrapper table — shop name header repeats on every page */
+    .print-wrapper-table  { display: table; width: 100%; border-collapse: collapse; }
+    .print-wrapper-thead  { display: table-header-group; }
     .print-wrapper-thead td {
         padding: 0 0 6px 0;
         border-bottom: 2px solid #333;
         font-size: 11px;
         font-weight: 700;
     }
-
-    /* Footer row — repeats at bottom of every page */
-    .print-wrapper-tfoot {
-        display: table-footer-group;
-    }
+    .print-wrapper-tfoot  { display: table-footer-group; }
     .print-wrapper-tfoot td {
         padding: 6px 0 0 0;
         border-top: 1px solid #ccc;
@@ -75,25 +56,12 @@
         font-size: 10px;
         color: #666;
     }
+    .print-wrapper-tbody       { display: table-row-group; }
+    .print-wrapper-tbody > td  { padding: 0; vertical-align: top; }
 
-    /* Content row — all the actual data */
-    .print-wrapper-tbody {
-        display: table-row-group;
-    }
-    .print-wrapper-tbody > td {
-        padding: 0;
-        vertical-align: top;
-    }
+    .print-content { font-size: 10px; width: 100%; }
 
-    /* 6. Data table inside content row */
-    .print-content {
-        font-size: 10px;
-        width: 100%;
-    }
-
-    .table-responsive {
-        overflow: visible !important;
-    }
+    .table-responsive { overflow: visible !important; }
 
     table.data-table {
         width: 100%;
@@ -127,14 +95,19 @@
         page-break-after: auto;
     }
 
-    /* thead repeats on each printed page */
+    /* CHECKED (default) — thead repeats on every page */
     table.data-table thead {
         display: table-header-group;
     }
 
-    table.data-table tfoot {
-        display: table-footer-group;
+    /* UNCHECKED — column header and page header/footer hidden on all pages */
+    body.no-table-header table.data-table thead,
+    body.no-table-header .print-wrapper-thead,
+    body.no-table-header .print-wrapper-tfoot {
+        display: none !important;
     }
+
+    table.data-table tfoot { display: table-footer-group; }
 }
 </style>
 {% endblock %}
@@ -142,33 +115,70 @@
 {% block report_content %}
 <div class="transactions-report">
 
-  {# ── Screen view: Applied Filters card ── #}
+  {# ── Screen: Filters card + print option ── #}
   <div class="no-print mb-4">
     <div class="card card-body">
-      <h6 class="mb-3">Applied Filters</h6>
-      <div class="row gy-2">
-        {% if from_date %}<div class="col-auto"><strong>From Date:</strong> {{ from_date }}</div>{% endif %}
-        {% if to_date %}<div class="col-auto"><strong>To Date:</strong> {{ to_date }}</div>{% endif %}
-        {% if shop_filter %}
-          <div class="col-auto"><strong>Shop:</strong> {{ shop.name|default:shop_filter }}</div>
-        {% endif %}
-        {% if type_filter %}<div class="col-auto"><strong>Type:</strong> {{ type_filter }}</div>{% endif %}
-        {% if account_filter %}<div class="col-auto"><strong>Account:</strong> {{ account_filter }}</div>{% endif %}
-        {% if account_type_filter %}<div class="col-auto"><strong>Account Type:</strong> {{ account_type_filter }}</div>{% endif %}
-        {% if amount_value %}
-          <div class="col-auto"><strong>Amount:</strong> {{ amount_operator }} {{ amount_value }}</div>
-        {% endif %}
-        {% if search_query %}<div class="col-auto"><strong>Remarks:</strong> {{ search_query }}</div>{% endif %}
-        <div class="col-auto"><strong>Sort:</strong> {% if sort == 'date_asc' %}Date (Oldest First){% else %}Date (Newest First){% endif %}</div>
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+        <div>
+          <h6 class="mb-3">Applied Filters</h6>
+          <div class="row gy-2">
+            {% if from_date %}
+              <div class="col-auto"><strong>From Date:</strong> {{ from_date }}</div>
+            {% endif %}
+            {% if to_date %}
+              <div class="col-auto"><strong>To Date:</strong> {{ to_date }}</div>
+            {% endif %}
+            {% if shop_filter %}
+              <div class="col-auto"><strong>Shop:</strong> {{ shop.name|default:shop_filter }}</div>
+            {% endif %}
+            {% if type_filter %}
+              <div class="col-auto"><strong>Type:</strong> {{ type_filter }}</div>
+            {% endif %}
+            {% if account_filter %}
+              <div class="col-auto"><strong>Account:</strong> {{ account_filter }}</div>
+            {% endif %}
+            {% if account_type_filter %}
+              <div class="col-auto"><strong>Account Type:</strong> {{ account_type_filter }}</div>
+            {% endif %}
+            {% if amount_value %}
+              <div class="col-auto"><strong>Amount:</strong> {{ amount_operator }} {{ amount_value }}</div>
+            {% endif %}
+            {% if search_query %}
+              <div class="col-auto"><strong>Remarks:</strong> {{ search_query }}</div>
+            {% endif %}
+            <div class="col-auto">
+              <strong>Sort:</strong>
+              {% if sort == 'date_asc' %}Date (Oldest First){% else %}Date (Newest First){% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# Print option toggle #}
+        <div class="border rounded p-3 bg-light" style="min-width: 210px;">
+          <p class="fw-semibold mb-2 small text-muted text-uppercase" style="letter-spacing:.05em;">
+            Print Options
+          </p>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="includeTableHeader" checked>
+            <label class="form-check-label small" for="includeTableHeader">
+              Include column headers
+            </label>
+          </div>
+          <p class="text-muted mt-1 mb-0" id="headerHint" style="font-size: 11px;">
+            Column headers will appear on <strong>all pages</strong>.
+          </p>
+        </div>
+
       </div>
     </div>
   </div>
 
-  {# ── Print view: outer wrapper table for repeating header/footer ── #}
+  {# ── Print view ── #}
   <div class="print-only">
     <table class="print-wrapper-table">
 
-      {# Page header — repeats on every page #}
+      {# Shop name repeats on every page #}
       <thead class="print-wrapper-thead">
         <tr>
           <td>
@@ -177,7 +187,7 @@
         </tr>
       </thead>
 
-      {# Page footer — repeats on every page #}
+      {# Page footer repeats on every page #}
       <tfoot class="print-wrapper-tfoot">
         <tr>
           <td>Daybook Reporting</td>
@@ -217,7 +227,10 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}" style="text-align:center;color:#888">No transactions found</td>
+                    <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}"
+                        style="text-align:center;color:#888">
+                      No transactions found
+                    </td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -230,7 +243,7 @@
     </table>
   </div>
 
-  {# ── Screen-only table (normal Bootstrap table for screen view) ── #}
+  {# ── Screen table ── #}
   <div class="no-print">
     <div class="table-responsive">
       <table class="table table-sm table-hover">
@@ -261,7 +274,10 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}" class="text-center text-muted">No transactions found</td>
+            <td colspan="{% if not shop_filter %}6{% else %}5{% endif %}"
+                class="text-center text-muted">
+              No transactions found
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -269,5 +285,39 @@
     </div>
   </div>
 
-</div><!-- /.transactions-report -->
+</div>
+
+<script>
+  const toggle = document.getElementById('includeTableHeader');
+  const hint   = document.getElementById('headerHint');
+
+  // Restore saved preference across page loads
+  const STORAGE_KEY = 'daybook_report_include_header';
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved !== null) {
+    toggle.checked = (saved === 'true');
+  }
+
+  function applyState() {
+    localStorage.setItem(STORAGE_KEY, toggle.checked);
+    hint.innerHTML = toggle.checked
+      ? 'Column headers and page header/footer will appear on <strong>all pages</strong>.'
+      : 'Column headers and page header/footer will <strong>not</strong> appear on any page.';
+  }
+
+  toggle.addEventListener('change', applyState);
+  applyState(); // run on page load to sync hint text
+
+  // Before print: if unchecked, add class that hides thead via CSS
+  window.addEventListener('beforeprint', () => {
+    if (!toggle.checked) {
+      document.body.classList.add('no-table-header');
+    }
+  });
+
+  // After print: always remove the class so screen view is unaffected
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('no-table-header');
+  });
+</script>
 {% endblock %}

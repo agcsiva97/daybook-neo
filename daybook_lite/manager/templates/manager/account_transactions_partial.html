@@ -70,7 +70,8 @@
 
 {% if transactions.has_next %}
 <tr id="sentinel-row"
-    hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&fy={{ fy }}"
+    {# CORRECT — fetches the actual next page #}
+    hx-get="{% url 'manager:account_info_transactions' account.pk %}?page={{ transactions.next_page_number }}&{{ filter_querystring }}"
     hx-trigger="intersect once"
     hx-target="#sentinel-row"
     hx-swap="outerHTML"

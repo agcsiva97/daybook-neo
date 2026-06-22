@@ -6,7 +6,9 @@ import json
 import openpyxl
 from functools import wraps
 from openpyxl.styles import Font, Alignment, PatternFill
+import markdown
 
+from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
@@ -19,10 +21,8 @@ from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
-import requests
 
-from manager.helper import manager_helper
+from manager.helper import manager_helper, date_helper
 
 from .forms import TransactionForm, TransactionEditForm, TransferForm, DenominationForm, LoanForm, LoanEditForm
 from .models import Transactions, Denomination, Loan
@@ -35,15 +35,6 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def parse_date_string(date_str):
-    if not date_str:
-        return None
-    for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d-%m-%Y', '%d/%m/%Y'):
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
-    return None
 
 
 def is_admin(user):
@@ -370,7 +361,7 @@ def transactions(request):
 
     # Apply filters
     if from_date:
-        from_date_obj = parse_date_string(from_date)
+        from_date_obj = date_helper.parse_date_string(from_date)
         if from_date_obj:
             from_date_dt = timezone.make_aware(
                 datetime.combine(from_date_obj, datetime.min.time()),
@@ -379,7 +370,7 @@ def transactions(request):
             transactions_list = transactions_list.filter(transaction_dt__gte=from_date_dt)
     
     if to_date:
-        to_date_obj = parse_date_string(to_date)
+        to_date_obj = date_helper.parse_date_string(to_date)
         if to_date_obj:
             to_date_dt = timezone.make_aware(
                 datetime.combine(to_date_obj, datetime.max.time()),
@@ -509,7 +500,6 @@ def transactions(request):
 @login_required
 def transactions_print(request):
     # Use same filters as transactions but return all matching data for reporting
-    sort_option = request.GET.get('sort', 'date_desc')
     shop_filter = request.GET.get('shop')
     all_configs = Configuration.objects.all()
     configs={}
@@ -518,10 +508,6 @@ def transactions_print(request):
             configs[config.key] = config.value
             print(f"Config: {config.key} = {config.value}")
     transactions = _get_filtered_transactions(request)
-    if sort_option == 'date_asc':
-        transactions = transactions.order_by('transaction_dt')
-    else:
-        transactions = transactions.order_by('-transaction_dt')
 
     shop = None
     if shop_filter:
@@ -543,7 +529,6 @@ def transactions_print(request):
         'amount_value': request.GET.get('amount_value', ''),
         'amount_operator': request.GET.get('amount_operator', 'equals'),
         'search_query': request.GET.get('search', ''),
-        'sort': sort_option,
         'configs': configs,
     }
     return render(request, 'entries/transactions_print.html', context)
@@ -560,13 +545,14 @@ def _get_filtered_transactions(request):
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
+    sort_option = request.GET.get('sort', 'date_desc')
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by').order_by('transaction_dt','updated_at')
+    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by')
     
     # Apply filters
     if from_date:
-        from_date_obj = parse_date_string(from_date)
+        from_date_obj = date_helper.parse_date_string(from_date)
         if from_date_obj:
             from_date_dt = timezone.make_aware(
                 datetime.combine(from_date_obj, datetime.min.time()),
@@ -575,7 +561,7 @@ def _get_filtered_transactions(request):
             transactions_list = transactions_list.filter(transaction_dt__gte=from_date_dt)
     
     if to_date:
-        to_date_obj = parse_date_string(to_date)
+        to_date_obj = date_helper.parse_date_string(to_date)
         if to_date_obj:
             to_date_dt = timezone.make_aware(
                 datetime.combine(to_date_obj, datetime.max.time()),
@@ -588,9 +574,6 @@ def _get_filtered_transactions(request):
     
     if type_filter and type_filter in ['DEBIT', 'CREDIT']:
         transactions_list = transactions_list.filter(tr_type=type_filter)
-    
-    if account_filter:
-        transactions_list = transactions_list.filter(acc_id__in=account_filter)
     
     if account_type_filter:
         transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
@@ -611,6 +594,17 @@ def _get_filtered_transactions(request):
     if search_query:
         transactions_list = transactions_list.filter(remarks__icontains=search_query)
     
+    if account_filter:
+        if sort_option == 'date_asc':
+            transactions_list = transactions_list.filter(acc_id__in=account_filter).order_by('acc__t_name','transaction_dt')
+        else:
+            transactions_list = transactions_list.filter(acc_id__in=account_filter).order_by('acc__t_name','-transaction_dt')
+    else:
+        if sort_option == 'date_asc':
+            transactions_list = transactions_list.order_by('transaction_dt')
+        else:
+            transactions_list = transactions_list.order_by('-transaction_dt')
+
     return transactions_list
 
 @login_required
@@ -2694,3 +2688,40 @@ def about(request):
         'is_admin': is_admin(request.user),
     }
     return render(request, 'entries/about.html', context)
+
+def document_view(request, filename=None):
+    docs_dir = Path("docs")
+
+    # File list is always needed (for the sidebar)
+    files = sorted(f.stem for f in docs_dir.glob("*.md"))
+
+    content = None
+    title = None
+
+    if filename is None:
+        filename = files[0]
+    file_path = docs_dir / f"{filename}.md"
+    if not file_path.exists():
+        return render(request, "404.html", status=404)
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+
+    content = markdown.markdown(
+        md_content,
+        extensions=["fenced_code", "tables", "toc"],
+    )
+    title = filename  # matched against `file` in sidebar loop
+
+    return render(
+        request,
+        "entries/doc-view.html",      # ← single template now
+        {
+            "files": files,
+            "content": content,
+            "title": title,
+            'nav_title': 'Help',
+            'is_super_admin': request.user.is_superuser,
+            'is_admin': is_admin(request.user),
+        },
+    )

@@ -1,4 +1,4 @@
-# Daybook Lite - Quick Start Guide
+# Daybook neo - Quick Start Guide
 
 ## For End Users (Client Machine)
 
@@ -15,7 +15,7 @@ The Daybook server starts automatically when you log in to Windows. If not:
    - Go to: `http://localhost:8000`
    - Login with your credentials
 
-### Using Daybook Lite
+### Using Daybook neo
 
 #### For Admin Users
 
@@ -63,17 +63,16 @@ Staff users can:
 5. Transaction appears in the list instantly
 
 **Viewing Ledger Balances:**
-- Home page shows all ledgers with current balances
-- Click any ledger to see transaction history
+- Home page shows all shops with current balances
+- Click any shops to see transaction history
 - Opening and closing balances update automatically
 
 **Generating Reports:**
 1. Go to Report page
 2. Select the date you want to view
-3. Optionally filter by specific ledger
-4. Click "Filter" button
-5. Review ledger summaries and transactions
-6. Export as needed (Print/CSV/Excel)
+3. Click "Filter" button
+4. Review ledger summaries and transactions
+5. Export as needed (Print)
 
 ### Troubleshooting
 
@@ -104,9 +103,12 @@ Staff users can:
 3. Keep at least 7 days of backups
 
 ### Keyboard Shortcuts
-
-- **Ctrl + S** on transaction form: Save transaction (when in form field)
-- **Print shortcut**: Ctrl + P (on report page after clicking Print)
+#### Transaction Form (Home Page)
+- **Alt + S** Focus on shop field
+- **Alt + A** Focus on account field
+- **Alt + M** Focus on remarks field
+- **Alt + B** Focus on debit field
+- **Alt + C** Focus on credit field
 
 ### Best Practices
 
@@ -130,14 +132,11 @@ Staff users can:
 
 For technical support or questions:
 - Contact: Your System Administrator
-- Email: [Your Support Email]
-- Phone: [Your Support Phone]
+- Email: agcsiva97@gmail.com
+- Phone: (+91) 8903549247
 
 ---
 
 **Quick Access URLs:**
-- Main Application: `http://localhost:8000`
+- Main Application: `http://localhost:8000/daybook`
 - Admin Interface: `http://localhost:8000/admin`
-
-**Version:** 1.0  
-**Last Updated:** February 8, 2026

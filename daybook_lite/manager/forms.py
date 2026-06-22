@@ -61,9 +61,10 @@ class ShopForm(forms.ModelForm):
 class ShopEditForm(forms.ModelForm):
     class Meta:
         model = Shop
-        fields = ['name', 'proprietor', 'god', 'pan', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode']
+        fields = ['short_name','name', 'proprietor', 'god', 'pan', 'd_no', 'addressline1', 'addressline2', 'place', 'pincode']
         # , 'is_local'
         labels = {
+            'short_name': 'Short Name',
             'name': 'Shop Name',
             'proprietor': 'Proprietor Name',
             'god': 'God Name',
@@ -77,6 +78,7 @@ class ShopEditForm(forms.ModelForm):
             # 'balance': 'Balance',
         }
         widgets = {
+            'short_name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '20'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100'}),
             'proprietor': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100'}),
             'god': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '20'}),
@@ -92,6 +94,7 @@ class ShopEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['short_name'].required = False
         self.fields['proprietor'].required = False
         self.fields['god'].required = False
         self.fields['pan'].required = False

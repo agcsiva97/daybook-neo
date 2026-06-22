@@ -1,10 +1,10 @@
-# Daybook Lite
+# Daybook neo
 
 > Reference doc compiled from project development history. Confirm against the live codebase if anything here looks out of date.
 
 ## 1. What It Is
 
-Daybook Lite is an **offline-first, multi-shop financial management application** built for small businesses in India. It runs on a **one-time payment model** (no subscription), uses a **local SQLite database**, and is designed to work without a constant internet connection.
+Daybook neo is an **offline-first, multi-shop financial management application** built for small businesses in India. It runs on a **one-time payment model** (no subscription), uses a **local SQLite database**, and is designed to work without a constant internet connection.
 
 ## 2. Tech Stack
 

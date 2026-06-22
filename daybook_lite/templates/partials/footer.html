@@ -1,0 +1,300 @@
+{% load indian_format %}
+
+<style>
+  :root {
+    --db-primary: #0F6E56;
+    --db-primary-light: #E1F5EE;
+    --db-primary-mid: #1D9E75;
+    --db-primary-dark: #085041;
+    --db-border: #9FE1CB;
+  }
+
+  .footer-wrap {
+    {% comment %} position: fixed; {% endcomment %}
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    border-top: 1px solid var(--db-border);
+    background: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    user-select: none;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Thin teal accent line at the very top of the footer */
+  .footer-db-bar {
+    height: 3px;
+    background: var(--db-primary);
+    opacity: 0.25;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Left section ── */
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .footer-logo {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--db-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .footer-logo i {
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .footer-brand-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .footer-version {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--db-primary-light);
+    color: var(--db-primary-dark);
+    padding: 2px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.02em;
+  }
+
+  .footer-divider {
+    width: 1px;
+    height: 18px;
+    background: #dee2e6;
+    flex-shrink: 0;
+  }
+
+  .footer-shop {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .shop-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--db-primary-mid);
+    flex-shrink: 0;
+  }
+
+  .shop-name {
+    font-size: 12px;
+    color: #6c757d;
+  }
+
+  .shop-name span {
+    color: #1a1a1a;
+    font-weight: 600;
+  }
+
+  /* ── Center section ── */
+  .footer-center {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .fy-badge {
+    font-size: 11px;
+    color: #6c757d;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .fy-badge i {
+    font-size: 12px;
+    color: #adb5bd;
+  }
+
+  /* ── Right section ── */
+  .footer-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .footer-sync {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6c757d;
+  }
+
+  .sync-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--db-primary-mid);
+    flex-shrink: 0;
+  }
+
+  .footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .footer-icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #adb5bd;
+    background: transparent;
+    border: none;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+  }
+
+  .footer-icon-btn:hover {
+    background: #f1f3f5;
+    color: #1a1a1a;
+  }
+
+  .footer-icon-btn i {
+    font-size: 15px;
+  }
+
+  .footer-user {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    text-decoration: none;
+  }
+
+  .footer-user:hover {
+    background: #f1f3f5;
+    color: #1a1a1a;
+  }
+
+  .user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--db-primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--db-primary-dark);
+    flex-shrink: 0;
+  }
+
+  /* Push page content above the fixed footer so nothing hides behind it */
+  {% comment %} body {
+    padding-bottom: 52px;
+  } {% endcomment %}
+</style>
+
+<footer class="footer-wrap">
+  <div class="footer-db-bar"></div>
+  <div class="footer-inner">
+
+    <!-- Left: brand + version + active shop -->
+    <div class="footer-left">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <i class="ti ti-book-2"></i>
+        </div>
+        <span class="footer-brand-name">Daybook Lite</span>
+        <span class="footer-version">v{{ app_version }}</span>
+      </div>
+
+      <div class="footer-divider"></div>
+
+      <div class="footer-shop">
+        <div class="shop-dot"></div>
+        <span class="shop-name">Shop: <span>{{ current_shop.name }}</span></span>
+      </div>
+    </div>
+
+    <!-- Center: financial year -->
+    <div class="footer-center">
+      <div class="fy-badge">
+        <i class="ti ti-calendar"></i>
+        FY {{ financial_year_display }}
+      </div>
+    </div>
+
+    <!-- Right: sync status + quick actions + user -->
+    <div class="footer-right">
+
+      <div class="footer-sync">
+        <div class="sync-dot"></div>
+        {% if last_sync %}
+          Last synced: {{ last_sync|date:"d M, h:i A" }}
+        {% else %}
+          Not synced yet
+        {% endif %}
+      </div>
+
+      <div class="footer-divider"></div>
+
+      <div class="footer-actions">
+        <a href="" class="footer-icon-btn" title="Export data">
+          <i class="ti ti-upload"></i>
+        </a>
+        <a href="" class="footer-icon-btn" title="Activity log">
+          <i class="ti ti-history"></i>
+        </a>
+        <a href="" class="footer-icon-btn" title="Settings">
+          <i class="ti ti-settings"></i>
+        </a>
+      </div>
+
+      <div class="footer-divider"></div>
+
+      <a href="" class="footer-user" title="Profile">
+        <div class="user-avatar">
+          {{ request.user.username|slice:":2"|upper }}
+        </div>
+        <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+        <i class="ti ti-chevron-up" style="font-size: 12px;"></i>
+      </a>
+
+    </div>
+  </div>
+</footer>

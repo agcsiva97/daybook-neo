@@ -40,7 +40,7 @@
           </li>
           <li>
             <a href="{% url 'manager:shop_meta' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-sitemap primary-color"></i> <span class="d-none d-md-inline">Account Meta</span>
+              <i class="fa-solid fa-sitemap primary-color"></i> <span class="d-none d-md-inline">Shop Meta</span>
             </a>
           </li>
           <li>
@@ -60,7 +60,11 @@
     <div class="card-body">
       <div class="row">
         <div class="col-md-3">
-          {% comment %} <center><img src="{{ shop.logo.url if shop.logo else '/static/images/default_shop_logo.png' }}" alt="Shop Logo" class="img-fluid rounded mb-2" style="max-height: 150px;"></center> {% endcomment %}
+          {% if ledgers %}
+            {% for ledger in ledgers %}
+              <h5 style="text-align: left;">{{ledger.license_number}}</h5>
+            {% endfor %}
+          {% endif %}
         </div>
         <div class="col-md-6">
           <center><h6>{{shop.god|default:"-"}}</h6></center>
