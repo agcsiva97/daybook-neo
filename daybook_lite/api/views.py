@@ -190,10 +190,6 @@ def shop_ledger_list_create(request, pk):
 
 @api_view(['GET'])
 def shop_account_list(request, pk):
-    """
-    GET  - List all ledgers for a shop
-    POST - Create a new ledger for a shop
-    """
     try:
         shop = Shop.objects.get(pk=pk)
     except Shop.DoesNotExist:
@@ -201,9 +197,17 @@ def shop_account_list(request, pk):
 
     if request.method == 'GET':
         logger.info(f"Fetching accounts for shop ID: {shop.id}, Name: {shop.short_name}")
-        accounts = Accounts.objects.filter(shop_id=pk).order_by('-priority')
-        if request.user.is_authenticated and not _is_admin(request.user) and not request.user.is_superuser:
-            accounts = accounts.filter(is_admin_only=False)
+        
+        user_groups = request.user.groups.values_list('name', flat=True)
+        is_admin_group = 'admin' in user_groups or 'super admin' in user_groups
+
+        if request.user.is_superuser or is_admin_group:
+            # Admins and superusers see all accounts
+            accounts = Accounts.objects.filter(shop_id=pk).order_by('-priority')
+        else:
+            # Staff and any other authenticated users only see non-admin accounts
+            accounts = Accounts.objects.filter(shop_id=pk, is_admin_only=False).order_by('-priority')
+
         logger.info(f"Found {accounts.count()} accounts for shop ID {shop.id} - {shop.short_name}")
         serializer = AccountSerializer(accounts, many=True)
         return Response(serializer.data)

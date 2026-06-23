@@ -40,7 +40,7 @@ _load_env_file(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.2.2"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-00jp4@&#cx9tk*y7&6u_bp8g%o3#4ot8!h=9pm48#s9jq%l^0v'

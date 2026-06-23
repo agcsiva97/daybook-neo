@@ -182,7 +182,11 @@
       <thead class="print-wrapper-thead">
         <tr>
           <td>
-            {% if shop_filter and shop %}{{ shop.name }}{% else %}Transactions Report{% endif %}
+            {% if shop_filter and shop %}
+              {{ shop.name }} - {{ account.t_name }}
+            {% else %}
+              Transactions Report
+              {% endif %}
           </td>
         </tr>
       </thead>
@@ -190,7 +194,7 @@
       {# Page footer repeats on every page #}
       <tfoot class="print-wrapper-tfoot">
         <tr>
-          <td>Daybook Reporting</td>
+          <td></td>
         </tr>
       </tfoot>
 
@@ -204,7 +208,7 @@
                   <tr>
                     <th>Date</th>
                     {% if not shop_filter %}<th>Shop</th>{% endif %}
-                    <th>Account Name</th>
+                    {% if not one_account %}<th>Account Name</th> {% endif %}
                     <th>Remarks</th>
                     <th style="text-align:right">Debit</th>
                     <th style="text-align:right">Credit</th>
@@ -215,7 +219,7 @@
                   <tr>
                     <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
                     {% if not shop_filter %}<td>{{ transaction.shop.name|default:"-" }}</td>{% endif %}
-                    <td>{{ transaction.acc.t_name|default:"-" }}</td>
+                    {% if not one_account %}<td>{{ transaction.acc.t_name|default:"-" }}</td>{% endif %}
                     <td>{{ transaction.remarks|default:"-" }}</td>
                     {% if transaction.tr_type == 'DEBIT' %}
                       <td style="color:#dc3545;text-align:right">{{ transaction.amount|indian_format }}</td>
@@ -251,7 +255,7 @@
           <tr>
             <th>Date</th>
             {% if not shop_filter %}<th>Shop</th>{% endif %}
-            <th>Account Name</th>
+            {% if not one_account %}<th>Account Name</th>{% endif %}
             <th>Remarks</th>
             <th class="text-end">Debit</th>
             <th class="text-end">Credit</th>
@@ -262,7 +266,7 @@
           <tr>
             <td>{{ transaction.transaction_dt|date:"d-m-Y" }}</td>
             {% if not shop_filter %}<td>{{ transaction.shop.name|default:"-" }}</td>{% endif %}
-            <td>{{ transaction.acc.t_name|default:"-" }}</td>
+            {% if not one_account %}<td>{{ transaction.acc.t_name|default:"-" }}</td>{% endif %}
             <td>{{ transaction.remarks|default:"-" }}</td>
             {% if transaction.tr_type == 'DEBIT' %}
               <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>

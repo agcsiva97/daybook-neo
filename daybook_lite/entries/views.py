@@ -83,9 +83,10 @@ def home(request):
     silver_price = manager_helper.get_silver_price()
     all_shops = Shop.objects.all().order_by('name')
     default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+    default_shop = Shop.objects.get(short_name=default_shop_short_name.value)
     
     latest_transaction = Transactions.objects.filter(
-        shop__short_name = default_shop_short_name.value
+        shop = default_shop
     ).order_by('-transaction_dt').first()
 
     if latest_transaction:
@@ -166,6 +167,7 @@ def home(request):
         'all_shops': all_shops,
         'default_shop_short_name': default_shop_short_name,
         'latest_date': latest_date,
+        'default_shop': default_shop,
     }
     
     return render(request, 'entries/home.html',context)
@@ -202,11 +204,12 @@ def add_entries(request):
     loans = Loan.objects.filter(transaction_dt__date=today, type='LOAN').order_by('-transaction_dt')
     releases = Loan.objects.filter(transaction_dt__date=today, type='RELEASE').order_by('-transaction_dt')
     shops = Shop.objects.all().order_by('short_name')
+    ledgers = Ledger.objects.filter(shop__short_name = default_shop_short_name.value)
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
 
-    latest_transaction = Transactions.objects.filter(
-        shop__short_name = default_shop_short_name.value
+    latest_transaction = Loan.objects.filter(
+        ledger__in = ledgers
     ).order_by('-transaction_dt').first()
 
     if latest_transaction:
@@ -315,6 +318,13 @@ def transactions(request):
     amount_operator = request.GET.get('amount_operator', 'equals')
     # Sorting option: date_desc (default) or date_asc
     sort_option = request.GET.get('sort', 'date_desc')
+    fy = request.GET.get('fin_year')
+
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+    
+    start_date, end_date = date_helper.get_fy_dates(fy)
+    
     
     all_configs = Configuration.objects.all()
     shop = None  # Initialize shop variable for context, will be set if shop_filter is applied
@@ -331,12 +341,17 @@ def transactions(request):
     
     # Base queryset (select_related used for performance)
     if is_admin(request.user) or is_super_admin(request.user):
-        transactions_list = Transactions.objects.all().select_related(
+        transactions_list = Transactions.objects.filter(
+            transaction_dt__gte=start_date,
+            transaction_dt__lte=end_date
+        ).select_related(
                 'shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by'
-            )
+        )
     else:
         transactions_list = Transactions.objects.filter(
-            acc__is_admin_only=False
+            acc__is_admin_only=False,
+            transaction_dt__gte=start_date,
+            transaction_dt__lte=end_date
         ).select_related(
             'acc',      # Essential since you are filtering/displaying account info 
             'acc__acc_type',
@@ -493,6 +508,7 @@ def transactions(request):
         'filter_query': filter_query,
         'is_admin_user': is_admin(request.user) or request.user.is_superuser,
         'default_shop_short_name': default_shop_short_name,
+        'fy':fy,
     }
     return render(request, 'entries/transactions.html', context)
 
@@ -501,6 +517,16 @@ def transactions(request):
 def transactions_print(request):
     # Use same filters as transactions but return all matching data for reporting
     shop_filter = request.GET.get('shop')
+    account_filter = [a for a in request.GET.getlist('account') if a]
+    fy = request.GET.get('fin_year')
+    one_account = False
+    account = None
+    if len(account_filter) == 1:
+        one_account = True
+        account = Accounts.objects.get(id=account_filter[0])
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+    start_date, end_date = date_helper.get_fy_dates(fy)
     all_configs = Configuration.objects.all()
     configs={}
     for config in all_configs:
@@ -513,7 +539,7 @@ def transactions_print(request):
     if shop_filter:
         shop = Shop.objects.filter(pk=shop_filter).first()
 
-    if transactions.count() > 1000:
+    if transactions.count() > 2000:
         messages.error(request, 'Filter transaction less than 1000')
         return redirect('entries:transactions')
     
@@ -530,6 +556,8 @@ def transactions_print(request):
         'amount_operator': request.GET.get('amount_operator', 'equals'),
         'search_query': request.GET.get('search', ''),
         'configs': configs,
+        'one_account': one_account,
+        'account': account,
     }
     return render(request, 'entries/transactions_print.html', context)
 
@@ -546,9 +574,31 @@ def _get_filtered_transactions(request):
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
     sort_option = request.GET.get('sort', 'date_desc')
+    fy = request.GET.get('fin_year')
+    if fy is None:
+        fy = date_helper.get_current_fy_string()
+    start_date, end_date = date_helper.get_fy_dates(fy)
     
     # Base queryset - order by created date descending
-    transactions_list = Transactions.objects.select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by')
+    if is_admin(request.user) or is_super_admin(request.user):
+        transactions_list = Transactions.objects.filter(
+            transaction_dt__gte=start_date,
+            transaction_dt__lte=end_date
+        ).select_related(
+                'shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by'
+        )
+    else:
+        transactions_list = Transactions.objects.filter(
+            acc__is_admin_only=False,
+            transaction_dt__gte=start_date,
+            transaction_dt__lte=end_date
+        ).select_related(
+            'acc',      
+            'acc__acc_type',
+            'shop', 
+            'created_by', 
+            'updated_by'
+        )
     
     # Apply filters
     if from_date:

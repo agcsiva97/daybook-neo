@@ -236,7 +236,16 @@ fetch(NETWORTH_URL)
   const yearInput = document.getElementById("year");
   const params = new URLSearchParams(window.location.search);
   const fy = params.get('fy');
-  let year = fy ? parseInt(fy) : new Date().getFullYear();
+  function getCurrentIndianFY() {
+    const today = new Date();
+    const month = today.getMonth() + 1; // 1-based
+    const year = today.getFullYear();
+    // Indian FY starts April (month 4)
+    // Jan-Mar belongs to previous FY
+    return month < 4 ? year - 1 : year;
+  }
+
+  let year = fy ? parseInt(fy) : getCurrentIndianFY();
   yearInput.value = year;
 
   function changeYear(step) {
