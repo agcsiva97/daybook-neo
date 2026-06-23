@@ -93,7 +93,14 @@
 
       <!-- Add Transaction Form -->
       <div>
-        <h5><i class="fa-solid fa-file-circle-plus"></i> Add <span style="text-decoration: underline;">T</span>ransaction</h5>
+        <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 8px;">
+          <h5><i class="fa-solid fa-file-circle-plus"></i> Add Transaction</h5>
+          {% if is_super_admin or is_admin %}
+            <a href="{% url 'manager:add-account' default_shop.id %}" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-plus"></i> Add Account
+            </a>
+          {% endif %}
+        </div>
         <form method="post" class="card card-body">
           {% csrf_token %}
           <div class="mb-3">
@@ -115,15 +122,8 @@
               <div class="col">
                 <label class="form-label" for="{{ form.shop.id_for_label }}"><u>S</u>hop</label>
                 {% comment %} {{ form.shop }} {% endcomment %}
-                <select name="shop" class="form-select" id="id_shop" required="">
-                  {% if default_shop_short_name.value == "" %}
-                    <option value="">-- Select Shop --</option>
-                  {% endif %}
-                  {% for shop in all_shops %}
-                    <option value="{{ shop.id }}" {% if default_shop_short_name and shop.short_name == default_shop_short_name.value %} selected {% endif %}>{{ shop.short_name }}</option>
-                  {% endfor %}
-                </select>
-
+                <input name="shop" class="form-select" id="id_shop" type="hidden" value="{{ default_shop.id }}">
+                <input name="shop_dup" class="form-select" id="shop_dup" type="text" value="{{ default_shop.name }}" disabled>
                 {% if form.shop.errors %}<div class="text-danger small">{{ form.shop.errors|striptags }}</div>{% endif %}
               </div>
               <div class="col">
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 transAccount.disabled = false;
                 
                 if (data.length === 0) {
-                    transAccount.innerHTML = '<option value="">No accounts available for this shop</option>';
+                    transAccount.innerHTML = '<option value="">No accounts available for this shop (or) user</option>';
                     transAccount.disabled = true;
                 } else {
                     data.forEach(account => {

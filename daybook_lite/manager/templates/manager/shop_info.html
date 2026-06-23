@@ -119,9 +119,11 @@
   </div>
 
   <div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-start">
+    <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Accounts</h5>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 align-items-center">
+        <input type="text" id="accountSearch" class="form-control form-control-sm" 
+              placeholder="Search by name, type, group..." style="width: 220px;">
         <a href="{% url 'manager:add-account' shop.pk %}" class="btn btn-sm btn-primary">
           <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Account</span>
         </a>
@@ -172,6 +174,8 @@
             {% endfor %}
           </tbody>
         </table>
+
+        <p class="text-center text-muted d-none" id="noAccountResults">No accounts match your search.</p>
       </div>
 
       <!-- Pagination -->
@@ -275,5 +279,25 @@
     display: block;
   }
 </style>
+
+<script>
+    document.getElementById('accountSearch').addEventListener('input', function () {
+    const query = this.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.table tbody tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      // Skip the "No Accounts found" empty row
+      if (row.querySelector('td[colspan]')) return;
+
+      const text = row.innerText.toLowerCase();
+      const match = text.includes(query);
+      row.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+
+    document.getElementById('noAccountResults').classList.toggle('d-none', visibleCount > 0 || !query);
+  });
+</script>
 
 {% endblock %}

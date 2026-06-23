@@ -111,8 +111,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" id="modal-edit-btn" class="btn btn-outline-primary">Edit</button>
+        {% if is_admin_user %}
         <button type="button" id="modal-history-btn" class="btn btn-outline-secondary">History</button>
         <button type="button" id="modal-delete-btn" class="btn btn-outline-danger">Delete</button>
+        {% endif %}
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -192,8 +194,10 @@ function openInfoModal(row) {
 
   // Buttons
   document.getElementById('modal-edit-btn').onclick = () => window.location.href = d.editUrl;
-  document.getElementById('modal-history-btn').onclick = () => window.location.href = d.historyUrl;
-  document.getElementById('modal-delete-btn').onclick = () => switchToSharedDeleteModal(d);
+  {% if is_admin_user %}
+    document.getElementById('modal-history-btn').onclick = () => window.location.href = d.historyUrl;
+    document.getElementById('modal-delete-btn').onclick = () => switchToSharedDeleteModal(d);
+  {% endif %}
 
   openModal(document.getElementById('sharedInfoModal'));
 }

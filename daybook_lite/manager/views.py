@@ -170,6 +170,8 @@ def import_details(request, import_id):
     }
     return render(request, 'manager/import_details.html', context)
 
+@login_required
+@admin_required
 def import_shop(request):
     """Import shop, ledgers, types, and accounts from JSON file"""
     if request.method == 'POST' and request.FILES.get('json_file'):
@@ -1462,6 +1464,7 @@ def edit_shop(request, pk):
     return render(request, 'manager/edit_shop.html', {'nav_title': 'Shops', 'form': form, 'shop': shop, 'app_name': 'manager','is_super_admin': request.user.is_superuser,})
 
 @login_required
+@admin_required
 def shop_meta(request, pk):
     shop = get_object_or_404(Shop, pk=pk)
 
@@ -2337,11 +2340,15 @@ def activity_logs(request):
         'page_obj': page_obj,
     })
 
+@login_required
+@admin_required
 def sync_grp_typ(request,pk):
     shop = Shop.objects.get(pk=pk)
     manager_helper.sync_types(request,shop)
     return redirect('manager:shop_info', pk=shop.id)
 
+@login_required
+@admin_required
 def add_account(request, pk):
     shop = get_object_or_404(Shop, pk=pk)
     if request.method == 'POST':
@@ -2361,7 +2368,6 @@ def add_account(request, pk):
             if form.cleaned_data['balance'] is not None and form.cleaned_data['balance'] > 0.00:
                 transaction = Transactions.objects.create(
                     amount=form.cleaned_data['balance'] or 0.00,  # dict access, not a call
-                    name='',
                     shop=shop,
                     tr_type='CREDIT',
                     remarks='Opening Balance',  # also fixed the typo
@@ -2382,6 +2388,8 @@ def add_account(request, pk):
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),})
 
+@login_required
+@admin_required
 def account_info(request, pk):
     account = get_object_or_404(Accounts, pk=pk)
     fy = request.GET.get('fy')
@@ -2631,7 +2639,8 @@ def account_info_transactions(request, pk):
         'filter_querystring':  params.urlencode(),
     })
 
-
+@login_required
+@admin_required
 def account_edit(request, pk):
     account = get_object_or_404(Accounts, pk=pk)
     if request.method == 'POST':
@@ -2795,6 +2804,8 @@ def balance_sheet(request):
         'cash_in_hand_closing': cash_in_hand_closing,
     })
 
+@login_required
+@admin_required
 def type_balance_sheet(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -2863,6 +2874,8 @@ def type_balance_sheet(request, pk):
         'cash_in_hand': cash_in_hand['closing_balance'],
     })
 
+@login_required
+@admin_required
 def close_pl_accounts(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -2978,7 +2991,8 @@ def close_pl_accounts(request, pk):
         'fy':fy,
     })
 
-
+@login_required
+@admin_required
 def account_balance_sheet(request, pk, type_pk):
     shop = Shop.objects.get(pk=pk)
     type_obj = get_object_or_404(Type, pk=type_pk, shop=shop)
@@ -3094,6 +3108,8 @@ def link_ledger_accounts(request, pk):
         logger.error(f"Error linking ledger accounts by {request.user.username}: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'message': 'An error occurred while saving linked accounts'}, status=500)
 
+@login_required
+@admin_required
 def trial_balance_pdf(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -3128,6 +3144,8 @@ def trial_balance_pdf(request, pk):
     }
     return render(request, 'manager/trial_balance_print.html', context)
 
+@login_required
+@admin_required
 def trial_balance_wopl_pdf(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -3164,6 +3182,8 @@ def trial_balance_wopl_pdf(request, pk):
     }
     return render(request, 'manager/trial_balance_print.html', context)
 
+@login_required
+@admin_required
 def _zero_pl_openings(group_fy_data):
     """Zero out opening balances for all types/accounts in group_order 2 (PL)."""
     for group in group_fy_data:
@@ -3174,6 +3194,8 @@ def _zero_pl_openings(group_fy_data):
                     acc['opening'] = 0
             group['opening'] = 0
 
+@login_required
+@admin_required
 def _filter_empty(group_fy_data):
     """Remove zero-closing accounts from all groups, then remove types with no accounts."""
     for group in group_fy_data:
@@ -3181,6 +3203,8 @@ def _filter_empty(group_fy_data):
             acc_type['accounts'] = [a for a in acc_type['accounts'] if a['closing'] != 0]
         group['types'] = [t for t in group['types'] if t['accounts']]
 
+@login_required
+@admin_required
 def bs_shop_pdf(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -3203,6 +3227,8 @@ def bs_shop_pdf(request, pk):
     }
     return render(request, 'manager/bs_shop_print.html', context)
 
+@login_required
+@admin_required
 def bs_shop_wo_pl_pdf(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -3228,12 +3254,16 @@ def bs_shop_wo_pl_pdf(request, pk):
     return render(request, 'manager/bs_shop_print.html', context)
 
 
+@login_required
+@admin_required
 def _filter_empty_types(group_fy_data):
     """Remove zero-closing types from all groups."""
     for group in group_fy_data:
         group['types'] = [t for t in group['types'] if t['closing'] != 0]
 
 
+@login_required
+@admin_required
 def group_type_summary_pdf(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
@@ -3345,6 +3375,8 @@ def shops_yearly_summary_pdf(request):
 # Excel / CSV exports
 # ──────────────────────────────────────────────────────────────
 
+@login_required
+@admin_required
 def _build_trial_balance_rows(shop, fy, skip_pl=False):
     """Shared data preparation for trial-balance export views."""
     types = Type.objects.filter(shop=shop)
@@ -3368,6 +3400,8 @@ def _build_trial_balance_rows(shop, fy, skip_pl=False):
     return rows, total_debit, total_credit
 
 
+@login_required
+@admin_required
 def trial_balance_excel(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3380,6 +3414,8 @@ def trial_balance_excel(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def trial_balance_csv(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3392,6 +3428,8 @@ def trial_balance_csv(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def trial_balance_wopl_excel(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3404,6 +3442,8 @@ def trial_balance_wopl_excel(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def trial_balance_wopl_csv(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3416,6 +3456,8 @@ def trial_balance_wopl_csv(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def bs_shop_excel(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3432,6 +3474,8 @@ def bs_shop_excel(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def bs_shop_csv(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3448,6 +3492,8 @@ def bs_shop_csv(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def bs_shop_wo_pl_excel(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3464,6 +3510,8 @@ def bs_shop_wo_pl_excel(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def bs_shop_wo_pl_csv(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3480,6 +3528,8 @@ def bs_shop_wo_pl_csv(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def group_type_summary_excel(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()
@@ -3497,6 +3547,8 @@ def group_type_summary_excel(request, pk):
     return response
 
 
+@login_required
+@admin_required
 def group_type_summary_csv(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy') or date_helper.get_current_fy_string()

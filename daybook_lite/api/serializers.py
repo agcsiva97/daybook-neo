@@ -40,7 +40,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Accounts
-        fields = ['id', 'e_name', 't_name', 'shop', 'acc_type', 'priority', 'is_admin_only']
+        fields = ['id', 'e_name', 't_name', 'shop', 'acc_type', 'priority', 'is_admin_only','acc_type_id']
         read_only_fields = ['id']
 
 class TypeSerializer(serializers.ModelSerializer):

@@ -23,7 +23,7 @@ def get_current_fy_string():
 def get_fy_dates(financial_year: str):
     """
     Handles formats: '2024-25' or '24-25'
-    Returns (start_date, end_date) as date objects
+    Returns (start_date, end_date) as datetime objects (timezone-aware)
     """
     if not financial_year:
         financial_year = get_current_fy_string()
@@ -32,18 +32,15 @@ def get_fy_dates(financial_year: str):
     parts = financial_year.split('-')
     year_str = parts[0]
 
-    # Convert 2-digit year to 4-digit (e.g., '24' -> 2024)
     if len(year_str) == 2:
         start_year = int("20" + year_str)
     elif len(year_str) == 3:
         start_year = int("2" + year_str)
     else:
-        # print("Year: " + year_str)
         start_year = int(year_str)
 
-    start_date = date(start_year, 4, 1)       # April 1st
-    end_date   = date(start_year + 1, 3, 31)  # March 31st of following year
-    
+    start_date = timezone.make_aware(datetime(start_year, 4, 1, 0, 0, 0))
+    end_date = timezone.make_aware(datetime(start_year + 1, 4, 1, 0, 0, 0))
     return start_date, end_date
 
 
