@@ -17,6 +17,7 @@ from django.core.paginator import Paginator
 from django.db import transaction as db_transaction
 from django.db.models import Case, DecimalField, F, Min, Sum, Value, When
 from django.db.models.functions import Coalesce
+from django.views.decorators.cache import never_cache
 from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -302,6 +303,7 @@ def add_entries(request):
     })
 
 
+@never_cache  # 1. Prevents aggressive mobile browser caching
 @login_required
 @ensure_csrf_cookie
 def transactions(request):
@@ -316,7 +318,6 @@ def transactions(request):
     account_type_filter = request.GET.get('account_type')
     amount_value = request.GET.get('amount_value', '')
     amount_operator = request.GET.get('amount_operator', 'equals')
-    # Sorting option: date_desc (default) or date_asc
     sort_option = request.GET.get('sort', 'date_desc')
     fy = request.GET.get('fin_year')
 
@@ -324,12 +325,9 @@ def transactions(request):
         fy = date_helper.get_current_fy_string()
     
     start_date, end_date = date_helper.get_fy_dates(fy)
-    
-    
     all_configs = Configuration.objects.all()
-    shop = None  # Initialize shop variable for context, will be set if shop_filter is applied
+    shop = None
 
-    # Preserve current filter parameters for pagination and HTMX requests.
     query_params = request.GET.copy()
     query_params.pop('page', None)
     filter_query = query_params.urlencode()
@@ -337,28 +335,18 @@ def transactions(request):
     if clear_filters == 'true':
         shop_filter = 'all'
 
-    # Note: No longer setting default from_date to allow users to see all data if desired
-    
-    # Base queryset (select_related used for performance)
+    # Base queryset
     if is_admin(request.user) or is_super_admin(request.user):
         transactions_list = Transactions.objects.filter(
             transaction_dt__gte=start_date,
             transaction_dt__lte=end_date
-        ).select_related(
-                'shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by'
-        )
+        ).select_related('shop', 'acc', 'acc__acc_type', 'created_by', 'updated_by')
     else:
         transactions_list = Transactions.objects.filter(
             acc__is_admin_only=False,
             transaction_dt__gte=start_date,
             transaction_dt__lte=end_date
-        ).select_related(
-            'acc',      # Essential since you are filtering/displaying account info 
-            'acc__acc_type',
-            'shop', 
-            'created_by', 
-            'updated_by'
-        )
+        ).select_related('acc', 'acc__acc_type', 'shop', 'created_by', 'updated_by')
 
     if not shop_filter:
         default_shop_short_name = Configuration.get_value(Configuration.Key.DEFAULT_SHOP, default='')
@@ -367,30 +355,23 @@ def transactions(request):
             if default_shop:
                 shop_filter = str(default_shop.id)
 
-    # Apply ordering based on sort option (default: date descending)
+    # Apply ordering
     if sort_option == 'date_asc':
         transactions_list = transactions_list.order_by('transaction_dt')
     else:
         transactions_list = transactions_list.order_by('-transaction_dt')
     
-
-    # Apply filters
+    # Apply filters (omitted for brevity, keep your existing filter logic here)
     if from_date:
         from_date_obj = date_helper.parse_date_string(from_date)
         if from_date_obj:
-            from_date_dt = timezone.make_aware(
-                datetime.combine(from_date_obj, datetime.min.time()),
-                timezone=timezone.get_current_timezone()
-            )
+            from_date_dt = timezone.make_aware(datetime.combine(from_date_obj, datetime.min.time()), timezone=timezone.get_current_timezone())
             transactions_list = transactions_list.filter(transaction_dt__gte=from_date_dt)
     
     if to_date:
         to_date_obj = date_helper.parse_date_string(to_date)
         if to_date_obj:
-            to_date_dt = timezone.make_aware(
-                datetime.combine(to_date_obj, datetime.max.time()),
-                timezone=timezone.get_current_timezone()
-            )
+            to_date_dt = timezone.make_aware(datetime.combine(to_date_obj, datetime.max.time()), timezone=timezone.get_current_timezone())
             transactions_list = transactions_list.filter(transaction_dt__lte=to_date_dt)
     
     if shop_filter != 'all':
@@ -406,7 +387,6 @@ def transactions(request):
     if account_type_filter:
         transactions_list = transactions_list.filter(acc__acc_type_id=account_type_filter)
     
-    # Apply amount filter with operator
     if amount_value:
         try:
             amount_val = Decimal(amount_value)
@@ -421,13 +401,30 @@ def transactions(request):
     
     if search_query:
         transactions_list = transactions_list.filter(remarks__icontains=search_query)
-    
+
     # Pagination
-    paginator = Paginator(transactions_list, 25)  # Show 25 transactions per page
+    paginator = Paginator(transactions_list, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # 2. INTERCEPT HTMX REQUESTS EARLY
+    # If it's an HTMX request for page 2, 3, etc., return immediately!
+    # Do NOT run the heavy math calculations below.
+    if request.headers.get('HX-Request'):
+        return render(request, 'entries/partials/transaction_rows.html', {
+            'page_obj': page_obj,
+            'is_super_admin': request.user.is_superuser,
+            'is_admin': is_admin(request.user),
+            'is_admin_user': is_admin(request.user) or request.user.is_superuser,
+            'filter_query': filter_query,
+            'sort': sort_option,
+            'shop_filter': shop_filter,
+        })
     
-    # Calculate totals for all filtered transactions (not just current page)
+    # ---------------------------------------------------------
+    # Everything below here ONLY runs on the first full page load
+    # ---------------------------------------------------------
+
     totals = transactions_list.aggregate(
         debit_total=Coalesce(
             Sum(
@@ -453,37 +450,20 @@ def transactions(request):
         )
     )
     
-    # Get all shops for filter dropdown
     all_shops = Shop.objects.all().order_by('name')
     default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
-    
-    # Get all accounts for filter dropdown
     all_accounts = Accounts.objects.all().select_related('acc_type').order_by('e_name')
-    
-    # Get all account types for filter dropdown
     all_account_types = Type.objects.all().order_by('e_name')
-    
-    if request.headers.get('HX-Request'):
-        return render(request, 'entries/partials/transaction_rows.html', {
-            'page_obj': page_obj,
-            'is_super_admin': request.user.is_superuser,
-            'is_admin': is_admin(request.user),
-            'is_admin_user': is_admin(request.user) or request.user.is_superuser,
-            'filter_query': filter_query,
-            'sort': sort_option,
-            'shop_filter': shop_filter,
-        })
     
     configs={}
     for config in all_configs:
         if 'TRANS_' in config.key:
             configs[config.key] = config.value
-            print(f"Config: {config.key} = {config.value}")
 
     context = {
         'nav_title': 'Transactions',
         'page_obj': page_obj,
-        'all_transactions': transactions_list,  # All filtered transactions for printing
+        'all_transactions': transactions_list,
         'all_shops': all_shops,
         'all_accounts': all_accounts,
         'all_account_types': all_account_types,

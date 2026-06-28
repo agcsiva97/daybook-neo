@@ -66,10 +66,17 @@
 {% if page_obj.has_next %}
 <tr id="sentinel-row"
     hx-get="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}"
-    hx-trigger="intersect once"
-    hx-target="#transaction-list"
-    hx-swap="beforeend"
-    hx-indicator="#loading-indicator">
+    hx-trigger="intersect rootMargin:200px once"
+    hx-swap="outerHTML"
+  >
+    
+    <!-- Optional: Keep a visual loading text inside the row while it fetches -->
+    <td colspan="100%" style="text-align: center; padding: 15px;">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>  
+      <span class="text-muted">Loading more transactions...</span>
+    </td>
 </tr>
 {% endif %}
 
@@ -78,192 +85,3 @@
     <td colspan="12" class="text-center text-muted py-3">No more transactions to load</td>
 </tr>
 {% endif %}
-
-<!-- Single shared info modal -->
-<div class="modal fade modal-end" id="sharedInfoModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-end">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Transaction Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="transaction-item-modal" style="background-color:#fff;border-radius:4px;padding:12px;margin-bottom:16px;">
-          <div id="modal-tr-type"></div>
-          <div class="transaction-details">
-            <div class="transaction-account" id="modal-account"></div>
-          </div>
-          <div class="transaction-amount" id="modal-amount"></div>
-        </div>
-        <div class="card">
-          <div class="card-body">
-            <p class="mb-1"><span class="text-muted"><small><strong>ID</strong></small></span><br><span id="modal-id"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Shop</strong></small></span><br><span id="modal-shop"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Transaction Date</strong></small></span><br><span id="modal-date"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Remarks</strong></small></span><br><span id="modal-remarks"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Is Tallied</strong></small></span><br><span id="modal-tally"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Created By</strong></small></span><br><span id="modal-created-by"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Created At</strong></small></span><br><span id="modal-created-at"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Updated By</strong></small></span><br><span id="modal-updated-by"></span></p>
-            <p class="mb-1"><span class="text-muted"><small><strong>Updated At</strong></small></span><br><span id="modal-updated-at"></span></p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" id="modal-edit-btn" class="btn btn-outline-primary">Edit</button>
-        {% if is_admin_user %}
-        <button type="button" id="modal-history-btn" class="btn btn-outline-secondary">History</button>
-        <button type="button" id="modal-delete-btn" class="btn btn-outline-danger">Delete</button>
-        {% endif %}
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Single shared delete modal -->
-<div class="modal fade" id="sharedDeleteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header py-2">
-        <h5 class="modal-title mb-0">Delete Transaction</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body py-2">
-        <p class="mb-1 small" id="delete-modal-summary"></p>
-      </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <form method="post" id="delete-modal-form" class="d-inline">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-let activeModal = null;
-
-function openModal(modalEl) {
-  if (activeModal) {
-    activeModal.hide();
-  }
-  if (!document.body.contains(modalEl)) {
-    document.body.appendChild(modalEl);
-  }
-  
-  // Destroy existing instance first
-  const existing = bootstrap.Modal.getInstance(modalEl);
-  if (existing) existing.dispose();
-
-  activeModal = new bootstrap.Modal(modalEl);
-  activeModal.show();
-
-  modalEl.addEventListener('hidden.bs.modal', function() {
-    activeModal = null;
-    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-  }, { once: true });
-}
-
-function openInfoModal(row) {
-  const d = row.dataset;
-  
-  // Populate fields
-  document.getElementById('modal-id').textContent = d.id;
-  document.getElementById('modal-account').textContent = d.account;
-  document.getElementById('modal-amount').innerHTML = `<small style="font-size:x-small"><strong>௹.</strong></small>${d.amount}`;
-  document.getElementById('modal-shop').textContent = d.shop;
-  document.getElementById('modal-date').textContent = d.date;
-  document.getElementById('modal-remarks').textContent = d.remarks;
-  document.getElementById('modal-tally').textContent = d.isTally;
-  document.getElementById('modal-created-by').textContent = d.createdBy;
-  document.getElementById('modal-created-at').textContent = d.createdAt;
-  document.getElementById('modal-updated-by').textContent = d.updatedBy;
-  document.getElementById('modal-updated-at').textContent = d.updatedAt;
-
-  // TR type indicator
-  const trTypeEl = document.getElementById('modal-tr-type');
-  trTypeEl.className = `transaction-item-modal-tr-type tr-type-${d.trType.toLowerCase()}`;
-  trTypeEl.innerHTML = `<p class="mb-1"><strong>${d.trType === 'DEBIT' ? '௶' : '௷'}</strong></p>`;
-
-  // Buttons
-  document.getElementById('modal-edit-btn').onclick = () => window.location.href = d.editUrl;
-  {% if is_admin_user %}
-    document.getElementById('modal-history-btn').onclick = () => window.location.href = d.historyUrl;
-    document.getElementById('modal-delete-btn').onclick = () => switchToSharedDeleteModal(d);
-  {% endif %}
-
-  openModal(document.getElementById('sharedInfoModal'));
-}
-
-function switchToSharedDeleteModal(d) {
-  document.getElementById('delete-modal-summary').textContent = `${d.shop} · ${d.trType} · ${d.amount}`;
-  document.getElementById('delete-modal-form').action = d.deleteUrl;
-
-  const doOpen = function() {
-    // Force clean all backdrops and body state
-    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-
-    const deleteModalEl = document.getElementById('sharedDeleteModal');
-    // Always ensure it's on body
-    if (!document.body.contains(deleteModalEl)) {
-      document.body.appendChild(deleteModalEl);
-    }
-
-    // Destroy any existing Bootstrap instance before creating new one
-    const existing = bootstrap.Modal.getInstance(deleteModalEl);
-    if (existing) existing.dispose();
-
-    const deleteModal = new bootstrap.Modal(deleteModalEl, { backdrop: true });
-    deleteModal.show();
-  };
-
-  if (activeModal) {
-    const infoModalEl = document.getElementById('sharedInfoModal');
-    infoModalEl.addEventListener('hidden.bs.modal', function() {
-      // Small delay to let Bootstrap fully clean up
-      setTimeout(doOpen, 50);
-    }, { once: true });
-    activeModal.hide();
-    activeModal = null;
-  } else {
-    doOpen();
-  }
-}
-
-function addRowClickHandlers() {
-  const tableBody = document.getElementById('transaction-list');
-  if (!tableBody) return;
-
-  // Remove existing listener to prevent duplicates
-  if (tableBody._clickHandler) {
-    tableBody.removeEventListener('click', tableBody._clickHandler);
-  }
-
-  tableBody._clickHandler = function(e) {
-    if (e.target.closest('a, button, form')) return;
-    const row = e.target.closest('tr[data-id], div.transaction-item[data-id]');
-    if (row) {
-      row.style.cursor = 'pointer';
-      openInfoModal(row);
-    }
-  };
-
-  tableBody.addEventListener('click', tableBody._clickHandler);
-}
-
-document.addEventListener('DOMContentLoaded', addRowClickHandlers);
-
-{% comment %} if (typeof htmx !== 'undefined') {
-  document.body.addEventListener('htmx:afterSwap', addRowClickHandlers);
-} {% endcomment %}
-</script>

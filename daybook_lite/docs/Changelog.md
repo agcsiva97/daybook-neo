@@ -16,6 +16,10 @@ Versioning follows semantic versioning:
 - Multiple delete for transactions
 ---
 # Version History
+## [2.2.3] - 2026-06-28
+- Fix transactions loading performance in transactions list page
+- UI/UX improvements and bug fixes
+
 ## [2.2.2] - 2026-06-23
 - Added **Add account** button in transaction form for admin group users
 - Loan Form will fetch latest date from loan model

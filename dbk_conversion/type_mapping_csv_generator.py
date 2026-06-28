@@ -12,12 +12,15 @@ def type_exists(type_list, type_item):
             return True
     return False
 
-def generate_type_mapping_csv(df):
+def generate_type_mapping_csv(df,is_ezbal):
     type_list = []
     row_count = 0
     for row in df.itertuples(index=False):
         row_count += 1
-        type_item = [int(row[4]),suriyan.convert_word(row[2]),'']
+        if is_ezbal:
+            type_item = [int(row[5]),suriyan.convert_word(row[3]),'']
+        else:
+            type_item = [int(row[4]),suriyan.convert_word(row[2]),'']
         if not type_exists(type_list, type_item):
             type_list.append(type_item)
     with open("output/acc_types_groups_mapping.csv", "w", newline="", encoding="utf-8") as file:
