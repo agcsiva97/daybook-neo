@@ -35,6 +35,31 @@
     align-items: center;
     gap: 6px;
   }
+  
+  /* Make table text smaller */
+  .table-responsive table {
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .table-responsive table th,
+  .table-responsive table td {
+    padding: 0.1rem;
+    vertical-align: middle;
+  }
+
+    /* Fix: HTMX infinite scroll strips tr bottom borders after swap */
+#transaction-tbody tr.transaction-row td {
+  border-bottom: 1px solid #dee2e6 !important;
+}
+#hx-loading {
+    display: none;
+}
+#hx-loading.htmx-request {
+    display: block;
+    width: 100%;          /* stretches full width of its container */
+    text-align: center;   /* fallback centering */
+}
 </style>
 
 <div class="container mt-4">
@@ -216,7 +241,7 @@
 
     <div class="card-body">
       <div class="table-responsive">
-        <table class="table">
+        <table class="table table-hover table-sm">
           <thead>
             <tr>
               <th scope="col">
@@ -233,11 +258,11 @@
             </tr>
           </thead>
           <tbody id="transaction-tbody"
-                 hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&{{ filter_querystring }}"
-                 hx-trigger="load"
-                 hx-swap="innerHTML"
-                 hx-target="this">
-            <tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>
+                  hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&{{ filter_querystring }}"
+                  hx-trigger="load"
+                  hx-swap="innerHTML"
+                  hx-target="this">
+            
           </tbody>
         </table>
       </div>

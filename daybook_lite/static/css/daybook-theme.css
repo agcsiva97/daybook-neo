@@ -868,6 +868,11 @@ display: block;
   .btn .ti {
     font-size: 0.78rem;
   }
+
+  .table-responsive table {
+    font-size: 0.85rem;
+    white-space: nowrap;  /* ← add this */
+  }
 }
 
 /* Tablets / small laptops (≤1024px) */
@@ -912,6 +917,11 @@ display: block;
   .user-name {
     display: none;
   }
+
+  .table-responsive table {
+    font-size: 0.85rem;
+    white-space: nowrap;  /* ← add this */
+  }
 }
 
 /* Larger tablets in landscape (≤900px) */
@@ -931,9 +941,20 @@ display: block;
     font-size: 0.72rem;
     padding: 0.2rem 0.4rem;
   }
+
+  
+  .table-responsive table {
+      font-size: 0.85rem;
+      white-space: nowrap;  /* ← add this */
+  }
 }
 
 /* ── App launcher icon — never shrinks at any breakpoint ── */
 .app-launcher .material-symbols-outlined {
   font-size: 1.4rem !important;
+}
+
+.table-responsive table {
+    font-size: 0.9rem;
+    white-space: nowrap;  /* ← add this */
 }

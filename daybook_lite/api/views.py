@@ -199,7 +199,7 @@ def shop_account_list(request, pk):
         logger.info(f"Fetching accounts for shop ID: {shop.id}, Name: {shop.short_name}")
         
         user_groups = request.user.groups.values_list('name', flat=True)
-        is_admin_group = 'admin' in user_groups or 'super admin' in user_groups
+        is_admin_group = 'Admin' in user_groups or 'Super Admin' in user_groups
 
         if request.user.is_superuser or is_admin_group:
             # Admins and superusers see all accounts

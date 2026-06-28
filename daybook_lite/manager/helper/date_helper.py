@@ -40,7 +40,7 @@ def get_fy_dates(financial_year: str):
         start_year = int(year_str)
 
     start_date = timezone.make_aware(datetime(start_year, 4, 1, 0, 0, 0))
-    end_date = timezone.make_aware(datetime(start_year + 1, 4, 1, 0, 0, 0))
+    end_date = timezone.make_aware(datetime(start_year + 1, 3, 31, 23, 59, 59))
     return start_date, end_date
 
 
