@@ -109,3 +109,21 @@ def parse_date_string(date_str):
         except ValueError:
             continue
     return None
+
+def format_duration(total_seconds):
+    # Convert the input to an integer to prevent the 'str' and 'int' TypeError
+    total_seconds = int(total_seconds)
+    
+    minutes, seconds = divmod(total_seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    
+    parts = []
+    
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if seconds > 0 or total_seconds == 0:
+        parts.append(f"{seconds}s")
+        
+    return " ".join(parts)

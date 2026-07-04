@@ -57,4 +57,5 @@ urlpatterns = [
     path('shops-yearly-summary/pdf/', views.shops_yearly_summary_pdf, name='shops_yearly_summary_pdf'),
     path('shops-yearly-summary/excel/', views.shops_yearly_summary_excel, name='shops_yearly_summary_excel'),
     path('shops-yearly-summary/csv/', views.shops_yearly_summary_csv, name='shops_yearly_summary_csv'),
+    path('download-backup/', views.download_backup, name='download_backup'),
 ]

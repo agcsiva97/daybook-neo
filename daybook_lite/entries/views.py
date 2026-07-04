@@ -7,6 +7,7 @@ import openpyxl
 from functools import wraps
 from openpyxl.styles import Font, Alignment, PatternFill
 import markdown
+import socket
 
 from pathlib import Path
 from django.contrib import messages
@@ -22,6 +23,7 @@ from django.http import HttpResponse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.conf import settings
 
 from manager.helper import manager_helper, date_helper
 
@@ -650,7 +652,7 @@ def export_transactions_csv(request):
     
     # Create CSV response
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="transactions_{timezone.localdate()}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="transactions_{timezone.localdate().strftime("%d_%m_%Y")}.csv"'
     
     writer = csv.writer(response)
     
@@ -947,7 +949,7 @@ def export_transactions_excel(request):
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename="transactions_{timezone.localdate()}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="transactions_{timezone.localdate().strftime("%d_%m_%Y")}.xlsx"'
     wb.save(response)
     
     logger.info(f"Transactions Excel export by {request.user.username}")
@@ -2712,10 +2714,30 @@ def custom_403_view(request, exception=None):
 
 def about(request):
     """About page with system information and credits"""
+    pc_name = socket.gethostname()
+    base_dir = settings.BASE_DIR
+    fy = date_helper.get_current_fy_string()
+
+    backup_dir_display = Configuration.get_value(Configuration.Key.BACKUP_DIR)
+    session_timeout = Configuration.get_value(Configuration.Key.SESSION_TIMEOUT)
+    session_timeout = date_helper.format_duration(session_timeout) if session_timeout else 'N/A'
+    total_users = User.objects.count()
+    total_shops = Shop.objects.count()
+
+    if backup_dir_display is None:
+        backup_dir_display = str(settings.BASE_DIR) + '\\data\\backups'
+
     context = {
         'nav_title': 'About',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'base_dir': base_dir,
+        'pc_name': pc_name,
+        'backup_dir_display': backup_dir_display,
+        'current_fy': fy,
+        'session_timeout': session_timeout,
+        'total_users': total_users,
+        'total_shops': total_shops,
     }
     return render(request, 'entries/about.html', context)
 

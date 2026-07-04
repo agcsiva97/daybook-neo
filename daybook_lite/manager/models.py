@@ -100,6 +100,7 @@ class Configuration(models.Model):
         DEN_PURGE_DAYS = 'DEN_PURGE_DAYS', 'Denomination Purge Days'
         SESSION_TIMEOUT = 'SESSION_TIMEOUT', 'Session Timeout in Seconds'
         DEFAULT_SHOP = 'DEFAULT_SHOP', 'Default Shop short name'
+        BACKUP_DIR = 'BACKUP_DIR', 'Database Backup Directory'
 
     # Default values for each key — blank unless specified
     DEFAULTS = {
@@ -111,7 +112,8 @@ class Configuration(models.Model):
         Key.LOAN_ORIENTATION: 'Portrait',
         Key.DEN_PURGE_DAYS: '7',
         Key.SESSION_TIMEOUT: '1800',
-        Key.DEFAULT_SHOP: ''
+        Key.DEFAULT_SHOP: '',
+        Key.BACKUP_DIR: ''
     }
 
     # Maps each key to its group
@@ -125,6 +127,7 @@ class Configuration(models.Model):
         Key.DEN_PURGE_DAYS: Group.DBK,
         Key.SESSION_TIMEOUT: Group.APP,
         Key.DEFAULT_SHOP: Group.APP,
+        Key.BACKUP_DIR: Group.APP,
     }
 
     group = models.CharField(max_length=50, choices=Group.choices)
@@ -140,15 +143,28 @@ class Configuration(models.Model):
     @classmethod
     def initialize_defaults(cls):
         """
-        Create default config rows for all keys that don't exist yet.
-        Safe to run multiple times — skips existing keys.
-        Use this for first-time setup AND when adding new keys.
+        Syncs configuration keys with the database.
+        - Creates new keys with default values.
+        - Updates the 'group' if it changed in the code.
+        - Deletes keys from the DB that are no longer in Key.choices.
         """
-        created_count = 0
-        skipped_count = 0
+        import logging
+        logger = logging.getLogger(__name__)
 
+        created_count = 0
+        updated_count = 0
+        
+        # 1. Delete obsolete keys from the database
+        valid_keys = [choice[0] for choice in cls.Key.choices]
+        deleted_count, _ = cls.objects.exclude(key__in=valid_keys).delete()
+        
+        if deleted_count > 0:
+            logger.info(f"[Config] Deleted [{deleted_count}] obsolete keys.")
+
+        # 2. Add new keys or update existing ones
         for key, group in cls.KEY_GROUP_MAP.items():
             default_value = cls.DEFAULTS.get(key, '')
+            
             obj, created = cls.objects.get_or_create(
                 key=key,
                 defaults={
@@ -156,14 +172,19 @@ class Configuration(models.Model):
                     'value': default_value,
                 }
             )
+            
             if created:
                 logger.info(f"[Config] Created -> group=[{group}] | key=[{key}] | value=[{default_value}]")
                 created_count += 1
             else:
-                logger.info(f"[Config] Skipped (exists) -> key=[{key}]")
-                skipped_count += 1
+                # If the key exists, ensure its group matches the code (in case you moved it)
+                if obj.group != group:
+                    obj.group = group
+                    obj.save(update_fields=['group'])
+                    logger.info(f"[Config] Updated group for key=[{key}] -> new_group=[{group}]")
+                    updated_count += 1
 
-        logger.info(f"[Config] Initialization complete -> created=[{created_count}] | skipped=[{skipped_count}]")
+        logger.info(f"[Config] Sync complete -> created=[{created_count}] | updated=[{updated_count}] | deleted=[{deleted_count}]")
 
     @classmethod
     def get_value(cls, key, default=None):

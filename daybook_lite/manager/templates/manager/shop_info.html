@@ -5,8 +5,8 @@
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-start">      
       <!-- LEFT SIDE -->
-      <div>
-        <h4 class="mb-0">
+      <div class="account-title-wrap">
+        <h4 class="mb-0 account-title-text">
           <i class="fa-solid fa-shop"></i> {{ shop.name }}
         </h4>
       </div>
@@ -22,36 +22,36 @@
           {% if is_admin %}
           <li>
             <a href="{% url 'manager:edit_shop' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-pencil primary-color"></i> <span class="d-none d-md-inline">Edit</span>
+              <i class="fa-solid fa-pencil primary-color"></i> <span class="">Edit</span>
             </a>
           </li>
           {% endif %}
           {% if is_super_admin %}
           <li>
             <a href="{% url 'manager:delete_shop' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-trash primary-color"></i> <span class="d-none d-md-inline">Delete</span>
+              <i class="fa-solid fa-trash primary-color"></i> <span class="">Delete</span>
             </a>
           </li>
           {% endif %}
           <li>
             <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-file-invoice-dollar  primary-color"></i> <span class="d-none d-md-inline">Types Summary</span>
+              <i class="fa-solid fa-file-invoice-dollar  primary-color"></i> <span class="">Types Summary</span>
             </a>
           </li>
           <li>
             <a href="{% url 'manager:shop_meta' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-sitemap primary-color"></i> <span class="d-none d-md-inline">Shop Meta</span>
+              <i class="fa-solid fa-sitemap primary-color"></i> <span class="">Shop Meta</span>
             </a>
           </li>
           <li>
             <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-arrows-rotate primary-color"></i> <span class="d-none d-md-inline">Sync Accounts Types</span>
+              <i class="fa-solid fa-arrows-rotate primary-color"></i> <span class="">Sync Accounts Types</span>
             </a>
           </li>
           <li>
             <a href="{% url 'manager:close-pl-accounts' shop.pk %}" class="dropdown-item">
               <i class="fa-solid fa-calendar-xmark primary-color"></i>
-              <span class="d-none d-md-inline">Close PL Accounts</span>
+              <span class="">Close PL Accounts</span>
             </a>
           </li>
         </ul>

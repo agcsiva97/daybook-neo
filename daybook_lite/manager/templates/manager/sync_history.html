@@ -9,14 +9,17 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h4 class="mb-0"><i class="fa-solid fa-arrows-rotate"></i> Sync </h4>
       <div class="d-flex gap-2">
+        <a href="{% url 'manager:download_backup' %}" class="btn btn-sm btn-warning">
+          <i class="fa-solid fa-database"></i> <span class="d-none d-md-inline">Download Backup</span>
+        </a>
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#exportModal">
-          <i class="fa-solid fa-upload"></i> Export
+          <i class="fa-solid fa-upload"></i> <span class="d-none d-md-inline">Export</span>
         </button>
         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
-          <i class="fa-solid fa-download"></i> Import
+          <i class="fa-solid fa-download"></i> <span class="d-none d-md-inline">Import</span>
         </button>
         <a href="{% url 'manager:shops_list' %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> Back to Shops
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Shops</span>
         </a>
       </div>
     </div>
@@ -143,12 +146,22 @@
 </div>
 
 <script>
+  const exportModalEl = document.getElementById('exportModal');
+  let isExporting = false;
+
+  // Prevent closing (backdrop click, Escape key, X button) while exporting
+  exportModalEl.addEventListener('hide.bs.modal', function(event) {
+    if (isExporting) {
+      event.preventDefault();
+    }
+  });
+
   // Show/hide date range fields based on transaction type selection
   document.querySelectorAll('input[name="transaction_type"]').forEach(radio => {
     radio.addEventListener('change', function() {
       const dateRangeFields = document.getElementById('dateRangeFields');
       const exportFromField = document.getElementById('exportFromField');
-      
+
       if (this.value === 'date_range') {
         dateRangeFields.style.display = 'block';
         exportFromField.style.display = 'none';
@@ -172,51 +185,55 @@
   });
 
   // Handle export button click
-  document.getElementById('exportBtn').addEventListener('click', function() {
+  document.getElementById('exportBtn').addEventListener('click', function(event) {
+    event.preventDefault();
+
     const shopId = document.getElementById('shopSelect').value;
-    
+
     if (!shopId) {
       alert('Please select a shop');
       return;
     }
 
     const transactionType = document.querySelector('input[name="transaction_type"]:checked').value;
-    
-    // Validate date range if needed
+
     if (transactionType === 'date_range') {
       const fromDate = document.getElementById('fromDate').value;
       const toDate = document.getElementById('toDate').value;
-      
+
       if (!fromDate || !toDate) {
         alert('Please select both From Date and To Date');
         return;
       }
-      
+
       if (new Date(fromDate) > new Date(toDate)) {
         alert('From Date must be before To Date');
         return;
       }
     } else if (transactionType === 'export_from') {
       const exportFromDate = document.getElementById('exportFromDate').value;
-      
+
       if (!exportFromDate) {
         alert('Please select an Export From Date');
         return;
       }
     }
 
-    // Create and submit form for transactions export
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/manager/shops/${shopId}/export-transactions/`;
-    
-    // Get CSRF token - try both querySelector and getAttribute methods
+    const formData = new FormData();
+    formData.append('export_type', transactionType);
+
+    if (transactionType === 'date_range') {
+      formData.append('from_date', document.getElementById('fromDate').value);
+      formData.append('to_date', document.getElementById('toDate').value);
+    } else if (transactionType === 'export_from') {
+      formData.append('export_from_date', document.getElementById('exportFromDate').value);
+    }
+
     let csrfTokenValue = '';
     const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
     if (csrfElement) {
       csrfTokenValue = csrfElement.value;
     } else {
-      // Fallback: try to get from cookie
       const name = 'csrftoken';
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -231,49 +248,75 @@
       }
       csrfTokenValue = cookieValue;
     }
-    
-    // Add CSRF token to form
-    if (csrfTokenValue) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'csrfmiddlewaretoken';
-      csrfInput.value = csrfTokenValue;
-      form.appendChild(csrfInput);
-    }
-    
-    const typeInput = document.createElement('input');
-    typeInput.type = 'hidden';
-    typeInput.name = 'export_type';
-    typeInput.value = transactionType;
-    form.appendChild(typeInput);
-    
-    if (transactionType === 'date_range') {
-      const fromInput = document.createElement('input');
-      fromInput.type = 'hidden';
-      fromInput.name = 'from_date';
-      fromInput.value = document.getElementById('fromDate').value;
-      form.appendChild(fromInput);
-      
-      const toInput = document.createElement('input');
-      toInput.type = 'hidden';
-      toInput.name = 'to_date';
-      toInput.value = document.getElementById('toDate').value;
-      form.appendChild(toInput);
-    } else if (transactionType === 'export_from') {
-      const exportFromInput = document.createElement('input');
-      exportFromInput.type = 'hidden';
-      exportFromInput.name = 'export_from_date';
-      exportFromInput.value = document.getElementById('exportFromDate').value;
-      form.appendChild(exportFromInput);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-    
-    // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
-    modal.hide();
+
+    // Lock the modal: disable Cancel/X and block outside-click/Escape close
+    const exportBtn = document.getElementById('exportBtn');
+    const cancelBtn = exportModalEl.querySelector('.modal-footer .btn-secondary');
+    const closeBtn = exportModalEl.querySelector('.modal-header .btn-close');
+    const originalText = exportBtn.innerHTML;
+
+    isExporting = true;
+    exportBtn.disabled = true;
+    exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (closeBtn) closeBtn.disabled = true;
+
+    fetch(`/manager/shops/${shopId}/export-transactions/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfTokenValue,
+      },
+      body: formData
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Export failed with status ' + response.status);
+      }
+
+      const disposition = response.headers.get('Content-Disposition');
+      let filename = 'export.json';
+      if (disposition) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      return response.blob().then(blob => ({ blob, filename }));
+    })
+    .then(({ blob, filename }) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // Unlock before hiding, otherwise hide.bs.modal will block it
+      isExporting = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (closeBtn) closeBtn.disabled = false;
+
+      const modal = bootstrap.Modal.getInstance(exportModalEl);
+      modal.hide();
+
+      setTimeout(() => {
+        location.reload();
+      }, 500);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred during export. Please check the console for details.');
+    })
+    .finally(() => {
+      isExporting = false;
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = originalText;
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (closeBtn) closeBtn.disabled = false;
+    });
   });
 </script>
 
@@ -320,37 +363,46 @@
 </div>
 
 <script>
-  // Handle import button click
+  const importModalEl = document.getElementById('importModal');
+  let isImporting = false;
+
+  importModalEl.addEventListener('hide.bs.modal', function(event) {
+    if (isImporting) {
+      event.preventDefault();
+    }
+  });
+
   document.getElementById('importBtn').addEventListener('click', function() {
     const fileInput = document.getElementById('importFile');
-    
+
     if (!fileInput.files || fileInput.files.length === 0) {
       alert('Please select a JSON file to import');
       return;
     }
-    
+
     const file = fileInput.files[0];
-    
-    // Validate file type
+
     if (!file.name.endsWith('.json')) {
       alert('Please select a valid JSON file (.json)');
       return;
     }
-    
-    // Show loading state
+
     const importBtn = document.getElementById('importBtn');
+    const cancelBtn = importModalEl.querySelector('.modal-footer .btn-secondary');
+    const closeBtn = importModalEl.querySelector('.modal-header .btn-close');
     const originalText = importBtn.innerHTML;
+
+    isImporting = true;
     importBtn.disabled = true;
     importBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-    
-    // Create FormData for file upload
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (closeBtn) closeBtn.disabled = true;
+
     const formData = new FormData();
     formData.append('json_file', file);
-    
-    // Get CSRF token
+
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    // Send import request
+
     fetch('{% url "manager:import_transactions" %}', {
       method: 'POST',
       headers: {
@@ -361,20 +413,23 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        // Show success message with summary
         const summary = data.summary;
         let message = 'Import completed successfully!\n\n';
-        message += `Types: Created ${summary.types.created}, Updated ${summary.types.updated}\n`;
-        message += `Accounts: Created ${summary.accounts.created}, Updated ${summary.accounts.updated}\n`;
-        message += `Transactions: Created ${summary.transactions.created}, Updated ${summary.transactions.updated}`;
-        
+        message += `Types: Created ${summary.types.created}, Updated ${summary.types.updated}, Deleted ${summary.types.deleted}\n`;
+        message += `Accounts: Created ${summary.accounts.created}, Updated ${summary.accounts.updated}, Deleted ${summary.accounts.deleted}\n`;
+        message += `Transactions: Created ${summary.transactions.created}, Updated ${summary.transactions.updated}, Deleted ${summary.transactions.deleted}\n`;
+        message += `Loans: Created ${summary.loans.created}, Updated ${summary.loans.updated}, Deleted ${summary.loans.deleted}\n`;
+
         alert(message);
-        
-        // Close modal and refresh page
-        const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+
+        // Unlock before hiding, otherwise hide.bs.modal will block it
+        isImporting = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        if (closeBtn) closeBtn.disabled = false;
+
+        const modal = bootstrap.Modal.getInstance(importModalEl);
         modal.hide();
-        
-        // Reload page to show updated history
+
         setTimeout(() => {
           location.reload();
         }, 500);
@@ -387,10 +442,12 @@
       alert('An error occurred during import. Please check the console for details.');
     })
     .finally(() => {
-      // Reset button state
+      isImporting = false;
       importBtn.disabled = false;
       importBtn.innerHTML = originalText;
-      fileInput.value = ''; // Clear file input
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (closeBtn) closeBtn.disabled = false;
+      fileInput.value = '';
     });
   });
 </script>

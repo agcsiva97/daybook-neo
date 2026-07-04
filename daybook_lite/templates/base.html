@@ -22,6 +22,19 @@
     <!-- For desktop shortcut / PWA on mobile -->
     <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
+    
+    <!-- Link the manifest -->
+    <link rel="manifest" href="{% static 'js/manifest.json' %}">
+    
+    <!-- Meta tags for iOS specifically -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Daybook">
+    <link rel="apple-touch-icon" href="{% static 'images/icon-192.png' %}">
+
+    <!-- Theme color for Android -->
+    <meta name="theme-color" content="#0d6efd">
+    
     <style>
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
@@ -168,6 +181,18 @@
       if (typeof htmx === 'undefined') {
         document.write('<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"><\/script>');
       }
+
+      if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Ensure this path matches where your static files are served
+                navigator.serviceWorker.register("{% static 'js/serviceworker.js' %}")
+                .then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
     </script>
     <script>
 $(document).ready(function () {

@@ -40,17 +40,18 @@ _load_env_file(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-APP_VERSION = "2.2.3"
+APP_VERSION = "2.2.4"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-00jp4@&#cx9tk*y7&6u_bp8g%o3#4ot8!h=9pm48#s9jq%l^0v'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'daybook.local',
     'localhost',
+    'siva-pc.tail54b3ae.ts.net',
     '127.0.0.1',
     '192.168.1.29',
     '192.168.1.47',
