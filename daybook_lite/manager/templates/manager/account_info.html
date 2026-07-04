@@ -42,6 +42,18 @@
     white-space: nowrap;
   }
 
+  .account-title-wrap {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .account-title-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .table-responsive table th,
   .table-responsive table td {
     padding: 0.1rem;
@@ -66,8 +78,8 @@
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-start">
       <!-- LEFT SIDE -->
-      <div>
-        <h4 class="mb-0">
+      <div class="account-title-wrap">
+        <h4 class="mb-0 card-title account-title-text">
           <i class="fa-solid fa-wallet"></i> {{ account.t_name }}
         </h4>
       </div>
@@ -125,7 +137,7 @@
         </div>
         <div class="d-flex gap-2 flex-wrap align-items-center">
           <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
-            <i class="fa-solid fa-filter"></i> Filter
+            <i class="fa-solid fa-filter"></i> <span class="d-none d-md-inline">Filter</span>
             {% if has_active_filters %}
               <span class="badge bg-warning text-dark ms-1">{{ active_filter_count }}</span>
             {% endif %}

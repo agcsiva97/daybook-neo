@@ -16,6 +16,11 @@ Versioning follows semantic versioning:
 - Multiple delete for transactions
 ---
 # Version History
+## [2.2.4] - 2026-07-04
+- UI/UX Improvements
+- Auto Daily Backups
+- Manual Backup
+  
 ## [2.2.3] - 2026-06-28
 - Fix transactions loading performance in transactions list page
 - UI/UX improvements and bug fixes

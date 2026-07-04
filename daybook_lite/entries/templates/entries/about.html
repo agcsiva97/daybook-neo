@@ -2,145 +2,336 @@
 
 {% block content %}
 <style>
-    .container {
-        max-width: 900px;
+    .about-container {
+        max-width: 1100px;
         margin: 0 auto;
-        padding: 40px 20px;
+        padding: 40px 20px 20px;
     }
 
-    .header {
+    /* ── Header ───────────────────────────────────────────── */
+    .about-header {
         text-align: center;
-        margin-bottom: 50px;
+        margin-bottom: 44px;
     }
 
-    .header h1 {
+    .about-header h1 {
         color: var(--daybook-primary);
         font-size: 2.5rem;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
-    .header p {
+    .about-header p {
         color: var(--daybook-muted);
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        margin: 0;
     }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 30px;
-    }
-
-    .card {
+    /* ── Shared card ──────────────────────────────────────── */
+    .about-card {
         background: var(--daybook-surface);
-        padding: 30px;
-        border-radius: 12px;
+        padding: 26px 28px;
+        border-radius: 5px;
         border: 1px solid var(--daybook-border);
         box-shadow: var(--daybook-shadow);
-        /* Hover animation removed */
+        height: 100%;
     }
 
-    .card-title-row {
+    .about-card-title-row {
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 1px;
+        margin-bottom: 4px;
     }
 
-    .badge {
-        display: inline-block; /* Ensures width matches content */
+    .about-card-title-row .icon-badge {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
         background: var(--daybook-accent);
         color: var(--daybook-primary);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: bold;
-        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
 
-    .card h2 {
+    .about-card h2 {
         margin: 0;
         color: var(--daybook-primary);
+        font-size: 1.15rem;
+    }
+
+    .about-card .subtitle {
+        color: var(--daybook-muted);
+        font-size: 0.85rem;
+        margin: 2px 0 14px;
+    }
+
+    /* ── Two-app grid ─────────────────────────────────────── */
+    .apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+        margin-bottom: 28px;
     }
 
     .feature-list {
         list-style: none;
         padding: 0;
-        margin: 10px 0;
+        margin: 0;
     }
 
     .feature-list li {
         padding: 8px 0;
         border-bottom: 1px solid var(--daybook-secondary);
+        color: var(--daybook-text);
+        font-size: 0.88rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .feature-list li:last-child {
+        border-bottom: none;
+    }
+
+    .feature-list li i {
+        color: var(--daybook-primary);
+        width: 16px;
+        margin-top: 3px;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Info grid (system / snapshot / security) ────────── */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 28px;
+        align-items: stretch;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--daybook-secondary);
+        font-size: 0.85rem;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-row .label {
         color: var(--daybook-muted);
+        white-space: nowrap;
+    }
+
+    .info-row .value {
+        color: var(--daybook-text);
+        font-family: "Google Sans Code", monospace;
+        font-weight: 500;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    /* ── Live snapshot stat pills ─────────────────────────── */
+    .snapshot-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .snapshot-pill {
+        background: linear-gradient(135deg, rgba(74, 119, 102, 0.15), rgba(236, 231, 226, 0.7));
+        border-radius: 5px;
+        padding: 14px;
+        text-align: center;
+    }
+
+    .snapshot-pill .snapshot-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--daybook-primary);
+        line-height: 1.1;
+    }
+
+    .snapshot-pill .snapshot-label {
+        font-size: 0.7rem;
+        color: var(--daybook-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-top: 4px;
+    }
+
+    /* ── Help card ────────────────────────────────────────── */
+    .help-card {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 8px;
     }
 
-    .feature-list li::before {
-        content: "•";
-        color: var(--daybook-primary);
-        font-weight: bold;
-        width: 20px;
+    .help-card p {
+        margin: 4px 0 0;
+        color: var(--daybook-muted);
+        font-size: 0.88rem;
     }
 
-    .footer {
-        margin-top: 60px;
+    /* ── Footer ───────────────────────────────────────────── */
+    .about-footer {
+        margin-top: 50px;
         color: var(--daybook-muted);
         border-top: 1px solid var(--daybook-border);
         padding-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>
 
-<div class="container">
-    <header class="header">
-        <h1>System Information</h1>
-        <p>Comprehensive Management Suite for Modern Pawn Shops</p>
+<div class="about-container">
+
+    <header class="about-header">
+        <h1><span class="hanuman-600">Daybook</span><span class="hanuman-100"> neo</span></h1>
+        <p>Comprehensive management suite for modern pawn shops</p>
+        <span class="version_badge" style="margin-top:10px; display:inline-block; position:static;font-size:1rem;">v{{ app_version }}</span>
     </header>
 
-    <main class="grid">
-        <section class="card">
-            <div class="card-title-row">
-                <h2><i class="fa-solid fa-book"></i> <span class="hanuman-600">Daybook</span><span class="hanuman-100"> neo</span></h2>
-                <span class="badge">v{{app_version}}</span>
+    <!-- ── The two apps ───────────────────────────────────── -->
+    <div class="apps-grid">
+        <section class="about-card">
+            <div class="about-card-title-row">
+                <span class="icon-badge"><i class="fa-solid fa-book"></i></span>
+                <h2>Daybook</h2>
             </div>
-            <p>The core operational module designed for seamless daily floor management and financial tracking.</p>
+            <p class="subtitle">Day-to-day floor operations for your shop staff</p>
             <ul class="feature-list">
-                <li>Daily Transaction Logging</li>
-                <li>Real-time Balance Updates</li>
-                <li>Denomination Management</li>
-                <li>Daily Transaction Reports</li>
+                <li><i class="fa-solid fa-circle-check"></i> Log debit &amp; credit transactions with real-time balance checks</li>
+                <li><i class="fa-solid fa-circle-check"></i> Loan &amp; release entries, including fast bulk pawn entry</li>
+                <li><i class="fa-solid fa-circle-check"></i> Cash denomination counting by shift (morning / afternoon / evening / night)</li>
+                <li><i class="fa-solid fa-circle-check"></i> Daily shop report with opening &amp; closing balances</li>
+                <li><i class="fa-solid fa-circle-check"></i> Full transaction &amp; loan edit history for every entry</li>
+                <li><i class="fa-solid fa-circle-check"></i> Export transactions to CSV or Excel anytime</li>
             </ul>
         </section>
 
-        <section class="card">
-            <div class="card-title-row">
-                <h2><i class="fa-solid fa-user-shield"></i> Manager</h2>
-                <span class="badge">v2.1</span>
+        <section class="about-card">
+            <div class="about-card-title-row">
+                <span class="icon-badge"><i class="fa-solid fa-user-shield"></i></span>
+                <h2>Manager</h2>
             </div>
-            <p>The administrative engine providing high-level oversight and organizational control.</p>
+            <p class="subtitle">Admin console for owners &amp; auditors</p>
             <ul class="feature-list">
-                <li>Multi-shop Configuration</li>
-                <li>Balance Sheet Generation</li>
-                <li>Comprehensive Reporting & Dashboards</li>
-                <li>User Access & Permissions</li>
-                <li>Import/Export Functionality</li>
+                <li><i class="fa-solid fa-circle-check"></i> Set up shops, ledgers, account groups &amp; chart of accounts</li>
+                <li><i class="fa-solid fa-circle-check"></i> Balance sheet, trial balance &amp; group-type summaries</li>
+                <li><i class="fa-solid fa-circle-check"></i> Multi-year networth trend across all shops</li>
+                <li><i class="fa-solid fa-circle-check"></i> Shop-to-shop transaction sync via import / export</li>
+                <li><i class="fa-solid fa-circle-check"></i> Complete activity log of every create, update &amp; delete</li>
+                <li><i class="fa-solid fa-circle-check"></i> Central configuration — session timeout, default shop, backups</li>
             </ul>
         </section>
-    </main>
 
-    <footer class="footer align-items-cente r d-flex justify-content-center">    
+        <section class="about-card">
+            <div class="about-card-title-row">
+                <span class="icon-badge"><i class="fa-solid fa-shield-halved"></i></span>
+                <h2>Data &amp; Security</h2>
+            </div>
+            <p class="subtitle">Built in, no setup required</p>
+            <ul class="feature-list">
+                <li><i class="fa-solid fa-circle-check"></i> Every transaction &amp; loan keeps a full audit trail — who changed what, and when</li>
+                <li><i class="fa-solid fa-circle-check"></i> Activity log tracks every create, update &amp; delete across the app</li>
+                <li><i class="fa-solid fa-circle-check"></i> Debit entries are blocked automatically if a shop has insufficient balance</li>
+                <li><i class="fa-solid fa-circle-check"></i> Role-based access — Staff, Admin &amp; Super Admin see only what they should</li>
+            </ul>
+        </section>
+    </div>
+
+    <!-- ── System info / live snapshot / security ──────────── -->
+    <div class="info-grid">
+        <section class="about-card">
+            <div class="about-card-title-row">
+                <span class="icon-badge"><i class="fa-solid fa-server"></i></span>
+                <h2>System</h2>
+            </div>
+            <p class="subtitle">Where this installation lives</p>
+            <div class="info-row">
+                <span class="label">Computer Name</span>
+                <span class="value">{{ pc_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Application Directory</span>
+                <span class="value">{{ base_dir }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Database Directory</span>
+                <span class="value">{{ base_dir }}\data</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Backup Directory</span>
+                <span class="value">{{ backup_dir_display }}</span>
+            </div>
+        </section>
+
+        <section class="about-card">
+            <div class="about-card-title-row">
+                <span class="icon-badge"><i class="fa-solid fa-chart-simple"></i></span>
+                <h2>Live Snapshot</h2>
+            </div>
+            <p class="subtitle">Right now, across every shop</p>
+            <div class="snapshot-grid">
+                <div class="snapshot-pill">
+                    <div class="snapshot-value">{{ total_shops }}</div>
+                    <div class="snapshot-label">Shops</div>
+                </div>
+                <div class="snapshot-pill">
+                    <div class="snapshot-value">{{ total_users }}</div>
+                    <div class="snapshot-label">Active Users</div>
+                </div>
+                <div class="snapshot-pill">
+                    <div class="snapshot-value">{{ current_fy }}</div>
+                    <div class="snapshot-label">Financial Year</div>
+                </div>
+                <div class="snapshot-pill">
+                    <div class="snapshot-value">{{ session_timeout }}</div>
+                    <div class="snapshot-label">Session Timeout</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── Help ─────────────────────────────────────────────── -->
+    <section class="about-card help-card">
+        <div>
+            <div class="about-card-title-row" style="margin-bottom:0;">
+                <span class="icon-badge"><i class="fa-solid fa-circle-question"></i></span>
+                <h2>Need a hand?</h2>
+            </div>
+            <p>Step-by-step guides for entries, loans, reports &amp; admin tasks.</p>
+        </div>
+        <a href="{% url 'entries:document_home' %}" class="cust-button btn-primary" style="width:auto; text-decoration:none; display:inline-block;">
+            <i class="fa-solid fa-book-open"></i> Browse Help Docs
+        </a>
+    </section>
+
+    <footer class="about-footer">
         <div class="d-flex align-items-center">
             <div class="me-2">
-                {% comment %} <i class="fa-solid fa-bolt" style="color: var(--daybook-primary); font-size: 1.8rem;"></i> {% endcomment %}
                 <i class="fa-solid fa-meteor" style="color: #2f89fc; font-size: 1.8rem;"></i>
             </div>
 
             <div class="d-flex flex-column align-items-start lh-1" style="padding-right: 8px;">
-                <span class="fw-bold text-uppercase" 
+                <span class="fw-bold text-uppercase"
                     style="color: #40514e; font-size: 1.2rem; letter-spacing: 0.5px;">
                     Kinetic
                 </span>
-                <span class="text-uppercase" 
+                <span class="text-uppercase"
                     style="color: var(--daybook-muted); font-size: 0.65rem; letter-spacing: 1.5px; margin-top: 2px;">
                     Solutions
                 </span>

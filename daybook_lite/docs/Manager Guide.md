@@ -1,103 +1,294 @@
-# Daybook neo — `manager` App
+# Daybook Neo — Manager App User Guide
 
-> Reference doc compiled from project development history. Confirm against the live codebase if anything here looks out of date.
+## Overview
 
-## 1. Purpose
+The **Manager** app is the administrative side of Daybook Neo. While the **Entries** app is where day-to-day transactions, loans, and daily reports are logged, the Manager app is where admins configure shops, ledgers, and accounts, and review financial summaries and audit trails to make quick, informed decisions.
 
-The `manager` app owns three things for each shop:
+Most Manager app pages are restricted to **Admin** or **Super Admin** users. If you don't have access to a page, you'll see a "permission denied" (403) message.
 
-1. The **chart-of-accounts hierarchy** (Group → Type → Account) that every transaction in `entries` posts against.
-2. **Shop-level configuration** (the `Configuration` model).
-3. The **export/import sync system** that backs up and transfers a shop's data as JSON.
+---
 
-It also holds the `ActivityLog` model used for auditing what happened in the system.
+## Table of Contents
 
-## 2. The Core Hierarchy: Group → Type → Account
+- [Daybook Neo — Manager App User Guide](#daybook-neo--manager-app-user-guide)
+  - [Overview](#overview)
+  - [Table of Contents](#table-of-contents)
+  - [1. Dashboard](#1-dashboard)
+  - [2. Shops](#2-shops)
+    - [2.1 Shops List](#21-shops-list)
+    - [2.2 Add a Shop](#22-add-a-shop)
+    - [2.3 Shop Details Page](#23-shop-details-page)
+  - [3. Ledgers](#3-ledgers)
+    - [3.1 Add a Ledger](#31-add-a-ledger)
+    - [3.2 Ledger Info](#32-ledger-info)
+    - [3.3 Edit / Delete a Ledger](#33-edit--delete-a-ledger)
+  - [4. Accounts](#4-accounts)
+    - [4.1 Add an Account](#41-add-an-account)
+    - [4.2 Account Info](#42-account-info)
+    - [4.3 Edit / Delete an Account](#43-edit--delete-an-account)
+  - [5. Linked Accounts (Loan/Release Mapping)](#5-linked-accounts-loanrelease-mapping)
+  - [6. Balance Sheet](#6-balance-sheet)
+  - [7. Shop-Level Reports](#7-shop-level-reports)
+  - [8. Closing P\&L Accounts](#8-closing-pl-accounts)
+  - [9. Moving \& Tallying Transactions](#9-moving--tallying-transactions)
+    - [9.1 Move Transactions](#91-move-transactions)
+    - [9.2 Update Tally Status](#92-update-tally-status)
+  - [10. Configurations](#10-configurations)
+  - [11. Activity Logs](#11-activity-logs)
+  - [12. Roles \& Permissions](#12-roles--permissions)
 
-This is the chart-of-accounts structure. Every Account a transaction can be posted to belongs to a Type, and every Type belongs to a Group.
+---
 
-```
-Group  (top-level classification)
- └── Type   (sub-category within a Group)
-      └── Account   (the actual ledger account transactions post to)
-```
+## 1. Dashboard
 
-**Why three levels instead of two?** It lets reporting roll up at different levels of granularity — you can show a dashboard total for an entire Group (e.g. "all Assets"), a subtotal for a Type (e.g. "Cash accounts"), or drill down to one specific Account.
+**Path:** Manager → Dashboard
 
-### Example
+The Dashboard is the landing page of the Manager app. It gives you a quick, visual snapshot of your business:
 
-| Level | Example value |
+- **Shop list overview** — all shops registered in the system.
+- **Charts** (rendered from live data):
+  - Loan vs. Release counts over a selectable date range and shop.
+  - Debit vs. Credit transaction totals for the selected range.
+  - Net worth trend across financial years.
+  - Monthly principal/interest movement per linked (loan/release) account.
+  - Average daily loan gauge for the selected period.
+
+Use the date range and shop filters at the top of each chart to narrow down what you're looking at — for example, comparing last week's loan activity for a single shop versus all shops.
+
+---
+
+## 2. Shops
+
+A **Shop** is the top-level business unit in Daybook Neo — each physical branch/outlet is set up as a Shop.
+
+### 2.1 Shops List
+**Path:** Manager → Shops
+
+Shows every shop with:
+- Short name and full name
+- Door number and address
+- Associated ledgers
+- Current balance (calculated live from transactions)
+
+### 2.2 Add a Shop
+**Path:** Shops → Add Shop *(Super Admin only)*
+
+Fill in:
+- Short Name (used as a prefix in generated IDs, e.g. transaction/loan IDs)
+- Name, Proprietor
+- GOD/GST Number, PAN Number
+- Door No., Address Line 1 & 2, Place, Pincode
+
+When a shop is created, Daybook Neo automatically:
+- Creates a default ledger for the shop.
+- Syncs the standard account **Types** (Assets, Liabilities, P&L groups, etc.) for the shop.
+
+### 2.3 Shop Details Page
+**Path:** Shops → (select a shop)
+
+Displays:
+- Shop's ledgers
+- All accounts under the shop, grouped and sorted by group order, priority, and name, each with a live balance
+- Current overall shop balance
+
+From here you can:
+- **Edit Shop** — update shop details.
+- **Delete Shop** — only allowed if the shop has **no** ledgers, transactions, or loans linked to it. Otherwise deletion is blocked with an explanatory message. *(Super Admin only)*
+- **Add Account** — see [Accounts](#4-accounts).
+- **Add Ledger** — see [Ledgers](#3-ledgers).
+- **Shop Meta** — hierarchical breakdown of Groups → Types → Accounts with balances, plus summary counts (total groups, types, accounts, and combined shop balance).
+- **Sync Account Types** — re-syncs the standard chart-of-account Types for the shop (useful after Daybook Neo introduces new standard types).
+
+---
+
+## 3. Ledgers
+
+A **Ledger** represents a licensed pawnbroking ledger under a shop (each shop can have one or more).
+
+### 3.1 Add a Ledger
+**Path:** Shop Details → Add Ledger
+
+Fields:
+- Ledger Name
+- License Number
+
+### 3.2 Ledger Info
+**Path:** Shops → (shop) → Ledgers → (select ledger)
+
+Shows:
+- All loan and release transactions recorded under this ledger, paginated
+- Loan count vs. Release count
+- Linked accounts (see below)
+
+### 3.3 Edit / Delete a Ledger
+- **Edit** updates the ledger name/license number.
+- **Delete** is blocked if the shop already has associated transactions, to protect data integrity.
+
+---
+
+## 4. Accounts
+
+**Accounts** are the individual ledger heads (e.g., Cash, Gold Loan, Interest Income) that transactions post against. Every account belongs to a **Type** (which itself belongs to a **Group** — Assets, Liabilities, Income, Expenses, P&L, etc.).
+
+### 4.1 Add an Account
+**Path:** Shop Details → Add Account
+
+Fields:
+- English Name / Local (Tamil) Name
+- Account Type (choose from the shop's synced Types)
+- Optional **Opening Balance** — if entered, a `CREDIT` "Opening Balance" transaction is automatically created for the account.
+- **Admin Only** flag — when checked, this account and its transactions are hidden from non-admin (Staff) users throughout both the Entries and Manager apps.
+
+### 4.2 Account Info
+**Path:** Accounts → (select account)
+
+Shows:
+- Current balance
+- All transactions for the account for the selected Financial Year, with filters:
+  - Date range
+  - Debit / Credit type
+  - Amount (equals / greater than / less than)
+  - Remarks search
+  - Sort order (date ascending/descending)
+- Opening, Closing, and Net balances for the selected period
+- A **Move Transactions** tool to reassign selected transactions to a different account (see [Section 9](#9-moving--tallying-transactions))
+
+### 4.3 Edit / Delete an Account
+- **Edit** — update name, type, priority, or admin-only flag.
+- **Delete** — blocked if the account has any transactions linked to it.
+
+---
+
+## 5. Linked Accounts (Loan/Release Mapping)
+
+To automatically post the right ledger entries whenever a Loan or Release is recorded in the Entries app, each Ledger must be linked to four specific accounts:
+
+| Mapping | Purpose |
 |---|---|
-| Group | `Assets` |
-| Type | `Bank` |
-| Account | `SBI Current A/c — 1234` |
+| Loan Principal Account | Where loan principal amounts are debited |
+| Loan Interest Account | Where loan interest is credited |
+| Release Principal Account | Where release principal amounts are credited |
+| Release Interest Account | Where release interest is credited |
 
-| Level | Example value |
+**Path:** Ledger Info → Link Accounts
+
+Select the appropriate account for each of the four mappings and save. Until this is configured, the Loan/Release entry screens in the Entries app cannot post transactions for that ledger.
+
+---
+
+## 6. Balance Sheet
+
+**Path:** Manager → Balance Sheet
+
+A consolidated, group-wise summary (Assets, Liabilities, Income, Expenses, P&L, etc.) across **all shops** for a selected Financial Year, showing:
+- Opening balance per group
+- Closing balance per group
+- **Net Worth** (sum of specific groups representing owned equity)
+- **Cash in Hand** (a broader combination including liquid/cash-equivalent groups)
+
+Use the Financial Year selector at the top to switch years — Daybook Neo follows the Indian financial year convention (April–March).
+
+---
+
+## 7. Shop-Level Reports
+
+These reports are available per shop and can be viewed on-screen (PDF-style print view) or exported. *(Export formats covered here are Excel/CSV — see note below.)*
+
+**Path:** Shop Details → Reports menu
+
+| Report | What it shows |
 |---|---|
-| Group | `Liabilities` |
-| Type | `Loans Payable` |
-| Account | `Vehicle Loan — HDFC` |
+| **Trial Balance** | Every account Type's debit/credit closing position for the FY. |
+| **Trial Balance (W/O P&L)** | Same as above, excluding Profit & Loss group accounts. |
+| **Balance Sheet** | Full group → type → account hierarchy with opening/closing balances for the shop. P&L opening balances are always shown as zero. |
+| **Balance Sheet (W/O P&L)** | Same as above, excluding the P&L group entirely. |
+| **Group & Type Summary** | A more condensed view — Group and Type level totals only (accounts with zero closing are hidden). |
+| **Networth Summary (Shops Yearly Summary)** | A pivot table: rows = financial years, columns = each shop's net worth, with row/column totals — useful for tracking growth trends across shops and years. |
 
-A transaction is never posted directly to a Group or a Type — only to a leaf-level **Account**. Group and Type exist purely for classification and roll-up reporting.
+Each of the above (except Networth Summary) accepts a `?fy=YYYY` filter to view a specific financial year; it defaults to the current FY.
 
-### Relationship rules
-- **Group → Type**: one-to-many. A Type belongs to exactly one Group.
-- **Type → Account**: one-to-many. An Account belongs to exactly one Type.
-- **Account → shop**: each Account is scoped to a specific `shop` (via a `shop` ForeignKey), which is how multi-shop isolation is enforced inside a single shared database.
-- Balances are **not** stored on the Account row — they're computed dynamically via `get_balance()` from the transaction history, so Group/Type totals are always a live rollup rather than a cached number that can drift.
+> **Note:** These reports can be downloaded as PDF, Excel, or CSV. The download/export mechanics themselves are covered in the dedicated Sync/Export guide — this guide only covers viewing/navigating to the reports.
 
-### UI: Shop Meta Page
-The hierarchy is presented to the user as a **three-level Bootstrap accordion** — expand a Group to see its Types, expand a Type to see its Accounts — with **balance summary cards** at each level, and **bilingual Tamil/English labels** throughout.
+---
 
-## 3. What Is "Sync"?
+## 8. Closing P&L Accounts
 
-Daybook neo is **offline-first** — there's no central server each installation talks to. "Sync" here doesn't mean live, real-time replication between devices. It means a **JSON-based export/import mechanism**:
+**Path:** Shop Details → Close P&L Accounts *(Admin only)*
 
-- **Export** turns a shop's data into a JSON file/snapshot.
-- **Import** reads that JSON file back into a (potentially different) installation's database, reconciling it against whatever is already there.
+At the end of a financial year, use this tool to transfer Profit & Loss account balances into Capital accounts:
 
-This is what lets a shop owner move their data between a desktop and a laptop, take backups, or hand data off to support — without needing networking, a hosted server, or always-on connectivity.
+1. Select the Financial Year to close (defaults to current FY).
+2. The system calculates each P&L account's net balance (only non-zero balances are listed) and the combined total.
+3. It also suggests an **equal share** of the total across all Capital accounts as a starting point.
+4. Enter the amount to be credited/debited to each Capital account. **The sum of amounts you enter must exactly match the calculated total** — if it doesn't, you'll get a validation error showing both figures.
+5. On submission, the system:
+   - Posts closing (debit/credit) entries for each P&L account to zero them out for the year.
+   - Posts the corresponding entries to each Capital account you specified.
+   - All entries are dated to the last day of the selected FY (or today's date, if closing the current FY).
 
-> Note: this was a deliberate choice over a live VPN-based sync (WireGuard was evaluated and set aside) — JSON export/import is simpler to reason about, easier to debug, and doesn't require any networking setup from the end user.
+This action is wrapped in a database transaction — if anything fails, no partial entries are created.
 
-## 4. How Sync Works
+---
 
-### What gets synced
-The export/import covers these models:
-- `Type`
-- `Accounts`
-- `Transactions`
-- `Loan`
+## 9. Moving & Tallying Transactions
 
-### Export
-Serializes the above models for a shop into a JSON payload.
+These bulk tools are available from the **Account Info** page.
 
-### Import
-This is not a blind overwrite — it's a **reconciliation**, handling three cases per record:
-- **Create** — record exists in the JSON but not in the target DB.
-- **Update** — record exists in both; target DB row is updated to match the JSON.
-- **Delete** — record was removed on the source side and that removal needs to be reflected in the target.
+### 9.1 Move Transactions
+Select one or more transactions and reassign them to a different account within the same shop — useful for correcting misclassified entries without deleting and re-entering them. Every move is recorded in the Activity Log.
 
-### Handling deletions: `_deleted_count` helper
-Because deletions can't just be "absence from the JSON" (that would also catch records the importing side hasn't seen yet), there's a `_deleted_count` helper that explicitly handles two JSON shapes:
-- **Flat format** — a simple list of records.
-- **Nested format** — records grouped/wrapped (e.g. by model or by shop).
+### 9.2 Update Tally Status
+Mark selected transactions as **Tallied** or **Not Tallied** — a simple checkbox-style flag admins can use to track reconciliation progress. This status change is also recorded in the Activity Log.
 
-This lets the same import logic work whether the JSON payload was produced as one flat dump or as a more structured nested export.
+---
 
-### Safety
-Bulk-affecting operations (like bulk loan creation, and by extension large import batches) are wrapped in `db_transaction.atomic()` so a failure partway through doesn't leave the database in a half-updated state.
+## 10. Configurations
 
-## 5. `Configuration` Model
+**Path:** Manager → Configurations *(Admin only)*
 
-Holds shop/app-level settings (the specifics of which settings live here should be checked against the current model definition). When the schema for `Configuration` changes, it's handled through **explicit Django data migrations** rather than ad-hoc scripts, so existing installs upgrade cleanly.
+A single screen listing all system-wide settings, grouped by category (**Daybook** settings and **Application** settings):
 
-## 6. `ActivityLog` Model
+| Setting | Description |
+|---|---|
+| Daily Report Paper Size / Orientation | Print layout for the daily Report page (Entries app) |
+| Transaction Paper Size / Orientation | Print layout for the Transactions list |
+| Loan Paper Size / Orientation | Print layout for Loan Transactions |
+| Denomination Purge Days | How many days denomination records are retained before automatic cleanup |
+| Session Timeout | Auto-logout duration (in seconds) for inactive sessions |
+| Default Shop | The shop pre-selected across the app when no shop filter is applied |
+| Backup Directory | Filesystem path used for database backups *(see separate Sync/Backup guide)* |
 
-Tracks user actions across the app for audit/troubleshooting purposes — useful for answering "what changed, and who/what changed it" without digging through `HistoricalRecords` on every individual model.
+Edit any value inline and save — all configuration fields are on one page, so you can update several settings in a single submission.
 
-## 7. Other `manager`-Adjacent Details Worth Remembering
+---
 
-- **Alphanumeric primary keys**: Account/shop records using non-numeric PKs need `<str:pk>` in the URL pattern, not the default `<int:pk>` — this caused a routing mismatch bug previously.
-- **SQLite FK constraint errors at `COMMIT`**: seen in the `add_shop` view — SQLite defers foreign key checks to commit time, so an FK violation can surface later than expected, away from the line that actually caused it. Worth checking insertion order (parent rows before child rows) when this resurfaces.
-- **Logging**: `manager`-level operations log through the app's `TimedRotatingFileHandler` setup rather than the older size-based `RotatingFileHandler`.
+## 11. Activity Logs
+
+**Path:** Manager → Activity Logs *(Admin only)*
+
+A full audit trail of actions performed across the system, including:
+- Creation, update, and deletion of Transactions, Loans, Types, Accounts, Denominations, and Linked Accounts
+- Shop and Ledger changes
+- User management actions (creation, promotion, activation/deactivation)
+
+Each entry shows the acting user, action type, affected record, shop, description, and timestamp. Use the **user filter** at the top to see activity from a specific user only. The log is paginated for easy browsing.
+
+For deeper investigation of a single record, open the record itself (e.g. a Transaction or Loan) and use its **History** view, which shows every historical version of that specific record side-by-side, powered by full change tracking.
+
+---
+
+## 12. Roles & Permissions
+
+Daybook Neo enforces three permission levels relevant to the Manager app:
+
+| Role | Access |
+|---|---|
+| **Staff** | No access to the Manager app; limited to non-admin-only data in the Entries app. |
+| **Admin** (Admin group or `Admin`/`Staff` group combo, depending on the action) | Access to most Manager app features — Shops, Ledgers, Accounts, Reports, Configurations, Activity Logs, moving/tallying transactions, closing P&L accounts. |
+| **Super Admin** (`is_superuser`) | Full access, including the ability to **Add** or **Delete** Shops — actions restricted from regular Admins. |
+
+If a page or action isn't available to you, check with a Super Admin about your assigned group/role.
+
+---
+
+*This guide covers the Manager app's shop, ledger, account, reporting, configuration, and audit features. For syncing shop data between devices, exporting/importing transactions, and database backups, refer to the separate Sync & Backup guide.*

@@ -843,54 +843,50 @@ display: block;
   flex-shrink: 0;
 }
 
-/* ── Responsive navbar + button text ────────────────────────────────────── */
+/* ── Responsive layout ─────────────────────────────────────────────────── */
 
-/* 14-inch laptops / small desktops (≤1280px) */
-@media (max-width: 1280px) {
-  .navbar .nav-link {
-    font-size: 0.8rem;
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-  }
-
-  .navbar .navbar-brand {
+/* Mobile devices (≤767px) */
+@media (max-width: 767px) {
+  .mobile-section-header {
+    margin-bottom: 1rem !important;
+    margin-top: 0 !important;
     font-size: 0.9rem;
   }
 
-  .btn {
-    font-size: 0.78rem;
-    padding: 0.25rem 0.55rem;
+  .mobile-section-card {
+    margin-top: 0.5rem !important;
+    margin-bottom: 1.5rem !important;
   }
 
-  .btn i,
-  .btn .fa-solid,
-  .btn .fa-regular,
-  .btn .ti {
-    font-size: 0.78rem;
+  .mobile-section-gap {
+    margin-top: 2.5rem !important;
+    margin-bottom: 1rem !important;
   }
 
-  .table-responsive table {
-    font-size: 0.85rem;
-    white-space: nowrap;  /* ← add this */
+  .card-header {
+    padding: 0.6rem 0.8rem;
+  }
+
+  .navbar .nav-link {
+    font-size: 0.8rem;
   }
 }
 
-/* Tablets / small laptops (≤1024px) */
-@media (max-width: 1024px) {
+/* Tablet devices (768px–1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
   .navbar .nav-link {
     font-size: 0.75rem;
     padding-left: 0.35rem !important;
     padding-right: 0.35rem !important;
   }
 
-  /* Exclude app-launcher nav-link from padding squeeze */
   .navbar .nav-link.app-launcher {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
   }
 
   .navbar .navbar-brand {
-    font-size: 0.82rem;
+    font-size: 1rem;
   }
 
   .btn .btn-label {
@@ -915,37 +911,72 @@ display: block;
   }
 
   .user-name {
-    display: none;
+    display: inline;
   }
 
   .table-responsive table {
     font-size: 0.85rem;
-    white-space: nowrap;  /* ← add this */
+    white-space: nowrap;
   }
 }
 
-/* Larger tablets in landscape (≤900px) */
-@media (max-width: 900px) {
+/* Small laptops (1024px–1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
   .navbar .nav-link {
-    font-size: 0.72rem;
-    padding-left: 0.28rem !important;
-    padding-right: 0.28rem !important;
+    font-size: 0.8rem;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
   }
 
-  /* Exclude app-launcher from padding squeeze here too */
-  .navbar .nav-link.app-launcher {
-    padding: 0 10px !important;
+  .navbar .navbar-brand {
+    font-size: 1rem;
   }
 
   .btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.55rem;
   }
 
-  
+  .btn i,
+  .btn .fa-solid,
+  .btn .fa-regular,
+  .btn .ti {
+    font-size: 0.78rem;
+  }
+
   .table-responsive table {
-      font-size: 0.85rem;
-      white-space: nowrap;  /* ← add this */
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+}
+
+/* Big laptops (1280px and above) */
+@media (min-width: 1280px) {
+  .navbar .nav-link {
+    font-size: 0.8rem;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .navbar .navbar-brand {
+    font-size: 1rem;
+  }
+
+  .btn {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.55rem;
+  }
+
+  .btn i,
+  .btn .fa-solid,
+  .btn .fa-regular,
+  .btn .ti {
+    font-size: 0.78rem;
+  }
+
+  .table-responsive table {
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
 }
 

@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.db.models import Q, Sum 
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 
 from .helper import manager_helper, date_helper, report_helper
 from .forms import LedgerForm, ShopForm, ShopEditForm, AccountsForm, AccountsEditForm
@@ -1434,7 +1435,9 @@ def export_transactions(request, pk):
                 json.dumps(export_data, indent=2, default=str, ensure_ascii=False),
                 content_type='application/json'
             )
-            response['Content-Disposition'] = f'attachment; filename="transactions_{shop.short_name}_{export_mode}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
+            now_utc = timezone.now()
+            timestamp = timezone.localtime(now_utc).strftime("%Y_%m_%d_%H_%M_%S")
+            response['Content-Disposition'] = f'attachment; filename="transactions_{shop.short_name}_{export_mode}_{timestamp}.json"'
             return response
             
         except Exception as e:
@@ -3687,4 +3690,13 @@ def shops_yearly_summary_csv(request):
     csv_buffer = report_helper.generate_csv_report('Networth Summary', table_data)
     response = HttpResponse(csv_buffer.read(), content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="networth_summary.csv"'
+    return response
+
+def download_backup(request):
+    db_path = settings.DATABASES['default']['NAME']
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+    filename = f'daybook_backup_{timestamp}.sqlite3'
+    with open(db_path, 'rb') as f:
+        response = HttpResponse(f.read(), content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
