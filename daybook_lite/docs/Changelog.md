@@ -16,6 +16,9 @@ Versioning follows semantic versioning:
 - Multiple delete for transactions
 ---
 # Version History
+## [2.2.5] - 2026-07-05
+- Fixed empty default shop issue
+- Add last export and import timestamp
 ## [2.2.4] - 2026-07-04
 - UI/UX Improvements
 - Auto Daily Backups
