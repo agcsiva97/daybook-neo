@@ -86,11 +86,17 @@ def home(request):
     silver_price = manager_helper.get_silver_price()
     all_shops = Shop.objects.all().order_by('name')
     default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
-    default_shop = Shop.objects.get(short_name=default_shop_short_name.value)
     
-    latest_transaction = Transactions.objects.filter(
-        shop = default_shop
-    ).order_by('-transaction_dt').first()
+    if default_shop_short_name and default_shop_short_name.value:
+        default_shop = Shop.objects.get(short_name=default_shop_short_name.value)
+        latest_transaction = Transactions.objects.filter(
+            shop=default_shop
+        ).order_by('-transaction_dt').first()
+        no_shop = False
+    else:
+        default_shop = None
+        latest_transaction = None
+        no_shop = True
 
     if latest_transaction:
         latest_date = timezone.localtime(latest_transaction.transaction_dt).date() if hasattr(latest_transaction.transaction_dt, 'date') else timezone.localtime(latest_transaction.transaction_dt)
@@ -115,6 +121,7 @@ def home(request):
             'created_by',
             'updated_by'
         ).order_by('-transaction_dt')
+
     daily_totals = (
         Transactions.objects.filter(transaction_dt__date=today)
         .values('shop_id')
@@ -159,7 +166,7 @@ def home(request):
 
     print(transactions)
     context = {
-        'nav_title':'Home',
+        'nav_title': 'Home',
         'transactions': transactions,
         'gold_price': gold_price,
         'silver_price': silver_price,
@@ -171,9 +178,10 @@ def home(request):
         'default_shop_short_name': default_shop_short_name,
         'latest_date': latest_date,
         'default_shop': default_shop,
+        'no_shop': no_shop,
     }
     
-    return render(request, 'entries/home.html',context)
+    return render(request, 'entries/home.html', context)
 
 def update_gold_price(request):
     try:
@@ -2721,10 +2729,10 @@ def about(request):
     backup_dir_display = Configuration.get_value(Configuration.Key.BACKUP_DIR)
     session_timeout = Configuration.get_value(Configuration.Key.SESSION_TIMEOUT)
     session_timeout = date_helper.format_duration(session_timeout) if session_timeout else 'N/A'
-    total_users = User.objects.count()
+    total_users = User.objects.filter(is_active = True).count()
     total_shops = Shop.objects.count()
 
-    if backup_dir_display is None:
+    if backup_dir_display is None or backup_dir_display == '':
         backup_dir_display = str(settings.BASE_DIR) + '\\data\\backups'
 
     context = {
