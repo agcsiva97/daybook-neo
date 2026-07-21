@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -66,7 +66,10 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="6" class="text-center py-4 text-muted">No denomination records found.</td>
+                <td colspan="6" class="text-center py-4 text-muted">
+                  <img src="{% static 'img/Denom.png' %}" alt="No records" class="mx-auto d-block my-4" style="max-width: 200px;">
+                  No denomination records found.
+                </td>
               </tr>
             {% endfor %}
           </tbody>

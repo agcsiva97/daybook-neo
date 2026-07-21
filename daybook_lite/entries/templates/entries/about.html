@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <style>
     .about-container {
@@ -194,6 +194,107 @@
         align-items: center;
         justify-content: center;
     }
+
+    /* ── Developer card ──────────────────────────────────── */
+.developer-card {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+.developer-photo {
+    width: 250px;
+    margin-left: -28px;
+    overflow: hidden;
+}
+
+.developer-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.developer-info {
+    flex: 1;
+    min-width: 260px;
+}
+
+.developer-name {
+    margin: 0;
+    color: var(--daybook-primary);
+    font-size: 1.3rem;
+}
+
+.developer-role {
+    margin: 2px 0 12px;
+    color: var(--daybook-muted);
+    font-size: 0.88rem;
+}
+
+.developer-bio {
+    margin: 0 0 16px;
+    color: var(--daybook-text);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.developer-contacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.contact-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: var(--daybook-accent);
+    color: var(--daybook-primary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+
+.contact-chip:hover {
+    background: var(--daybook-primary);
+    color: #fff;
+}
+
+.tech-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tech-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--daybook-border);
+    color: var(--daybook-muted);
+    font-size: 0.75rem;
+    font-family: "Google Sans Code", monospace;
+}
+
+@media (max-width: 560px) {
+    .developer-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    .developer-contacts,
+    .tech-badges {
+        justify-content: center;
+    }
+}
 </style>
 
 <div class="about-container">
@@ -203,6 +304,49 @@
         <p>Comprehensive management suite for modern pawn shops</p>
         <span class="version_badge" style="margin-top:10px; display:inline-block; position:static;font-size:1rem;">v{{ app_version }}</span>
     </header>
+
+    <!-- ── Meet the Developer ──────────────────────────────── -->
+<section class="about-card developer-card">
+    <div class="developer-photo">
+        <img src="{% static 'img/dev.jpg' %}" alt="Developer photo">
+    </div>
+    <div class="developer-info">
+        <h2 class="developer-name">Sivasubramanian</h2>
+        <p class="developer-role">Sole Developer &amp; Maintainer, Daybook neo</p>
+    <p class="developer-bio">
+        A Django/Python developer focused on building practical, offline-first
+        software for small businesses. Daybook neo was designed from the ground up for pawn shops and
+        similar businesses in Tamil Nadu — every screen, workflow, and report reflects
+        real requirements gathered directly from shop owners and staff, not generic
+        assumptions about how a finance app "should" work.
+    </p>
+    <p class="developer-bio">
+        As the sole developer, I own the entire lifecycle — architecture, database
+        design, feature development, testing, deployment, and ongoing support —
+        which means issues get fixed and features get shipped without layers of
+        handoff in between.
+    </p>
+
+        <div class="developer-contacts">
+            <a href="tel:+918903549247" class="contact-chip">
+                <i class="fa-solid fa-phone"></i> +91 89035 49247
+            </a>
+            <a href="mailto:agcsiva97@gmail.com" class="contact-chip">
+                <i class="fa-solid fa-envelope"></i> agcsiva97@gmail.com
+            </a>
+            <a href="https://www.linkedin.com/in/agcsiva97/" target="_blank" rel="noopener" class="contact-chip">
+                <i class="fa-brands fa-linkedin"></i> LinkedIn
+            </a>
+        </div>
+
+        <div class="tech-badges">
+            <span class="tech-badge"><i class="fa-brands fa-python"></i> Django</span>
+            <span class="tech-badge"><i class="fa-solid fa-bolt"></i> HTMX</span>
+            <span class="tech-badge"><i class="fa-solid fa-database"></i> SQLite</span>
+            <span class="tech-badge"><i class="fa-solid fa-wifi"></i> Offline-first</span>
+        </div>
+    </div>
+</section>
 
     <!-- ── The two apps ───────────────────────────────────── -->
     <div class="apps-grid">

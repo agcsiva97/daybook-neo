@@ -1,21 +1,7 @@
-# Changelog
-
-All notable changes to Daybook Neo are documented in this file.
-
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
-Versioning follows semantic versioning:
-
-- **MAJOR** (**N**.0.0) — breaking or destructive schema changes
-- **MINOR** (x.**N**.0) — new features, backward-compatible (safe/additive migrations)
-- **PATCH** (x.x.**N**) — bug fixes, no schema change
----
-## Open Issues
--
-## Upcoming Release
-- Account level print
-- Multiple delete for transactions
----
 # Version History
+Version History keeps a record of every update made to Daybook — new features, bug fixes, and improvements — along with the date they were released. It helps you see what's changed since you last used the app, understand what a new update adds or fixes, and confirm you're running the latest version.
+## [2.2.6] - 2026-07-21
+- UI Improvements
 ## [2.2.5] - 2026-07-05
 - Fixed empty default shop issue
 - Add last export and import timestamp
@@ -64,3 +50,10 @@ Versioning follows semantic versioning:
 - Added Import and Export functionality
 - Default shop functionality added
 - Fixed minor bubgs
+
+## Open Issues
+- None
+## Upcoming Release
+- Account level print
+- Multiple delete for transactions
+---
