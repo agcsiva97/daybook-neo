@@ -1,12 +1,12 @@
 {
-  "name": "Daybook Manager",
+  "name": "Daybook neo",
   "short_name": "Daybook",
-  "description": "Store Management Application",
+  "description": "Finance management application for small scale businesses and individuals.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0d6efd",
+  "background_color": "#ECE7E2",
+  "theme_color": "#4A7766",
   "icons": [
     {
       "src": "../img/daybook-logo.png",

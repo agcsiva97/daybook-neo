@@ -11,11 +11,39 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import configparser
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+CONFIG_DIR = BASE_DIR / "config"
+CONFIG_PATH = CONFIG_DIR / "local_settings.ini"
+
+DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1",'daybook.local']
+
+def get_allowed_hosts():
+    CONFIG_DIR.mkdir(exist_ok=True)
+
+    if not CONFIG_PATH.exists():
+        try:
+            # First run on this machine — create it with safe defaults
+            config = configparser.ConfigParser()
+            config["server"] = {
+                "allowed_hosts": ",".join(DEFAULT_ALLOWED_HOSTS)
+            }
+            with open(CONFIG_PATH, "w") as f:
+                f.write("# Add this machine's hostname/LAN IP here if accessing Daybook from other devices\n")
+                config.write(f)
+            return DEFAULT_ALLOWED_HOSTS
+        except OSError:
+            return DEFAULT_ALLOWED_HOSTS
+
+    config = configparser.ConfigParser()
+    config.read(CONFIG_PATH)
+    hosts_str = config.get("server", "allowed_hosts", fallback="")
+    hosts = [h.strip() for h in hosts_str.split(",") if h.strip()]
+    return hosts or DEFAULT_ALLOWED_HOSTS
 
 def _load_env_file(env_path: Path) -> None:
     """Load KEY=VALUE pairs from a .env file into process environment."""
@@ -40,7 +68,7 @@ _load_env_file(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-APP_VERSION = "2.2.7"
+APP_VERSION = "2.3.0"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-00jp4@&#cx9tk*y7&6u_bp8g%o3#4ot8!h=9pm48#s9jq%l^0v'
@@ -48,16 +76,7 @@ SECRET_KEY = 'django-insecure-00jp4@&#cx9tk*y7&6u_bp8g%o3#4ot8!h=9pm48#s9jq%l^0v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    'daybook.local',
-    'localhost',
-    'siva-pc.tail54b3ae.ts.net',
-    '127.0.0.1',
-    '192.168.1.2',
-    '192.168.1.47',
-    '172.20.10.6',
-    '100.116.35.69',
-]
+ALLOWED_HOSTS = get_allowed_hosts()
 
 
 # Application definition

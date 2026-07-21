@@ -17,3 +17,4 @@ weasyprint==68.1
 python-dateutil==2.9.0.post0
 waitress==3.0.0
 Markdown==3.10.2
+packaging

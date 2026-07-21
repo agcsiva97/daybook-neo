@@ -186,3 +186,25 @@ class GLDSLRPriceHistory(models.Model):
 
     def __str__(self):
         return f"GLDS Price: {self.price} on {self.updated_at.strftime('%d-%m-%Y %H:%M:%S')}"
+    
+class AppUpdateStatus(models.Model):
+    status = models.CharField(
+        max_length=20,
+        choices=[("available", "Available"), ("none", "Up to date"), ("error", "Error")],
+        default="none",
+    )
+    latest_version = models.CharField(max_length=50, blank=True, null=True)
+    release_notes = models.TextField(blank=True, null=True)
+    checked_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "App update status"
+
+    def __str__(self):
+        return f"{self.status} ({self.latest_version}) at {self.checked_at}"
+
+    @classmethod
+    def get_current(cls):
+        # Singleton-style — always just one row
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
