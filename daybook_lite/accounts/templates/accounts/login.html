@@ -1,38 +1,132 @@
 {% extends "base-login.html" %}
 {% load static %}
 {% block content %}
-<div class="container d-flex align-items-center" style="min-height: 100vh;">
-  <div class="row justify-content-center align-items-center w-100">
-    <div class="col d-flex justify-content-center">
-      <img src="{% static 'img/login.svg' %}" width="500px" class="img-fluid">
-    </div>
-    <div class="col-md-5">
-      <div class="card">
-        <div class="card-header">
-          <h4 class="mb-0 text-center"><i class="fa-solid fa-book"></i>
-          <span class="hanuman-600">Daybook</span> <span class="hanuman-100">neo</span> </h4>
-        </div>
-        <div class="card-body">
-          <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="{{ form.username.id_for_label }}" class="form-label"><i class="fa-solid fa-at"></i> Username</label>
-              <input type="text" name="username" class="form-control" id="{{ form.username.id_for_label }}" placeholder="Enter your username" required autofocus>
-            </div>
-            <div class="mb-3">
-              <label for="{{ form.password.id_for_label }}" class="form-label"><i class="fa-solid fa-key"></i> Password</label>
-              <input type="password" name="password" class="form-control" id="{{ form.password.id_for_label }}" placeholder="Enter your password" required>
-            </div>
-            <div class="d-grid">
-              <button type="submit" class="btn btn-primary">Login</button>
-            </div>
-            <input type="hidden" name="next" value="{{ next }}">
-          </form>
-        </div>
-        <div class="card-footer text-center">
-          <small class="text-muted">Don't have an account? or forgot password? Contact admin.</small>
+
+<style>
+  .login-page {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Left panel — image only, laptop/desktop */
+  .login-image-panel {
+    flex: 1 1 50%;
+    background-image: url({% static 'img/bg2.png' %});
+    background-size: cover;
+    background-position: center;
+  }
+
+  /* Right panel — login card + character */
+  .login-scene {
+    flex: 1 1 50%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .login-group {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  .login-character {
+    height: 500px;
+    margin-bottom: -0px;
+    margin-left: -150px;
+    z-index: 3;
+    position: relative;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  .login-card-col {
+    width: 380px;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+
+  /* Hide left image panel below laptop breakpoint, right panel goes full width */
+  @media (max-width: 992px) {
+    .login-image-panel {
+      display: none;
+    }
+    .login-scene {
+      background-image: url({% static 'img/bg2_alt.png' %});
+      flex: 1 1 100%;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .login-character {
+      height: 320px;
+      margin-left: -100px;
+      margin-bottom: 110px;
+    }
+    .login-card-col {
+      width: 340px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .login-scene {
+      padding: 0px;
+    }
+    .login-group {
+      flex-wrap: nowrap;
+    }
+    .login-character {
+      height: 240px;
+      margin-left: -80px;
+      margin-bottom: 165px;
+    }
+    .login-card-col {
+      width: 280px;
+      max-width: 250px;
+    }
+  }
+</style>
+
+<div class="login-page">
+  <div class="login-image-panel"></div>
+
+  <div class="login-scene">
+    <div class="login-group">
+      <div class="login-card-col">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="mb-0 text-center"><i class="fa-solid fa-book"></i>
+            <span class="hanuman-600">Daybook</span> <span class="hanuman-100">neo</span> </h4>
+          </div>
+          <div class="card-body">
+            <form method="post">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label"><i class="fa-solid fa-at"></i> Username</label>
+                <input type="text" name="username" class="form-control" id="{{ form.username.id_for_label }}" placeholder="Enter your username" required autofocus>
+              </div>
+              <div class="mb-3">
+                <label for="{{ form.password.id_for_label }}" class="form-label"><i class="fa-solid fa-key"></i> Password</label>
+                <input type="password" name="password" class="form-control" id="{{ form.password.id_for_label }}" placeholder="Enter your password" required>
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Login</button>
+              </div>
+              <input type="hidden" name="next" value="{{ next }}">
+            </form>
+          </div>
+          <div class="card-footer text-center">
+            <small class="text-muted">Don't have an account? or forgot password? Contact admin.</small>
+          </div>
         </div>
       </div>
+
+      <img src="{% static 'img/login-character.PNG' %}"
+         alt=""
+         class="login-character">
     </div>
   </div>
 </div>

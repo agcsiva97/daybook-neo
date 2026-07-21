@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -117,23 +118,23 @@
 </head>
 <body>
     <div class="error-container">
-        <div class="error-code">400</div>
+        <img src="{% static 'img/500-error.PNG' %}" width="400px" class="img-fluid">
         <h1>Bad Request</h1>
         <p>
-            The request could not be understood or was missing required parameters.
+             The request could not be understood or was missing required parameters.
         </p>
         
         <div class="btn-group">
             <a href="/" class="btn btn-primary">
-                🏠 Go to Home
+                <i class="fa-solid fa-house"></i> Go to Home
             </a>
-            <button onclick="window.location.reload()" class="btn btn-secondary">
-                🔄 Try Again
+            <button onclick="window.history.back()" class="btn btn-secondary">
+                ← Go Back
             </button>
         </div>
         
         <p class="footer-text">
-            This might be caused by an expired session. Please try logging in again.
+            If you believe this is an error, please contact your administrator.
         </p>
     </div>
 </body>

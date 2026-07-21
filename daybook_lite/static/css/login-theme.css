@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&display=swap');
+
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url('../webfonts/Google_Sans/GoogleSans-VariableFont_GRAD,opsz,wght.ttf') format('truetype-variations');
+}
+
+:root {
+  --daybook-primary: #4A7766;
+  --daybook-primary-click: #006440;
+  --daybook-surface: #ffffff;
+  --daybook-text: #1f2b27;
+  --daybook-muted: #6b7d76;
+  --daybook-border: rgba(74, 119, 102, 0.2);
+  --daybook-shadow: 0 12px 30px rgba(31, 43, 39, 0.08);
+}
+
+.hanuman-300 { font-weight: 300; }
+.hanuman-600 { font-weight: 700; }
+.hanuman-200 { font-weight: 200; }
+.hanuman-100 { font-weight: 100; }
+
+.card {
+  background-color: var(--daybook-surface);
+  box-shadow: var(--daybook-shadow);
+  border-radius: 5px;
+  border-color: var(--daybook-border);
+}
+
+.card-header,
+.card-footer {
+  background-color: rgba(74, 119, 102, 0.08);
+  border-color: var(--daybook-border);
+}
+
+.form-label {
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.form-control {
+  border-color: rgba(74, 119, 102, 0.25);
+  font-size: 0.82rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.form-control::placeholder {
+  color: rgba(75, 59, 64, 0.6);
+}
+
+.form-control:focus {
+  border-color: rgba(74, 119, 102, 0.5);
+  box-shadow: 0 0 0 0.2rem rgba(74, 119, 102, 0.2);
+}
+
+.btn-primary {
+  font-weight: bold;
+  background-color: var(--daybook-primary);
+  border-color: var(--daybook-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #3d6356;
+  border-color: #3d6356;
+}
+
+.btn-primary:active,
+.btn-primary.active,
+.btn-primary:active:focus {
+  background-color: var(--daybook-primary-click) !important;
+  border-color: var(--daybook-primary-click) !important;
+  box-shadow: 0 0 0 0.2rem rgba(62, 102, 86, 0.5) !important;
+}
+
+.text-muted {
+  color: var(--daybook-muted) !important;
+}
