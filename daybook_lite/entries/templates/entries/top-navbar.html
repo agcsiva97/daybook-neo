@@ -53,6 +53,32 @@
       </li>
       {% endif %}
       <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="position-relative d-inline-block">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Update
+            {% if update_available == 'available' %}
+              <span class="position-absolute top-0 start-100 translate-middle bg-danger border border-light rounded-circle" style="font-size:0.5em; padding: 0.5em 0.5em;">
+                <span class="visually-hidden">update available</span>
+              </span>
+            {% endif %}
+          </span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 300px;">
+          <li>
+            <span class="dropdown-item-text">
+              {% if update_available == 'available' %}
+                <i class="fa-solid fa-circle-up text-danger"></i> Newer version is available
+              {% elif update_available == 'none' %}
+                <i class="fa-solid fa-check text-success"></i> App is up to date
+              {% elif update_available == 'error' %}
+                <i class="fa-solid fa-plane-slash"></i> No/Poor internet connectivity
+              {% endif %}
+            </span>
+          </li>
+        </ul>
+      </li>
+      <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto"> <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div> <hr class="d-lg-none my-2 text-white-50"> </li>
       <li class="nav-item {% if nav_title == 'About' %} active-nav {% endif %}">
         <a class="nav-link" href="{% url 'entries:about' %}"><i class="fa-solid fa-circle-info"></i> About</a>
       </li>
