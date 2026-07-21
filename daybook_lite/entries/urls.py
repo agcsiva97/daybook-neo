@@ -33,5 +33,5 @@ urlpatterns = [
     path('fetchmetalprice/silver/', views.update_silver_price, name='update_silver_price'),
     path("docs/<str:filename>/",views.document_view,name="document_view"),
     path("docs/",views.document_view,name="document_home"),
-
+    path("check-update/", views.check_update_view, name="check_update"),
 ]

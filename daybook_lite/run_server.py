@@ -27,6 +27,15 @@ except Exception as e:
     # Backup failure must NEVER stop the server from starting
     logger.error('[Startup] auto_backup failed: %s', str(e), exc_info=True)
 
+try:
+    from entries.update_check import perform_update_check
+
+    logger.info('[Startup] Checking for updates...')
+    perform_update_check()
+    logger.info('[Startup] Update check completed.')
+except Exception as e:
+    logger.error('[Startup] Update check failed: %s', str(e), exc_info=True)
+
 # ── Start Waitress ────────────────────────────────────────
 application = get_wsgi_application()
 

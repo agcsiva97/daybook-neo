@@ -14,10 +14,16 @@
     <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
     <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
+
+    {% comment %} <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
         <!-- PNG format (modern browsers) -->
     <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> {% endcomment %}
 
     <!-- For desktop shortcut / PWA on mobile -->
     <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
@@ -169,19 +175,13 @@
     </div>
   </div>
 </div>
-{% comment %} {% include "partials/footer.html" %} {% endcomment %}
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'js/select2.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'js/htmx.min.js' %}"></script>
-    <script src="{% static 'js/select2.min.js' %}"></script>
-    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'js/tom-select.complete.min.js' %}"></script>
+    
     <script>
-      if (typeof htmx === 'undefined') {
-        document.write('<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"><\/script>');
-      }
-
       if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 // Ensure this path matches where your static files are served

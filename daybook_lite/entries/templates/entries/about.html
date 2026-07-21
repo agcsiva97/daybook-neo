@@ -295,6 +295,36 @@
         justify-content: center;
     }
 }
+
+.release-notes-box {
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 14px 16px;
+    background: var(--daybook-accent);
+    border-radius: 5px;
+    font-size: 0.85rem;
+    color: var(--daybook-text);
+}
+.release-notes-box h1,
+.release-notes-box h2,
+.release-notes-box h3 {
+    font-size: 0.95rem;
+    color: var(--daybook-primary);
+    margin: 10px 0 6px;
+}
+.release-notes-box ul {
+    padding-left: 20px;
+    margin: 6px 0;
+}
+.release-notes-box p {
+    margin: 6px 0;
+}
+.release-notes-box code {
+    background: rgba(0,0,0,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
 </style>
 
 <div class="about-container">
@@ -303,6 +333,7 @@
         <h1><span class="hanuman-600">Daybook</span><span class="hanuman-100"> neo</span></h1>
         <p>Comprehensive management suite for modern pawn shops</p>
         <span class="version_badge" style="margin-top:10px; display:inline-block; position:static;font-size:1rem;">v{{ app_version }}</span>
+        <center><button class="cust-button btn-primary" style="margin-top:10px; display:block; width: auto; position:static;font-size:1rem;" id="checkUpdateBtn">Check for Updates</button></center>
     </header>
 
     <!-- ── Meet the Developer ──────────────────────────────── -->
@@ -486,4 +517,131 @@
         </div>
     </footer>
 </div>
+
+<!-- ── Update status modal ─────────────────────────────────── -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="updateStatusModalLabel">
+          <i id="updateStatusIcon" class="fa-solid"></i>
+          <span id="updateStatusTitle">Checking for updates</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="updateStatusMessage" class="mb-0">Please wait...</p>
+        <div id="updateReleaseNotes" class="release-notes-box mt-3" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/marked.min.js' %}"></script>
+<script>
+(function () {
+    const modalEl = document.getElementById('updateStatusModal');
+    const iconEl = document.getElementById('updateStatusIcon');
+    const titleEl = document.getElementById('updateStatusTitle');
+    const messageEl = document.getElementById('updateStatusMessage');
+    const notesEl = document.getElementById('updateReleaseNotes');
+
+    let backdropEl = null;
+    let shouldReloadOnClose = false;
+
+    function openModal() {
+        if (!backdropEl) {
+            backdropEl = document.createElement('div');
+            backdropEl.className = 'modal-backdrop fade show';
+            document.body.appendChild(backdropEl);
+        }
+        document.body.classList.add('modal-open');
+        modalEl.style.display = 'block';
+        modalEl.removeAttribute('aria-hidden');
+        modalEl.setAttribute('aria-modal', 'true');
+        requestAnimationFrame(function () {
+            modalEl.classList.add('show');
+        });
+    }
+
+    function closeModal() {
+        modalEl.classList.remove('show');
+        modalEl.setAttribute('aria-hidden', 'true');
+        modalEl.removeAttribute('aria-modal');
+        document.body.classList.remove('modal-open');
+        modalEl.style.display = 'none';
+        if (backdropEl) {
+            backdropEl.remove();
+            backdropEl = null;
+        }
+        if (shouldReloadOnClose) {
+            location.reload();
+        }
+    }
+
+    modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function (el) {
+        el.addEventListener('click', closeModal);
+    });
+
+    function setModalState(iconClass, colorClass, title, message) {
+        iconEl.className = 'fa-solid ' + iconClass + ' ' + colorClass;
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+    }
+
+    document.getElementById('checkUpdateBtn').addEventListener('click', function (e) {
+        e.preventDefault();
+
+        shouldReloadOnClose = false;
+        notesEl.style.display = 'none';
+        notesEl.innerHTML = '';
+        setModalState('fa-spinner fa-spin', 'text-secondary', 'Checking for updates', 'Please wait...');
+        openModal();
+
+        fetch("{% url 'entries:check_update' %}")
+            .then(r => r.json())
+            .then(data => {
+                shouldReloadOnClose = true;
+                if (data.status === 'available') {
+                    setModalState(
+                        'fa-circle-up',
+                        'text-primary',
+                        'Update available',
+                        `A new version (${data.latest_version}) is available.`
+                    );
+                    if (data.release_notes) {
+                        notesEl.innerHTML = marked.parse(data.release_notes);
+                        notesEl.style.display = 'block';
+                    }
+                } else if (data.status === 'none') {
+                    setModalState(
+                        'fa-circle-check',
+                        'text-success',
+                        'Up to date',
+                        'You are already running the latest version.'
+                    );
+                } else {
+                    setModalState(
+                        'fa-triangle-exclamation',
+                        'text-warning',
+                        'Unable to check',
+                        'No internet connectivity to check for updates.'
+                    );
+                }
+            })
+            .catch(function () {
+                shouldReloadOnClose = true;
+                setModalState(
+                    'fa-circle-xmark',
+                    'text-danger',
+                    'Something went wrong',
+                    'Could not check for updates. Please try again later.'
+                );
+            });
+    });
+})();
+</script>
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <style>
   #debit-legend::-webkit-scrollbar,
@@ -199,7 +199,7 @@
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script src="{% static 'js/apexcharts.min.js' %}"></script>
 <script>
   const CHART_DATA_URL = '{% url "api:dashboard_chart_data" %}';
   const PIE_DATA_URL   = '{% url "api:transaction_pie_data" %}';
