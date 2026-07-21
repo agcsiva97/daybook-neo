@@ -8,6 +8,7 @@ from functools import wraps
 from openpyxl.styles import Font, Alignment, PatternFill
 import markdown
 import socket
+import requests
 
 from pathlib import Path
 from django.contrib import messages
@@ -37,7 +38,18 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+def get_latest_release_tag():
+    url = f"https://api.github.com/repos/agcsiva97/daybook-neo/releases/latest"
+    headers = {"Accept": "application/vnd.github+json"}
+    # Optional but recommended - avoids the 60/hr limit
+    # headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
 
+    try:
+        resp = requests.get(url, headers=headers, timeout=5)
+        resp.raise_for_status()
+        return resp.json()["tag_name"]
+    except requests.RequestException:
+        return None
 
 
 def is_admin(user):
@@ -85,8 +97,17 @@ def home(request):
     gold_price = manager_helper.get_gold_price()
     silver_price = manager_helper.get_silver_price()
     all_shops = Shop.objects.all().order_by('name')
+    latest_version = get_latest_release_tag()
     default_shop_short_name = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
     
+
+    if latest_version and latest_version != 'v'+settings.APP_VERSION:
+        update_available = 'available'
+    elif latest_version is None:
+        update_available = 'error'
+    else:
+        update_available = 'none'
+
     if default_shop_short_name and default_shop_short_name.value:
         default_shop = Shop.objects.get(short_name=default_shop_short_name.value)
         latest_transaction = Transactions.objects.filter(
@@ -164,7 +185,7 @@ def home(request):
             'closing_balance': data['closing_balance'],
         })
 
-    print(transactions)
+    print(latest_version)
     context = {
         'nav_title': 'Home',
         'transactions': transactions,
@@ -179,6 +200,7 @@ def home(request):
         'latest_date': latest_date,
         'default_shop': default_shop,
         'no_shop': no_shop,
+        'update_available': update_available,
     }
     
     return render(request, 'entries/home.html', context)
