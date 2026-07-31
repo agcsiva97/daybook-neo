@@ -1,0 +1,107 @@
+{% comment %}
+  Reusable shop navigation tabs.
+  Include in any shop-scoped page with:
+
+    {% include "manager/_shop_nav_tabs.html" with shop=shop active_tab="accounts" %}
+
+  Valid active_tab values: "balance_sheet" | "accounts" | "shop_meta"
+{% endcomment %}
+<div class="shop-nav-tabs-wrapper">
+  <ul class="nav nav-tabs shop-nav-tabs mt-4">
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'balance_sheet' %}active{% endif %}"
+         href="{% url 'manager:shop_balance_sheet' shop.pk %}">
+        <i class="fa-solid fa-layer-group"></i> Balance Sheet
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'accounts' %}active{% endif %}"
+         href="{% url 'manager:shop_info' shop.pk %}">
+        <i class="fa-solid fa-building-columns"></i> Accounts
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'shop_meta' %}active{% endif %}"
+         href="{% url 'manager:shop_meta' shop.pk %}">
+        <i class="fa-solid fa-sitemap"></i> Meta
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if active_tab == 'close_pl_accounts' %}active{% endif %}"
+         href="{% url 'manager:close-pl-accounts' shop.pk %}">
+        <i class="fa-solid fa-building-columns"></i> Close PL Accounts
+      </a>
+    </li>
+  </ul>
+</div>
+
+<style>
+  .shop-nav-tabs {
+    display: flex;
+    flex-wrap: nowrap;               /* force single row, never wrap */
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0 !important;
+    background-color: #f8f9fa;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    padding: 0.4rem 0.4rem 0;
+    gap: 0.25rem;
+  }
+
+  .shop-nav-tabs .nav-item {
+    flex: 1 1 0;                     /* equal width, allow shrinking below content size */
+    min-width: 0;                    /* required so flex-shrink can go below text width */
+    text-align: center;
+  }
+
+  .shop-nav-tabs .nav-link {
+    display: block;
+    color: #6c757d;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-top-left-radius: 0.4rem;
+    border-top-right-radius: 0.4rem;
+    padding: 0.65rem 1rem;
+    font-weight: 500;
+    font-size: 0.925rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .shop-nav-tabs .nav-link i {
+    margin-right: 0.4rem;
+  }
+
+  .shop-nav-tabs .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+    color: var(--bs-primary, #0d6efd);
+  }
+
+  .shop-nav-tabs .nav-link.active {
+    color: var(--bs-primary, #0d6efd);
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+    font-weight: 600;
+  }
+
+  /* Tighter spacing on small screens so labels/icons fit 3-in-a-row */
+  @media (max-width: 576px) {
+    .shop-nav-tabs .nav-link {
+      padding: 0.55rem 0.4rem;
+      font-size: 0.8rem;
+    }
+    .shop-nav-tabs .nav-link i {
+      margin-right: 0.25rem;
+    }
+  }
+
+  /* Card directly below tabs — merges seamlessly with active tab */
+  .shop-tab-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    margin-top: -1px;
+    border-top: 1px solid #dee2e6;
+  }
+</style>

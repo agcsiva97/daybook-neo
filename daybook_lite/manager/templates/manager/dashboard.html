@@ -199,7 +199,7 @@
     </div>
   </div>
 </div>
-<script src="{% static 'js/apexcharts.min.js' %}"></script>
+<script defer src="{% static 'js/apexcharts.min.js' %}"></script>
 <script>
   const CHART_DATA_URL = '{% url "api:dashboard_chart_data" %}';
   const PIE_DATA_URL   = '{% url "api:transaction_pie_data" %}';
@@ -261,8 +261,13 @@
     noData: { text: 'Loading chart data\u2026' },
   };
 
-  const chart = new ApexCharts(document.getElementById('loanChart'), chartOptions);
-  chart.render();
+  let chart = null;
+  let debitPie = null;
+  let creditPie = null;
+  let principalChart = null;
+  let interestChart = null;
+  let gaugeChart = null;
+  let chartsInitialized = false;
 
   // ── Pie chart config ──
   function pieOptions(noDataText, chartId) {
@@ -316,10 +321,34 @@
     `).join('');
   }
 
-  const debitPie  = new ApexCharts(document.getElementById('debitPieChart'),  pieOptions('No debit data'));
-  const creditPie = new ApexCharts(document.getElementById('creditPieChart'), pieOptions('No credit data'));
-  debitPie.render();
-  creditPie.render();
+  function initDashboardCharts() {
+    if (!window.ApexCharts || chartsInitialized) return true;
+
+    chart = new window.ApexCharts(document.getElementById('loanChart'), chartOptions);
+    chart.render();
+
+    debitPie = new window.ApexCharts(document.getElementById('debitPieChart'), pieOptions('No debit data'));
+    creditPie = new window.ApexCharts(document.getElementById('creditPieChart'), pieOptions('No credit data'));
+    debitPie.render();
+    creditPie.render();
+
+    principalChart = new window.ApexCharts(
+      document.getElementById('principalChart'),
+      buildStackedGroupedOptions([], [])
+    );
+    interestChart = new window.ApexCharts(
+      document.getElementById('interestChart'),
+      buildStackedGroupedOptions([], [])
+    );
+    principalChart.render();
+    interestChart.render();
+
+    gaugeChart = new window.ApexCharts(document.getElementById('loanGaugeChart'), gaugeOptions);
+    gaugeChart.render();
+
+    chartsInitialized = true;
+    return true;
+  }
 
   // ── Helpers ──
   function formatDate(iso) {
@@ -398,8 +427,23 @@
       .catch((err) => console.error('Pie error:', err));
   }
 
-  // ── Initial load ──
-  loadCharts(defaultFrom, todayStr, '');
+  function startDashboardCharts() {
+    if (!window.ApexCharts) {
+      const check = window.setInterval(() => {
+        if (window.ApexCharts) {
+          window.clearInterval(check);
+          startDashboardCharts();
+        }
+      }, 100);
+      window.setTimeout(() => window.clearInterval(check), 5000);
+      return;
+    }
+
+    initDashboardCharts();
+    loadCharts(defaultFrom, todayStr, '');
+    loadBTCharts('');
+    loadGauge(defaultFrom, todayStr, '');
+  }
 
   // ── Modal buttons ──
   document.getElementById('btn-apply').addEventListener('click', () => {
@@ -408,6 +452,7 @@
     if (!from || !to) { alert('Please select both dates.'); return; }
     if (from > to)    { alert('From date must be before To date.'); return; }
 
+    initDashboardCharts();
     loadCharts(from, to, elShop.value);
     loadBTCharts(elShop.value);
     loadGauge(from, to, elShop.value);
@@ -421,6 +466,7 @@
     elTo.value   = todayStr;
     elShop.value = '';
 
+    initDashboardCharts();
     loadCharts(defaultFrom, todayStr, '');
     loadBTCharts('');
     loadGauge(defaultFrom, todayStr, '');
@@ -508,18 +554,6 @@ function buildStackedGroupedOptions(series, labels) {
   };
 }
 
-// Initialize with empty charts
-const principalChart = new ApexCharts(
-  document.getElementById('principalChart'),
-  buildStackedGroupedOptions([], [])
-);
-const interestChart = new ApexCharts(
-  document.getElementById('interestChart'),
-  buildStackedGroupedOptions([], [])
-);
-principalChart.render();
-interestChart.render();
-
 function loadBTCharts(shopId) {
   const qs = shopId ? `?shop=${shopId}` : '';
 
@@ -529,26 +563,22 @@ function loadBTCharts(shopId) {
   })
     .then(r => r.json())
     .then(data => {
-      // Destroy and recreate to apply new colors + groups cleanly
-      principalChart.destroy();
-      const newPrincipal = new ApexCharts(
+      if (principalChart) principalChart.destroy();
+      principalChart = new window.ApexCharts(
         document.getElementById('principalChart'),
         buildStackedGroupedOptions(data.principal, data.labels)
       );
-      newPrincipal.render();
+      principalChart.render();
 
-      interestChart.destroy();
-      const newInterest = new ApexCharts(
+      if (interestChart) interestChart.destroy();
+      interestChart = new window.ApexCharts(
         document.getElementById('interestChart'),
         buildStackedGroupedOptions(data.interest, data.labels)
       );
-      newInterest.render();
+      interestChart.render();
     })
     .catch(err => console.error('BT chart error:', err));
 }
-
-// Load on init
-loadBTCharts('');
 
 const GAUGE_URL = '{% url "api:loan_gauge_data" %}';
 
@@ -599,9 +629,6 @@ const gaugeOptions = {
   labels: ['Loans/Day'], // This displays above the number
 };
 
-const gaugeChart = new ApexCharts(document.getElementById('loanGaugeChart'), gaugeOptions);
-gaugeChart.render();
-
 function loadGauge(fromDate, toDate, shopId) {
   let qs = `from_date=${fromDate}&to_date=${toDate}`;
   if (shopId) qs += `&shop=${shopId}`;
@@ -637,7 +664,10 @@ function loadGauge(fromDate, toDate, shopId) {
     .catch(err => console.error('Gauge error:', err));
 }
 
-// Load on init
-loadGauge(defaultFrom, todayStr, '');
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(() => startDashboardCharts());
+  } else {
+    window.setTimeout(startDashboardCharts, 250);
+  }
 </script>
 {% endblock %}

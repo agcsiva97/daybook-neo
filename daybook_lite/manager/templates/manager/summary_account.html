@@ -1,9 +1,60 @@
 {% extends "base.html" %}
+{% load indian_format %}
 
 {% block content %}
-
 <div class="container mt-4">
-  <div class="no-print">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-start">
+      <!-- LEFT SIDE -->
+      <div class="account-title-wrap">
+        <h4 class="mb-0 card-title account-title-text">
+          <i class="fa-solid fa-layer-group"></i> {{ type_t_name }}
+        </h4>
+      </div>
+      <!-- RIGHT SIDE (buttons) -->
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTypeInfoModal">
+          <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit Type Info</span>
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm">
+            <tr>
+              <td class="fw-bold">Type Name</td>
+              <td>{{ type_t_name }} {% if type_e_name %} - {{ type_e_name }} {% endif %}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Account Group</td>
+              <td>{{ group_name }}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Shop</td>
+              <td>{{ shop.name }}</td>
+            </tr>
+            <tr>
+              <td class="fw-bold">Number of Accounts</td>
+              <td>{{ items|length }}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h5>Overall Balance</h5>
+          <p class="display-6 {% if overall_balance >= 0 %} text-success {% else %} text-danger {% endif %}">
+            {{ overall_balance|indian_format }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% comment %} <div class="no-print">
     <div class="d-flex justify-content-between align-items-center">
       <div class="input-group" style="width: 150px;">
         <button class="btn btn-primary" onclick="changeYear(-1)">-</button>
@@ -11,23 +62,25 @@
         <button class="btn btn-primary" onclick="changeYear(1)">+</button>
       </div>
     </div>
-  </div>
+  </div> {% endcomment %}
 
   <div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-start">      
-      <!-- LEFT SIDE -->
+    <div class="card-header d-flex justify-content-between align-items-start">
       <div>
         <h4 class="mb-0">
-          <i class="fa-solid fa-wallet"></i> {{type_e_name}} ({{ type_t_name }}) accounts summary of {{ shop.short_name }} for FY{{fy}}
+          <i class="fa-solid fa-wallet"></i> Accounts summary of {{ type_t_name }} for FY{{fy}}
         </h4>
       </div>
-      <!-- RIGHT SIDE (buttons) -->
-      <div class="d-flex gap-2">
-        <a href="{% url 'manager:shop_balance_sheet' shop.pk %}?fy={{ fy }}" class="btn btn-sm btn-secondary">
-            <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ shop.short_name }} Types Summary</span>
-        </a>
-      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+          <!-- Year picker — preserves all active filters when switching FY -->
+          <div class="input-group" style="width: 120px;">
+            <button class="btn btn-sm btn-outline-primary" onclick="changeYear(-1)">-</button>
+            <input type="text" id="year" class="form-control form-control-sm text-center" readonly>
+            <button class="btn btn-sm btn-outline-primary" onclick="changeYear(1)">+</button>
+          </div>
+        </div>
     </div>
+
     <div class="card-body">
       {% if items %}
         <div class="table-responsive">
@@ -52,28 +105,28 @@
                 </td>
                 <td class="text-end">
                   {% if item.opening >= 0 %}
-                    <span class="text-success"><strong>₹{{ item.opening }}CR</strong></span>
+                    <span class="text-success"><strong>₹{{ item.opening|indian_format }}CR</strong></span>
                   {% else %}
                     <span class="text-danger">
-                        <strong>₹{{ item.opening|stringformat:".2f"|cut:"-" }}DB</strong>
+                        <strong>₹{{ item.opening|indian_format }}DB</strong>
                     </span>
                   {% endif %}
                 </td>
                 <td class="text-end">
                   {% if item.cur_balance >= 0 %}
-                    <span class="text-success"><strong>₹{{ item.cur_balance }}CR</strong></span>
+                    <span class="text-success"><strong>₹{{ item.cur_balance|indian_format }}CR</strong></span>
                   {% else %}
                     <span class="text-danger">
-                        <strong>₹{{ item.cur_balance|stringformat:".2f"|cut:"-" }}DB</strong>
+                        <strong>₹{{ item.cur_balance|indian_format }}DB</strong>
                     </span>
                   {% endif %}
                 </td>
                 <td class="text-end">
                   {% if item.net_balance >= 0 %}
-                    <span class="text-success"><strong>₹{{ item.net_balance }}CR</strong></span>
+                    <span class="text-success"><strong>₹{{ item.net_balance|indian_format }}CR</strong></span>
                   {% else %}
                     <span class="text-danger">
-                        <strong>₹{{ item.net_balance|stringformat:".2f"|cut:"-" }}DB</strong>
+                        <strong>₹{{ item.net_balance|indian_format }}DB</strong>
                     </span>
                   {% endif %}
                 </td>
@@ -89,28 +142,54 @@
                   {% endif %}
                 </td> {% endcomment %}
               </tr>
-              {% endfor %} 
+              {% endfor %}
             </tbody>
           </table>
         </div>
       {% else %}
         <p class="text-muted">No account types found for this shop.</p>
       {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editTypeInfoModal" tabindex="-1" aria-labelledby="editTypeInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" class="modal-content">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_type_info">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editTypeInfoModalLabel">Edit Type Info</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="typeEName" class="form-label">English Name</label>
+          <input type="text" class="form-control" id="typeEName" name="e_name" value="{{ type_e_name }}">
+        </div>
+        <div class="mb-3">
+          <label for="typeTName" class="form-label">Tamil Name</label>
+          <input type="text" class="form-control" id="typeTName" name="t_name" value="{{ type_t_name }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
   const yearInput = document.getElementById("year");
 
-  // Get fy from URL
   const params = new URLSearchParams(window.location.search);
   const fy = params.get('fy');
 
-  // Set initial year
   function getCurrentIndianFY() {
     const today = new Date();
-    const month = today.getMonth() + 1; // 1-based
+    const month = today.getMonth() + 1;
     const year = today.getFullYear();
-    // Indian FY starts April (month 4)
-    // Jan-Mar belongs to previous FY
     return month < 4 ? year - 1 : year;
   }
 
@@ -120,12 +199,10 @@
   function changeYear(step) {
     year += step;
     yearInput.value = year;
-    
-    // Update URL with fy param
+
     const url = new URL(window.location.href);
     url.searchParams.set('fy', year);
 
-    // Reload page with new param
     window.location.href = url.toString();
   }
 </script>

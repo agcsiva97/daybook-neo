@@ -15,18 +15,8 @@
     <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/tom-select.bootstrap5.min.css' %}" rel="stylesheet">
-    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
-
-    {% comment %} <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
-    <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
-    <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
-        <!-- PNG format (modern browsers) -->
-    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> {% endcomment %}
 
     <!-- For desktop shortcut / PWA on mobile -->
-    <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
     
     <!-- Link the manifest -->
@@ -36,99 +26,101 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Daybook">
-    <link rel="apple-touch-icon" href="{% static 'images/icon-192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
+    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
 
     <!-- Theme color for Android -->
-    <meta name="theme-color" content="#0d6efd">
+    <meta name="theme-color" content="#4A7766">
     
     <style>
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
-  font-variation-settings:
-  'FILL' 0,
-  'wght' 400,
-  'GRAD' 0,
-  'opsz' 40
-}
-    .app-launcher:hover {
-      border-radius: 0rem;
+      .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 40
+      }
+      .app-launcher:hover {
+        border-radius: 0rem;
         background-color: rgba(255, 255, 255, 0.15);
-    }
-    .app-launcher {
-      {% comment %} border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */ {% endcomment %}
-      border-radius: 0rem;  /* same as hamburger border-radius */
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    margin-left: -12px;
-    align-self: stretch;
-    font-size: 1.75rem;
-    transition: background-color 0.2s ease;
-    
-    /* Add these to cover top and bottom gaps */
-    margin-top: -14px;
-    margin-bottom: -14px;
-    padding-top: 8px;
-    padding-bottom: 3px;
-  }
-    .app-launcher-box {
-        {% comment %} display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 1.5em;           /* same as Bootstrap's navbar-toggler-icon size */
-        height: 1.5em;
-        border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */
+      }
+      .app-launcher {
+        {% comment %} border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */ {% endcomment %}
         border-radius: 0rem;  /* same as hamburger border-radius */
-        padding: 3px; {% endcomment %}
-    }
-    .htmx-indicator {
-    display: none;
-}
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        margin-left: -12px;
+        align-self: stretch;
+        font-size: 1.75rem;
+        transition: background-color 0.2s ease;
 
-.htmx-request .htmx-indicator,
-.htmx-request.htmx-indicator {
-    display: table-row !important;
-}
-</style>
+        /* Add these to cover top and bottom gaps */
+        margin-top: -14px;
+        margin-bottom: -14px;
+        padding-top: 8px;
+        padding-bottom: 3px;
+      }
+      .app-launcher-box {
+          {% comment %} display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.5em;           /* same as Bootstrap's navbar-toggler-icon size */
+          height: 1.5em;
+          border: 1px solid rgba(255, 255, 255, 0.55);   /* same as hamburger border */
+          border-radius: 0rem;  /* same as hamburger border-radius */
+          padding: 3px; {% endcomment %}
+      }
+      .htmx-indicator {
+        display: none;
+      }
+
+      .htmx-request .htmx-indicator,
+      .htmx-request.htmx-indicator {
+        display: table-row !important;
+      }
+    </style>
   </head>
   <body>
     {% load indian_format %}
     <nav  class="navbar navbar-expand-lg bg-body-tertiary">
       <div class="container-fluid">
-  <!-- App Library Icon -->
-  <div class="dropdown me-2">
-    <a class="nav-link app-launcher" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <span class="app-launcher-box">
-            <span class="material-symbols-outlined">apps</span>
-        </span>
-    </a>
-    <ul class="dropdown-menu">
-      <li><a class="dropdown-item" href="{% url 'entries:home' %}">
-        <i class="fa-solid fa-book"></i>
-        <span class="hanuman-600">Daybook</span> <span class="hanuman-100">neo</span>
-      </a></li>
-      {% if user and user.is_authenticated %}
-        {% if is_super_admin %}        
-          <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
-        {% else %}
-          {% for group in user.groups.all %}
-            {% if group.name == 'Admin' %}
-              <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
+        <!-- App Library Icon -->
+        <div class="dropdown me-2">
+          <a class="nav-link app-launcher" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="app-launcher-box">
+                  <span class="material-symbols-outlined">apps</span>
+              </span>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'entries:home' %}">
+              <i class="fa-solid fa-book"></i>
+              <span class="hanuman-600">Daybook</span> <span class="hanuman-100">neo</span>
+            </a></li>
+            {% if user and user.is_authenticated %}
+              {% if is_super_admin %}        
+                <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
+              {% else %}
+                {% for group in user.groups.all %}
+                  {% if group.name == 'Admin' %}
+                    <li><a class="dropdown-item" href="{% url 'manager:home' %}"><i class="fa-solid fa-user-shield"></i> Manager</a></li>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
             {% endif %}
-          {% endfor %}
+          </ul>
+        </div>
+        {% if app_name == 'manager' %}
+          {% include 'manager/top-navbar.html' %}
+        {% else %}
+          {% include 'entries/top-navbar.html' %}
         {% endif %}
-      {% endif %}
-    </ul>
-  </div>
-      {% if app_name == 'manager' %}
-        {% include 'manager/top-navbar.html' %}
-      {% else %}
-        {% include 'entries/top-navbar.html' %}
-      {% endif %}
+      </div>
     </nav>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
 
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 9999">
@@ -159,22 +151,23 @@
       {% endif %}
     </div>
 
-<div class="modal fade" id="sessionTimeoutModal" tabindex="-1" aria-labelledby="sessionTimeoutModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="sessionTimeoutModalLabel">Session Timeout</h5>
-        <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Your session has been expired due to inactivity.</p>
-      </div>
-      <div class="modal-footer">
-        <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn btn-primary" data-bs-dismiss="modal">Ok</button>
+    <div class="modal fade" id="sessionTimeoutModal" tabindex="-1" aria-labelledby="sessionTimeoutModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="sessionTimeoutModalLabel">Session Timeout</h5>
+            <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Your session has been expired due to inactivity.</p>
+          </div>
+          <div class="modal-footer">
+            <button onclick="window.location.href='{% url 'accounts:logout' %}'" type="button" class="btn btn-primary" data-bs-dismiss="modal">Ok</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+
     <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
     <script src="{% static 'js/select2.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
@@ -195,11 +188,11 @@
         }
     </script>
     <script>
-$(document).ready(function () {
-    $('#id_account').select2({
-        width: '100%'
-    });
-});
+      $(document).ready(function () {
+          $('#id_account').select2({
+              width: '100%'
+          });
+      });
 
       // Auto-show toasts on page load
       document.addEventListener('DOMContentLoaded', function() {
@@ -212,89 +205,89 @@ $(document).ready(function () {
       });
     </script>
     <script>
-    let timeout;
-    let logoutTime = 30 * 60 * 1000; // Default 30 minutes
+      let timeout;
+      let logoutTime = 30 * 60 * 1000; // Default 30 minutes
 
-    // Fetch session timeout from database on page load
-    async function fetchSessionTimeout() {
-        try {
-            const response = await fetch('{% url "api:get_session_timeout" %}');
-            const data = await response.json();
-            logoutTime = data.timeout_seconds * 1000; // Convert seconds to milliseconds
-            console.log('Session timeout loaded from DB:', data.timeout_seconds, 'seconds');
-            resetTimer(); // Start the timer with the new timeout value
-        } catch (error) {
-            console.warn('Failed to fetch session timeout, using default:', error);
-            logoutTime = 30 * 60 * 1000; // Keep default if fetch fails
-            resetTimer();
-        }
-    }
-
-    function resetTimer() {
-        clearTimeout(timeout);
-        timeout = setTimeout(logoutUser, logoutTime);
-    }
-
-    function logoutUser() {
-        const modalElement = document.getElementById('sessionTimeoutModal');
-        const modal = new bootstrap.Modal(modalElement, {
-          backdrop: 'static',  // ❌ disable outside click
-          keyboard: false      // ❌ disable ESC key
-        });
-        modal.show();
-    }
-
-    // Events to track activity
-    window.onload = function() {
-        fetchSessionTimeout(); // Load timeout from DB first
-    };
-    document.onmousemove = resetTimer;
-    document.onkeypress = resetTimer;
-    document.onclick = resetTimer;
-    document.onscroll = resetTimer;
-document.addEventListener('DOMContentLoaded', function () {
-  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-  const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-  const shopSelect = document.getElementById('default_shop');
-  if (!shopSelect) return;
-
-  shopSelect.addEventListener('change', function () {
-    const shopId = this.value;
-
-    fetch("{% url 'api:update_default_shop' %}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: JSON.stringify({ shop_id: shopId }),
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      } else {
-        console.error('Failed to update shop:', data.error);
+      // Fetch session timeout from database on page load
+      async function fetchSessionTimeout() {
+          try {
+              const response = await fetch('{% url "api:get_session_timeout" %}');
+              const data = await response.json();
+              logoutTime = data.timeout_seconds * 1000; // Convert seconds to milliseconds
+              console.log('Session timeout loaded from DB:', data.timeout_seconds, 'seconds');
+              resetTimer(); // Start the timer with the new timeout value
+          } catch (error) {
+              console.warn('Failed to fetch session timeout, using default:', error);
+              logoutTime = 30 * 60 * 1000; // Keep default if fetch fails
+              resetTimer();
+          }
       }
-    })
-    .catch(err => console.error('Request error:', err));
-  });
 
-  // Standard Django CSRF cookie helper
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      document.cookie.split(';').forEach(cookie => {
-        const [key, val] = cookie.trim().split('=');
-        if (key === name) cookieValue = decodeURIComponent(val);
+      function resetTimer() {
+          clearTimeout(timeout);
+          timeout = setTimeout(logoutUser, logoutTime);
+      }
+
+      function logoutUser() {
+          const modalElement = document.getElementById('sessionTimeoutModal');
+          const modal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',  // ❌ disable outside click
+            keyboard: false      // ❌ disable ESC key
+          });
+          modal.show();
+      }
+
+      // Events to track activity
+      window.onload = function() {
+          fetchSessionTimeout(); // Load timeout from DB first
+      };
+      document.onmousemove = resetTimer;
+      document.onkeypress = resetTimer;
+      document.onclick = resetTimer;
+      document.onscroll = resetTimer;
+      document.addEventListener('DOMContentLoaded', function () {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
       });
-    }
-    return cookieValue;
-  }
-});
-</script>
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const shopSelect = document.getElementById('default_shop');
+        if (!shopSelect) return;
+
+        shopSelect.addEventListener('change', function () {
+          const shopId = this.value;
+
+          fetch("{% url 'api:update_default_shop' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ shop_id: shopId }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              location.reload();
+            } else {
+              console.error('Failed to update shop:', data.error);
+            }
+          })
+          .catch(err => console.error('Request error:', err));
+        });
+
+        // Standard Django CSRF cookie helper
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+            document.cookie.split(';').forEach(cookie => {
+              const [key, val] = cookie.trim().split('=');
+              if (key === name) cookieValue = decodeURIComponent(val);
+            });
+          }
+          return cookieValue;
+        }
+      });
+    </script>
   </body>
 </html>

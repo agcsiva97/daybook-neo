@@ -91,9 +91,9 @@
         <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger">
           <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
         </a>
-        <a href="{% url 'manager:shop_info' account.shop.id %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ account.shop.name }}</span>
-        </a>
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back</span>
+        </button>
       </div>
     </div>
 
@@ -101,10 +101,6 @@
       <div class="row">
         <div class="col-md-6">
           <table class="table table-sm">
-            <tr>
-              <td class="fw-bold">Account ID</td>
-              <td>{{ account.id }}</td>
-            </tr>
             <tr>
               <td class="fw-bold">Account Name</td>
               <td>{{ account.t_name }} - {{ account.e_name }}</td>
@@ -121,7 +117,9 @@
         </div>
         <div class="col-md-6">
           <h5>Balance</h5>
-          <p class="display-6 text-primary">{{ balance|indian_format }}</p>
+          <p class="display-6 {% if balance >= 0 %} text-success {% else %} text-danger {% endif %}">
+            {{ balance|indian_format }}
+          </p>
         </div>
       </div>
     </div>
@@ -147,6 +145,9 @@
           </button>
           <button type="button" class="btn btn-sm btn-outline-warning" id="tallyBtn" data-bs-toggle="modal" data-bs-target="#tallyTransactionsModal" disabled title="Mark transactions as tallied/not tallied">
             <i class="fa-solid fa-check-double"></i> <span class="d-none d-md-inline">Tally</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="deleteBtn" data-bs-toggle="modal" data-bs-target="#deleteTransactionsModal" disabled title="Delete selected transactions">
+            <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
           </button>
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="showTalliedCheckbox" checked>
@@ -215,7 +216,7 @@
         <div class="col-md">
           <div class="p-3 bg-light rounded text-end">
             <h7 class="text-muted mb-2 text-end">Opening Balance (FY)</h7>
-            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ opening_balance|indian_format }}</p>
+            <p class="h5 text-end {% if opening_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ opening_balance|indian_format }}</p>
           </div>
         </div>
         <div class="col-md">
@@ -245,7 +246,7 @@
         <div class="col-md">
           <div class="p-3 bg-light rounded text-end">
             <h7 class="text-muted mb-2">Closing Balance (FY)</h7>
-            <p class="h5 text-end {% if net_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ closing_balance|indian_format }}</p>
+            <p class="h5 text-end {% if closing_balance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹ {{ closing_balance|indian_format }}</p>
           </div>
         </div>
       </div>
@@ -273,8 +274,7 @@
                   hx-get="{% url 'manager:account_info_transactions' account.pk %}?page=1&{{ filter_querystring }}"
                   hx-trigger="load"
                   hx-swap="innerHTML"
-                  hx-target="this">
-            
+                  hx-target="this">            
           </tbody>
         </table>
       </div>
@@ -344,6 +344,28 @@
         <button type="button" class="btn btn-danger" id="tallyFailBtn">
           <i class="fa-solid fa-times"></i> Not Tallied
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Transactions Modal -->
+<div class="modal fade" id="deleteTransactionsModal" tabindex="-1" aria-labelledby="deleteTransactionsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteTransactionsModalLabel">Delete Selected Transactions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the selected transaction(s)?</p>
+        <div class="alert alert-warning mb-0" id="deleteSelectedInfo">
+          <strong id="deleteSelectedCount">0</strong> transaction(s) selected.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="deleteConfirmBtn">Delete Transactions</button>
       </div>
     </div>
   </div>
@@ -453,13 +475,16 @@
   const selectAllCheckbox = document.getElementById('selectAll');
   const moveBtn           = document.getElementById('moveBtn');
   const tallyBtn          = document.getElementById('tallyBtn');
+  const deleteBtn         = document.getElementById('deleteBtn');
   const accountSelect     = document.getElementById('accountSelect');
   const accountInfo       = document.getElementById('accountInfo');
   const moveConfirmBtn    = document.getElementById('moveConfirmBtn');
   const tallySuccessBtn   = document.getElementById('tallySuccessBtn');
   const tallyFailBtn      = document.getElementById('tallyFailBtn');
+  const deleteConfirmBtn  = document.getElementById('deleteConfirmBtn');
   const showTalliedCheckbox = document.getElementById('showTalliedCheckbox');
   const selectedCountInfo = document.getElementById('selectedCountInfo');
+  const deleteSelectedCount = document.getElementById('deleteSelectedCount');
   const transactionTbody  = document.getElementById('transaction-tbody');
 
   function getTransactionCheckboxes() {
@@ -468,8 +493,9 @@
 
   function updateMoveTallyButtonState() {
     const anySelected = Array.from(getTransactionCheckboxes()).some(cb => cb.checked);
-    moveBtn.disabled  = !anySelected;
-    tallyBtn.disabled = !anySelected;
+    moveBtn.disabled   = !anySelected;
+    tallyBtn.disabled  = !anySelected;
+    deleteBtn.disabled = !anySelected;
   }
 
   function applyTalliedFilter() {
@@ -563,6 +589,51 @@
     accountSelect.value = '';
     accountInfo.style.display = 'none';
     moveConfirmBtn.disabled = true;
+  });
+
+  document.getElementById('deleteTransactionsModal').addEventListener('show.bs.modal', function() {
+    const selectedCount = Array.from(getTransactionCheckboxes()).filter(cb => cb.checked).length;
+    deleteSelectedCount.textContent = selectedCount;
+    deleteConfirmBtn.disabled = selectedCount === 0;
+  });
+
+  deleteConfirmBtn.addEventListener('click', function() {
+    const selectedTransactions = Array.from(getTransactionCheckboxes()).filter(cb => cb.checked).map(cb => cb.value);
+    if (!selectedTransactions.length) {
+      alert('Please select transactions to delete.');
+      return;
+    }
+
+    const originalText = deleteConfirmBtn.innerHTML;
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+
+    fetch('{% url "manager:delete_transactions" account.pk %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ transaction_ids: selectedTransactions })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('deleteTransactionsModal')).hide();
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        alert('Error: ' + (data.message || 'Failed to delete transactions'));
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.innerHTML = originalText;
+      }
+    })
+    .catch(() => {
+      alert('An error occurred while deleting transactions');
+      deleteConfirmBtn.disabled = false;
+      deleteConfirmBtn.innerHTML = originalText;
+    });
+  });
+
+  document.getElementById('deleteTransactionsModal').addEventListener('hidden.bs.modal', function() {
+    deleteConfirmBtn.disabled = false;
+    deleteConfirmBtn.innerHTML = 'Delete Transactions';
   });
 
   // ── Tally modal ──────────────────────────────────────────────────────────

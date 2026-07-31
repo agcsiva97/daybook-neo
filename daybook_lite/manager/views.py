@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 from pyexpat.errors import messages
@@ -109,13 +109,18 @@ def sync_history(request):
     # Sort by timestamp (most recent first)
     sync_events.sort(key=lambda x: x['timestamp'], reverse=True)
 
+    page_number = request.GET.get('page', 1)
+    paginator = Paginator(sync_events, 10)
+    page_obj = paginator.get_page(page_number)
+
     shops = Shop.objects.all().order_by('short_name')
     
     return render(request, 'manager/sync_history.html', {
         'nav_title': 'Sync History',
-        'sync_events': sync_events,
+        'sync_events': page_obj.object_list,
+        'page_obj': page_obj,
         'shops': shops,
-        'total_events': len(sync_events),
+        'total_events': paginator.count,
         'app_name': 'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
@@ -1520,6 +1525,9 @@ def shop_meta(request, pk):
         transaction_helper.get_account_balance(acc) for acc in all_accounts
     )
 
+    ledgers = Ledger.objects.filter(shop=shop).order_by('name')
+    balance = transaction_helper.get_balance(shop)  # Calculate balance from transactions for accuracy
+
     return render(request, 'manager/shop_meta.html', {
         'shop': shop,
         'hierarchy': hierarchy,
@@ -1528,6 +1536,10 @@ def shop_meta(request, pk):
         'total_accounts': total_accounts,
         'shop_balance': shop_balance,
         'app_name': 'manager',
+        'is_super_admin': request.user.is_superuser,
+        'is_admin': is_admin(request.user),
+        'ledgers': ledgers,
+        'balance': balance,
     })
 
 @login_required
@@ -2407,7 +2419,7 @@ def account_info(request, pk):
         fy = date_helper.get_current_fy_string()
     
     start_date, end_date = date_helper.get_fy_dates(fy)
-    openning_balance = transaction_helper.get_account_balance(account, start_date)
+    openning_balance = transaction_helper.get_account_balance(account, start_date - timedelta(microseconds=1))
     if account.acc_type.group_order == 2:
         openning_balance = 0
     # Get transactions for pagination
@@ -2762,6 +2774,50 @@ def update_tally_transactions(request):
 
 @login_required
 @admin_required
+def delete_transactions(request, pk):
+    """Delete selected transactions for an account"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+
+    try:
+        account = get_object_or_404(Accounts, pk=pk)
+        data = json.loads(request.body)
+        transaction_ids = data.get('transaction_ids', [])
+
+        if not transaction_ids:
+            return JsonResponse({'success': False, 'message': 'No transactions selected'}, status=400)
+
+        deleted_count = 0
+        skipped_count = 0
+        skipped_ids = []
+
+        with db_transaction.atomic():
+            transactions = Transactions.objects.filter(id__in=transaction_ids, acc=account)
+            for transaction in transactions:
+                if transaction_helper.is_loan_transaction(transaction.loan_tr_type):
+                    skipped_count += 1
+                    skipped_ids.append(str(transaction.id))
+                    continue
+                manager_helper.log_activity(request, 'DELETE', 'Transaction', transaction.id, f'Transaction deleted: {transaction.remarks} ({transaction.amount} {transaction.tr_type}) for {transaction.shop.short_name}', transaction.shop)
+                transaction.delete()
+                deleted_count += 1
+
+        if deleted_count == 0 and skipped_count > 0:
+            return JsonResponse({'success': False, 'message': 'Selected transactions are linked to loans and cannot be deleted here. Delete them from the Loan Transactions page instead.'}, status=400)
+
+        message = f'Successfully deleted {deleted_count} transaction(s)'
+        if skipped_count:
+            message += f'. {skipped_count} transaction(s) were skipped because they are loan-linked.'
+
+        logger.info(f"Deleted {deleted_count} transactions for account {account.id} by user {request.user.username}. Skipped {skipped_count} loan-linked transaction(s).")
+        return JsonResponse({'success': True, 'message': message})
+
+    except Exception as e:
+        logger.error(f"Error deleting transactions: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@login_required
+@admin_required
 def balance_sheet(request):
     """Display group balance sheet summary for selected financial year"""
     fy = request.GET.get('fy')
@@ -2809,7 +2865,7 @@ def balance_sheet(request):
 
 @login_required
 @admin_required
-def type_balance_sheet(request, pk):
+def balance_sheet_shop(request, pk):
     shop = Shop.objects.get(pk=pk)
     fy = request.GET.get('fy')
     if fy is None:
@@ -2866,7 +2922,9 @@ def type_balance_sheet(request, pk):
             'types':             type_entries,
         })
     cash_in_hand = transaction_helper.get_opening_balance(shop)
-    return render(request, 'manager/summary_types.html', {
+    ledgers = Ledger.objects.filter(shop=shop).order_by('name')
+    balance = transaction_helper.get_balance(shop)  # Calculate balance from transactions for accuracy
+    return render(request, 'manager/balance_sheet_shop.html', {
         'nav_title':      'Shops',
         'fy':             fy,
         'shop':           shop,
@@ -2875,6 +2933,8 @@ def type_balance_sheet(request, pk):
         'is_super_admin': request.user.is_superuser,
         'is_admin':       is_admin(request.user),
         'cash_in_hand': cash_in_hand['closing_balance'],
+        'ledgers': ledgers,
+        'balance': balance,
     })
 
 @login_required
@@ -2978,6 +3038,9 @@ def close_pl_accounts(request, pk):
             messages.error(request, f"Unable to process request! due to: {e}")
             print(e)
             return redirect(f"{base_url}?fy={fy}")
+    
+    ledgers = Ledger.objects.filter(shop=shop).order_by('name')
+    balance = transaction_helper.get_balance(shop)  # Calculate balance from transactions for accuracy
     return render(request, 'manager/close_pl_accounts.html', {
         'nav_title': 'Shops',
         'fy': fy,
@@ -2992,6 +3055,8 @@ def close_pl_accounts(request, pk):
         'capital_accounts': capital_accounts,
         'capital_accounts_count': capital_accounts_count,
         'fy':fy,
+        'ledgers': ledgers,
+        'balance': balance,
     })
 
 @login_required
@@ -3003,7 +3068,19 @@ def account_balance_sheet(request, pk, type_pk):
     fy = request.GET.get('fy')
     if fy is None:
         fy = date_helper.get_current_fy_string()
-    
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update_type_info':
+            type_obj.e_name = request.POST.get('e_name', '').strip()
+            type_obj.t_name = request.POST.get('t_name', '').strip()
+            type_obj.save(update_fields=['e_name', 't_name'])
+            messages.success(request, 'Type details updated successfully.')
+            return redirect(f"{reverse('manager:type_balance_sheet', kwargs={'pk': shop.pk, 'type_pk': type_obj.pk})}?fy={fy}")
+
+        messages.error(request, 'Invalid request.')
+        return redirect(f"{reverse('manager:type_balance_sheet', kwargs={'pk': shop.pk, 'type_pk': type_obj.pk})}?fy={fy}")
+
     accounts = Accounts.objects.filter(acc_type=type_obj)
     account_balances = []
 
@@ -3019,7 +3096,8 @@ def account_balance_sheet(request, pk, type_pk):
             'net_balance': summary['net_balance'],
             'cur_balance': summary['cur_balance'],
         })
-    # print(type_balances)
+
+    overall_balance = sum((item['net_balance'] for item in account_balances), Decimal('0'))
 
     return render(request, 'manager/summary_account.html', {
         'nav_title': 'Shops',
@@ -3032,6 +3110,8 @@ def account_balance_sheet(request, pk, type_pk):
         'app_name': 'manager',
         'is_super_admin': request.user.is_superuser,
         'is_admin': is_admin(request.user),
+        'group_name': manager_helper.get_group(type_obj.group_order)[2],
+        'overall_balance': overall_balance,
     })
 
 @login_required

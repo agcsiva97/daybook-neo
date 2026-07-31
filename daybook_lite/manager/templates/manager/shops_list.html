@@ -37,7 +37,7 @@
           </thead>
           <tbody>
             {% for shop in shops %}
-            <tr onclick="window.location.href='{% url 'manager:shop_info' pk=shop.id %}'" style="cursor:pointer;">
+            <tr onclick="window.location.href='{% url 'manager:shop_balance_sheet' pk=shop.id %}'" style="cursor:pointer;">
               <td>{{ shop.name }}</td>
               <td>{{ shop.short_name }}</td>
               <td>
@@ -69,7 +69,7 @@
           {% for shop in shops %}
           <!-- Adding a double-click redirect just like you asked previously! -->
           <div class="list-group-item px-0 py-3" 
-              onclick="window.location.href='{% url 'manager:shop_info' pk=shop.id %}'" 
+              onclick="window.location.href='{% url 'manager:shop_balance_sheet' pk=shop.id %}'" 
               style="cursor: pointer;">
               
             <div class="d-flex justify-content-between align-items-center">

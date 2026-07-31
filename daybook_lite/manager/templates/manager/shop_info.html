@@ -19,13 +19,11 @@
           <span>More Options</span>
         </button>
         <ul class="dropdown-menu">
-          {% if is_admin %}
           <li>
             <a href="{% url 'manager:edit_shop' shop.pk %}" class="dropdown-item">
               <i class="fa-solid fa-pencil primary-color"></i> <span class="">Edit</span>
             </a>
           </li>
-          {% endif %}
           {% if is_super_admin %}
           <li>
             <a href="{% url 'manager:delete_shop' shop.pk %}" class="dropdown-item">
@@ -33,16 +31,6 @@
             </a>
           </li>
           {% endif %}
-          <li>
-            <a href="{% url 'manager:shop_balance_sheet' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-file-invoice-dollar  primary-color"></i> <span class="">Types Summary</span>
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'manager:shop_meta' shop.pk %}" class="dropdown-item">
-              <i class="fa-solid fa-sitemap primary-color"></i> <span class="">Shop Meta</span>
-            </a>
-          </li>
           <li>
             <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="dropdown-item">
               <i class="fa-solid fa-arrows-rotate primary-color"></i> <span class="">Sync Accounts Types</span>
@@ -122,18 +110,27 @@
     </div>
   </div>
 
-  <div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Accounts</h5>
-      <div class="d-flex gap-2 align-items-center">
-        <input type="text" id="accountSearch" class="form-control form-control-sm" 
-              placeholder="Search by name, type, group..." style="width: 220px;">
+  {% include "manager/shop_nav_tabs.html" with shop=shop active_tab="accounts" %}
+
+  <!-- Card sits flush under the tabs, no header row of its own for "Accounts" title -->
+  <div class="card shop-tab-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <select id="accountTypeFilter" class="form-select form-select-sm" style="width: 160px;">
+            <option value="">All Types</option>
+          </select>
+          <select id="accountGroupFilter" class="form-select form-select-sm" style="width: 160px;">
+            <option value="">All Groups</option>
+          </select>
+          <input type="text" id="accountSearch" class="form-control form-control-sm"
+                placeholder="Search by name, type, group..." style="width: 220px;">
+        </div>
         <a href="{% url 'manager:add-account' shop.pk %}" class="btn btn-sm btn-primary">
           <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Account</span>
         </a>
       </div>
-    </div>
-    <div class="card-body">
+
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
@@ -248,60 +245,71 @@
   </div>
 </div>
 
-<style>
-  /* Nested dropdown styling */
-  .dropend .dropdown-menu {
-    position: absolute;
-    left: 100%;
-    top: 0;
-    margin-left: 0.125rem;
-  }
-
-  .dropend > .dropdown-toggle::after {
-    content: '';
-    display: inline-block;
-    margin-left: 0.5rem;
-    vertical-align: 0.255em;
-    border-left: 0.25em solid;
-    border-right: 0;
-    border-top: 0.25em solid transparent;
-    border-bottom: 0.25em solid transparent;
-  }
-
-  /* Show dropdown on hover for desktop, on click for mobile */
-  @media (hover: hover) {
-    .dropend:hover > .dropdown-menu {
-      display: block;
-    }
-  }
-
-  .dropdown-menu.show {
-    display: block;
-  }
-
-  .dropend > .dropdown-toggle[aria-expanded="true"] ~ .dropdown-menu {
-    display: block;
-  }
-</style>
-
 <script>
-    document.getElementById('accountSearch').addEventListener('input', function () {
-    const query = this.value.toLowerCase().trim();
-    const rows = document.querySelectorAll('.table tbody tr');
+  const searchInput = document.getElementById('accountSearch');
+  const typeFilter = document.getElementById('accountTypeFilter');
+  const groupFilter = document.getElementById('accountGroupFilter');
+  const rows = Array.from(document.querySelectorAll('.table tbody tr'))
+    .filter(row => !row.querySelector('td[colspan]')); // exclude "No Accounts found" row
+
+  // Populate filter dropdowns from the table's own data (columns: 0=Tamil,1=Eng,2=Type,3=Group)
+  function populateFilterOptions() {
+    const types = new Set();
+    const groups = new Set();
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const typeText = cells[2]?.innerText.trim();
+      const groupText = cells[3]?.innerText.trim();
+      if (typeText) types.add(typeText);
+      if (groupText) groups.add(groupText);
+    });
+
+    [...types].sort().forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      typeFilter.appendChild(opt);
+    });
+
+    [...groups].sort().forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = g;
+      groupFilter.appendChild(opt);
+    });
+  }
+
+  function applyFilters() {
+    const query = searchInput.value.toLowerCase().trim();
+    const selectedType = typeFilter.value;
+    const selectedGroup = groupFilter.value;
     let visibleCount = 0;
 
     rows.forEach(row => {
-      // Skip the "No Accounts found" empty row
-      if (row.querySelector('td[colspan]')) return;
-
+      const cells = row.querySelectorAll('td');
+      const typeText = cells[2]?.innerText.trim();
+      const groupText = cells[3]?.innerText.trim();
       const text = row.innerText.toLowerCase();
-      const match = text.includes(query);
+
+      const matchesSearch = !query || text.includes(query);
+      const matchesType = !selectedType || typeText === selectedType;
+      const matchesGroup = !selectedGroup || groupText === selectedGroup;
+
+      const match = matchesSearch && matchesType && matchesGroup;
       row.style.display = match ? '' : 'none';
       if (match) visibleCount++;
     });
 
-    document.getElementById('noAccountResults').classList.toggle('d-none', visibleCount > 0 || !query);
-  });
+    document.getElementById('noAccountResults').classList.toggle(
+      'd-none', visibleCount > 0 || (!query && !selectedType && !selectedGroup)
+    );
+  }
+
+  populateFilterOptions();
+  searchInput.addEventListener('input', applyFilters);
+  typeFilter.addEventListener('change', applyFilters);
+  groupFilter.addEventListener('change', applyFilters);
 </script>
 
 {% endblock %}

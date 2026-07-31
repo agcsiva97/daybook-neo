@@ -183,7 +183,7 @@
         <tr>
           <td>
             {% if shop_filter and shop %}
-              {{ shop.name }} - {{ account.t_name }}
+              {{ shop.name }} {% if account %} - {{ account.t_name }} {% endif %}
             {% else %}
               Transactions Report
               {% endif %}
