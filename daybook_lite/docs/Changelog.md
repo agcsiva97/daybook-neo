@@ -1,6 +1,10 @@
 # Version History
 Version History keeps a record of every update made to Daybook — new features, bug fixes, and improvements — along with the date they were released. It helps you see what's changed since you last used the app, understand what a new update adds or fixes, and confirm you're running the latest version.
 
+## [2.3.1] - 2026-07-21
+- Fix offline files
+- Shop page UI chnages
+  
 ## [2.3.0] - 2026-07-21
 - New model added for UpdateCheck
 - App update check logic has been fixed.

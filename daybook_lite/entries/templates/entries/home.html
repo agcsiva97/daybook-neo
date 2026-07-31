@@ -57,7 +57,7 @@
         </div>
         <div class="ledger-cards">
           {% for item in shop_balances %}
-          <div class="ledger-card" {% if is_admin or is_super_admin %} onclick="window.location.href='{% url 'manager:shop_info' item.shop.pk %}'" {% endif %} style="cursor: pointer; position: relative;">
+          <div class="ledger-card" {% if is_admin or is_super_admin %} onclick="window.location.href='{% url 'manager:shop_balance_sheet' item.shop.pk %}'" {% endif %} style="cursor: pointer; position: relative;">
             <div class="d-flex justify-content-between align-items-start">
               <div class="ledger-card-ledgername hanuman-600">{{ item.shop.short_name }}</div>
               {% if is_admin %}

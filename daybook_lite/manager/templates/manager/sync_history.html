@@ -36,7 +36,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for event in sync_events %}
+            {% for event in page_obj %}
             <tr onclick="window.location='{% if event.type == 'Export' %}{% url 'manager:export_details' event.id %}{% elif event.type == 'Import' %}{% url 'manager:import_details' event.id %}{% endif %}'" style="cursor:pointer;">
               <td>
                 <span class="badge {{ event.badge_class }}">
@@ -66,9 +66,47 @@
           </tbody>
         </table>
       </div>
-      {% if sync_events %}
+      {% if page_obj.has_other_pages %}
+      <nav aria-label="Sync history pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled">
+            <span class="page-link">Previous</span>
+          </li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active" aria-current="page">
+              <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled">
+            <span class="page-link">Next</span>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {% if page_obj %}
       <p class="text-muted small mt-2">
-        <i class="fa-solid fa-info-circle"></i> Total Events: <strong>{{ total_events }}</strong>
+        <i class="fa-solid fa-info-circle"></i> Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of <strong>{{ total_events }}</strong> events
       </p>
       {% endif %}
     </div>

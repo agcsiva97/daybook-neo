@@ -3,30 +3,136 @@
 {% block content %}
 
 <div class="container mt-4">
-  <div class="no-print">
-    <div class="d-flex justify-content-between align-items-center">
-      <div class="input-group" style="width: 150px;">
-        <button class="btn btn-primary" onclick="changeYear(-1)">-</button>
-        <input type="text" id="year" class="form-control text-center" readonly>
-        <button class="btn btn-primary" onclick="changeYear(1)">+</button>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-start">      
+      <!-- LEFT SIDE -->
+      <div class="account-title-wrap">
+        <h4 class="mb-0 account-title-text">
+          <i class="fa-solid fa-shop"></i> {{ shop.name }}
+        </h4>
+      </div>
+      <!-- RIGHT SIDE (buttons) -->
+      <div class="d-flex gap-2">
+        <a href="{% url 'manager:shops_list' %}" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Shops List</span>
+        </a>
+        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+          <span>More Options</span>
+        </button>
+        <ul class="dropdown-menu">
+          <li>
+            <a href="{% url 'manager:edit_shop' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-pencil primary-color"></i> <span class="">Edit</span>
+            </a>
+          </li>
+          {% if is_super_admin %}
+          <li>
+            <a href="{% url 'manager:delete_shop' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-trash primary-color"></i> <span class="">Delete</span>
+            </a>
+          </li>
+          {% endif %}
+          <li>
+            <a href="{% url 'manager:shop_sync_grp_typ' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-arrows-rotate primary-color"></i> <span class="">Sync Accounts Types</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'manager:close-pl-accounts' shop.pk %}" class="dropdown-item">
+              <i class="fa-solid fa-calendar-xmark primary-color"></i>
+              <span class="">Close PL Accounts</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          {% if ledgers %}
+            {% for ledger in ledgers %}
+              <h5 style="text-align: left;">{{ledger.license_number}}</h5>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <div class="col-md-6">
+          <center><h6>{{shop.god|default:"-"}}</h6></center>
+          <center><h3>{{shop.name}}</h3></center>
+          <center><h5>
+          {% if shop.d_no %}{{shop.d_no}}, {% endif %}
+          {% if shop.addressline1 %}{{shop.addressline1}}, {% endif %}
+          {% if shop.addressline2 %}{{shop.addressline2}},{% endif %}
+          {% if shop.place %}{{shop.place}} - {{shop.pincode}}{% endif %}
+          </h5></center>
+        </div>
+        <div class="col-md-3">
+
+          <h5 style="text-align: right;">{{shop.proprietor}}</h5>
+          <h5 style="text-align: right;">{{shop.pan|default:"-"}}</h5>
+        </div>
+      </div>
+      <div>
+          <h5>Balance</h5>
+          <p class="display-6 text-primary">{{ balance|indian_format }}</p>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <h5 class="mb-0">Linked Ledgers</h5>
+            {% if is_admin %}
+            <a href="{% url 'manager:add_shop_ledger' shop.pk %}" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-plus"></i> <span class="d-none d-md-inline">Add Ledger</span>
+            </a>
+            {% endif %}
+          </div>
+          {% if ledgers %}
+          <ul class="list-group mt-3">
+            {% for ledger in ledgers %}
+            <li class="list-group-item d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="window.location.href='{% url 'manager:ledger_info' ledger.pk %}'">
+              <a href="{% url 'manager:ledger_info' ledger.pk %}">{{ ledger.name }}</a>
+              <div class="d-flex gap-2">
+                {% if is_admin %}
+                <a href="{% url 'manager:edit_ledger' ledger.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Ledger">
+                  <i class="fa-solid fa-pencil"></i>
+                </a>
+                <a href="{% url 'manager:delete_ledger' ledger.pk %}" class="btn btn-sm btn-outline-danger" title="Delete Ledger">
+                  <i class="fa-solid fa-trash"></i>
+                </a>
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted mt-2">No ledgers linked to this shop.</p>
+          {% endif %}
+          <div class="mt-3">
+            <h5 class="mb-0">Last Export: <span style="font-weight: 400; color:black;"> {{ shop.last_transaction_exported_at }} </span> </h5> 
+            <h5 class="mb-0 mt-1">Last Import: <span style="font-weight: 400; color:black;"> {{ shop.last_transaction_imported_at }} </span> </h5>
+          </div>
       </div>
     </div>
   </div>
 
-  <div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-start">
-      <div>
-        <h4 class="mb-0">
-          <i class="fa-solid fa-wallet"></i> Types Summary of {{ shop.name }} for FY{{ fy }}
-        </h4>
-      </div>
-      <div class="d-flex gap-2">
+  {% include "manager/shop_nav_tabs.html" with shop=shop active_tab="balance_sheet" %}
+
+  <div class="card shop-tab-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 no-print">
+        <!-- FY switcher -->
+        <div class="input-group input-group-sm" style="width: 130px;">
+          <button class="btn btn-outline-secondary" type="button" onclick="changeYear(-1)" aria-label="Previous financial year">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <input type="text" id="year" class="form-control text-center" readonly>
+          <button class="btn btn-outline-secondary" type="button" onclick="changeYear(1)" aria-label="Next financial year">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+
         <!-- Reports Dropdown -->
         <div class="btn-group" role="group">
           <button type="button" class="btn btn-sm btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fa-solid fa-chart-bar"></i> <span class="d-none d-md-inline">Reports</span>
           </button>
-          <ul class="dropdown-menu">
+          <ul class="dropdown-menu dropdown-menu-end">
             <!-- Trial Balance -->
             <li class="dropend">
               <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropend" role="button">
@@ -84,14 +190,7 @@
             </li>
           </ul>
         </div>
-        <a href="{% url 'manager:shop_info' shop.pk %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i>
-          <span class="d-none d-md-inline">Back to {{ shop.name }}</span>
-        </a>
       </div>
-    </div>
-
-    <div class="card-body">
 
       {% if grouped_list %}
         <div class="mb-4">

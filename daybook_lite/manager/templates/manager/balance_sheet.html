@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% load indian_format %}
 
 {% block content %}
@@ -167,70 +168,114 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script defer src="{% static 'js/apexcharts.min.js' %}"></script>
 <script>
   const NETWORTH_URL = '{% url "api:networth_chart_data" %}';
+  const chartContainer = document.getElementById('networthChart');
 
-  const networthOptions = {
-    chart: {
-      type: 'area',
-      height: 320,
-      toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
-      zoom: { enabled: true },
-    },
-    series: [],
-    xaxis: {
-      type: 'category',
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    yaxis: {
-      forceNiceScale: true,
-      labels: {
-        formatter: (val) => '₹' + Math.floor(val).toLocaleString('en-IN'),
+  function ensureLoader() {
+    if (document.getElementById('networthLoader')) return;
+    chartContainer.insertAdjacentHTML(
+      'beforebegin',
+      '<div id="networthLoader" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2 small">Loading chart data…</p></div>'
+    );
+    chartContainer.style.display = 'none';
+  }
+
+  function buildChart() {
+    if (!window.ApexCharts) return false;
+
+    const networthOptions = {
+      chart: {
+        type: 'area',
+        height: 320,
+        toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
+        zoom: { enabled: true },
       },
-    },
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 2.5 },
-    markers: { size: 4, hover: { size: 7 } },
-    fill: {
-      type: 'gradient',
-      gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 100] },
-    },
-    colors: ['#0d6efd'],
-    legend: { position: 'top', horizontalAlign: 'left' },
-    tooltip: {
-      shared: true,
-      intersect: false,
-      y: { formatter: (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
-    },
-    grid: { borderColor: 'rgba(0,0,0,0.05)', xaxis: { lines: { show: false } } },
-    noData: { text: 'Loading chart data…' },
-  };
+      series: [],
+      xaxis: {
+        type: 'category',
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        forceNiceScale: true,
+        labels: {
+          formatter: (val) => '₹' + Math.floor(val).toLocaleString('en-IN'),
+        },
+      },
+      dataLabels: { enabled: false },
+      stroke: { curve: 'smooth', width: 2.5 },
+      markers: { size: 4, hover: { size: 7 } },
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 100] },
+      },
+      colors: ['#0d6efd'],
+      legend: { position: 'top', horizontalAlign: 'left' },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: { formatter: (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+      },
+      grid: { borderColor: 'rgba(0,0,0,0.05)', xaxis: { lines: { show: false } } },
+      noData: { text: 'Loading chart data…' },
+    };
 
-  const networthChart = new ApexCharts(document.getElementById('networthChart'), networthOptions);
-  networthChart.render();
+    ensureLoader();
+    const networthChart = new window.ApexCharts(chartContainer, networthOptions);
+    networthChart.render();
 
-// Add loader element inside card body before chart div
-document.getElementById('networthChart').insertAdjacentHTML(
-    'beforebegin',
-    '<div id="networthLoader" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2 small">Loading chart data…</p></div>'
-);
-document.getElementById('networthChart').style.display = 'none';
+    return networthChart;
+  }
 
-fetch(NETWORTH_URL)
-    .then(r => r.json())
-    .then(data => {
-        networthChart.updateOptions({ xaxis: { categories: data.labels } });
-        networthChart.updateSeries(data.series);
-        document.getElementById('networthLoader').remove();
-        document.getElementById('networthChart').style.display = '';
-    })
-    .catch(() => {
-        networthChart.updateOptions({ noData: { text: 'Failed to load chart data.' } });
-        document.getElementById('networthLoader').remove();
-        document.getElementById('networthChart').style.display = '';
-    });
+  function loadNetworthData(chartInstance) {
+    fetch(NETWORTH_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(r => r.json())
+      .then(data => {
+        chartInstance.updateOptions({ xaxis: { categories: data.labels } });
+        chartInstance.updateSeries(data.series);
+        const loader = document.getElementById('networthLoader');
+        if (loader) loader.remove();
+        chartContainer.style.display = '';
+      })
+      .catch(() => {
+        chartInstance.updateOptions({ noData: { text: 'Failed to load chart data.' } });
+        const loader = document.getElementById('networthLoader');
+        if (loader) loader.remove();
+        chartContainer.style.display = '';
+      });
+  }
+
+  function startNetworthChart() {
+    ensureLoader();
+    const start = () => {
+      const chartInstance = buildChart();
+      if (chartInstance) {
+        loadNetworthData(chartInstance);
+      }
+    };
+
+    if (window.ApexCharts) {
+      start();
+      return;
+    }
+
+    const check = window.setInterval(() => {
+      if (window.ApexCharts) {
+        window.clearInterval(check);
+        start();
+      }
+    }, 100);
+
+    window.setTimeout(() => window.clearInterval(check), 5000);
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(() => startNetworthChart());
+  } else {
+    window.setTimeout(startNetworthChart, 250);
+  }
 
   // ── Year navigation ──
   const yearInput = document.getElementById("year");

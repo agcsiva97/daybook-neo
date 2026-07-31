@@ -37,7 +37,7 @@
           </thead>
           <tbody>
             {% for shop in shops %}
-            <tr onclick="window.location.href='{% url 'manager:shop_info' pk=shop.id %}'" style="cursor:pointer;">
+            <tr onclick="window.location.href='{% url 'manager:shop_balance_sheet' pk=shop.id %}'" style="cursor:pointer;">
               <td>{{ shop.name }}</td>
               <td>{{ shop.short_name }}</td>
               <td>
