@@ -91,9 +91,9 @@
         <a href="{% url 'manager:delete_account' account.pk %}" class="btn btn-sm btn-outline-danger">
           <i class="fa-solid fa-trash"></i> <span class="d-none d-md-inline">Delete</span>
         </a>
-        <a href="{% url 'manager:shop_info' account.shop.id %}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ account.shop.name }}</span>
-        </a>
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back</span>
+        </button>
       </div>
     </div>
 

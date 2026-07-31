@@ -16,9 +16,9 @@
         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTypeInfoModal">
           <i class="fa-solid fa-pencil"></i> <span class="d-none d-md-inline">Edit Type Info</span>
         </button>
-        <a href="{% url 'manager:shop_balance_sheet' shop.pk %}?fy={{ fy }}" class="btn btn-sm btn-secondary">
-          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back to {{ shop.short_name }} Types Summary</span>
-        </a>
+        <button class="btn btn-sm btn-secondary" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Back</span>
+        </button>
       </div>
     </div>
 
