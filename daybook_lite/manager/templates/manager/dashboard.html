@@ -198,11 +198,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Row 5: Net Worth Trend -->
+  <div class="row g-3 mb-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h6 class="mb-0"><i class="fa-solid fa-chart-line me-2" style="color:var(--daybook-primary)"></i>Net Worth Trend</h6>
+        </div>
+        <div class="card-body pt-2">
+          <div id="networthChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <script defer src="{% static 'js/apexcharts.min.js' %}"></script>
 <script>
   const CHART_DATA_URL = '{% url "api:dashboard_chart_data" %}';
   const PIE_DATA_URL   = '{% url "api:transaction_pie_data" %}';
+  const NETWORTH_URL  = '{% url "api:networth_chart_data" %}';
 
   // Helper function to get local date string in YYYY-MM-DD format
   function getLocalDateString(date) {
@@ -267,7 +282,67 @@
   let principalChart = null;
   let interestChart = null;
   let gaugeChart = null;
+  let networthChart = null;
   let chartsInitialized = false;
+
+  function initNetworthChart() {
+    if (!window.ApexCharts || networthChart) return;
+
+    const networthOptions = {
+      chart: {
+        type: 'area',
+        height: 320,
+        toolbar: { show: true, tools: { zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, download: true } },
+        zoom: { enabled: true },
+      },
+      series: [],
+      xaxis: {
+        type: 'category',
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        forceNiceScale: true,
+        labels: {
+          formatter: (val) => '₹' + Math.floor(val).toLocaleString('en-IN'),
+        },
+      },
+      dataLabels: { enabled: false },
+      stroke: { curve: 'smooth', width: 2.5 },
+      markers: { size: 4, hover: { size: 7 } },
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 100] },
+      },
+      colors: ['#0d6efd'],
+      legend: { position: 'top', horizontalAlign: 'left' },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: { formatter: (val) => '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+      },
+      grid: { borderColor: 'rgba(0,0,0,0.05)', xaxis: { lines: { show: false } } },
+      noData: { text: 'Loading chart data…' },
+    };
+
+    networthChart = new window.ApexCharts(document.getElementById('networthChart'), networthOptions);
+    networthChart.render();
+  }
+
+  function loadNetworthData() {
+    if (!networthChart) return;
+
+    fetch(NETWORTH_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+      .then((r) => { if (!r.ok) throw new Error('Network error'); return r.json(); })
+      .then((data) => {
+        networthChart.updateOptions({ xaxis: { categories: data.labels } });
+        networthChart.updateSeries(data.series);
+      })
+      .catch((err) => {
+        console.error('Net worth chart error:', err);
+        networthChart.updateOptions({ noData: { text: 'Failed to load chart data.' } });
+      });
+  }
 
   // ── Pie chart config ──
   function pieOptions(noDataText, chartId) {
@@ -345,6 +420,9 @@
 
     gaugeChart = new window.ApexCharts(document.getElementById('loanGaugeChart'), gaugeOptions);
     gaugeChart.render();
+
+    initNetworthChart();
+    loadNetworthData();
 
     chartsInitialized = true;
     return true;

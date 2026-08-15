@@ -250,11 +250,12 @@ def transaction_pie_data(request):
         if shop_id:
             qs = qs.filter(shop_id=shop_id)
 
-        qs = qs.values('acc__e_name').annotate(total=Sum('amount')).order_by('-total')
+        qs = qs.values('acc__t_name', 'acc__e_name').annotate(total=Sum('amount')).order_by('-total')
         labels = []
         values = []
         for item in qs:
-            label = item['acc__e_name'].strip() if item['acc__e_name'] and item['acc__e_name'].strip() else 'No Account'
+            raw_name = item.get('acc__t_name') or item.get('acc__e_name') or ''
+            label = raw_name.strip() if raw_name and raw_name.strip() else 'No Account'
             labels.append(label)
             values.append(float(item['total']))
         return labels, values
