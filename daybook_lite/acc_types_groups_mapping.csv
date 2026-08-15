@@ -1,10 +1,22 @@
-5,கடவுள்கணக்கு,God Account
-2,ஆதாயகணக்கு,
-3,அடகுகணக்கு,
-4,வங்கிலோன்,
-3,வங்கிகணக்கு,
-1,முதலீடு கணக்கு,
-0,நம் கடை,
-5,பலபேர்,
-5,நம்கணக்கு,
-5,பிறர் கடன்,
+1, முதலீடு, Capital
+2, ஆதாய வரவு, Income
+2, ஆதாயப் பற்று, Expense
+2, ஆதாயப் பற்று.வரவு, Loan Interest
+3, அடகு கணக்கு,Loan Account
+3, உயிர் காப்பீடு, Life Insurance
+3, சேமிப்பு சீட்டு, Chit Fund
+3, நிலை வைப்பு, Fixed Deposit
+3, பொது நல நிதி, Public Provident Fund
+3, பணியாளர் நல நிதி, Employee Provident Fund
+3, செல்வமகள் சேமிப்பு திட்டம், Sukanya Samriti Yojana
+3, பங்கு, Stock
+3, பங்கு நிதி, Mutual Fund
+3, சேமி வங்கி, Savings Account
+3, இதர வங்கி திட்டம்,Other Bank Schemes
+3, இதர முதலீடு,Other Investments
+3, பிற-முத நகை, Auction Gold
+4, கடன் நகை, Jewel Loan
+4, இதர வங்கி கடன், Other Bank Loans
+5, கடன் நபர், Individual Debt
+5, கைமாற்று, Transfers
+5, அடகு முன்.வரவு, Part Payment

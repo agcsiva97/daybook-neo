@@ -2921,7 +2921,8 @@ def balance_sheet_shop(request, pk):
             'group_order':       group[0],
             'types':             type_entries,
         })
-    cash_in_hand = transaction_helper.get_opening_balance(shop)
+    _, fy_end_date = date_helper.get_fy_dates(fy)
+    cash_in_hand = transaction_helper.get_opening_balance(shop, fy_end_date.date())
     ledgers = Ledger.objects.filter(shop=shop).order_by('name')
     balance = transaction_helper.get_balance(shop)  # Calculate balance from transactions for accuracy
     return render(request, 'manager/balance_sheet_shop.html', {

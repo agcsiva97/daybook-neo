@@ -1144,9 +1144,22 @@ def report(request):
     shop_id = request.GET.get('shop')
     all_configs = Configuration.objects.all()
     
-    # Use today's date if no date specified
+    # Use latest transaction date for the default shop if no date specified
     if not report_date:
-        report_date = timezone.localdate()
+        default_shop_cfg = Configuration.objects.filter(key=Configuration.Key.DEFAULT_SHOP).first()
+
+        latest_transaction = None
+        if default_shop_cfg and default_shop_cfg.value:
+            default_shop_for_date = Shop.objects.filter(short_name=default_shop_cfg.value).first()
+            if default_shop_for_date:
+                latest_transaction = Transactions.objects.filter(
+                    shop=default_shop_for_date
+                ).order_by('-transaction_dt').first()
+
+        if latest_transaction:
+            report_date = timezone.localtime(latest_transaction.transaction_dt).date()
+        else:
+            report_date = timezone.localdate()
     else:
         # Convert string date to date object for template rendering
         try:
