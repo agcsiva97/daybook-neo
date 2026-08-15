@@ -89,8 +89,6 @@
               <tr>
                 <th scope="col">Account Name</th>
                 <th scope="col" class="text-end">Opening Balance</th>
-                {% comment %} <th scope="col" class="text-end">Debits</th>
-                <th scope="col" class="text-end">Credits</th> {% endcomment %}
                 <th scope="col" class="text-end">Current Balance</th>
                 <th scope="col" class="text-end">Net Balance</th>
               </tr>
@@ -130,17 +128,6 @@
                     </span>
                   {% endif %}
                 </td>
-                {% comment %} <td class="text-end">₹{{ item.debits }}</td>
-                <td class="text-end">₹{{ item.credits }}</td>
-                <td class="text-end">
-                  {% if item.closing >= 0 %}
-                    <span class="text-success"><strong>₹{{ item.closing }}CR</strong></span>
-                  {% else %}
-                    <span class="text-danger">
-                        <strong>₹{{ item.closing|stringformat:".2f"|cut:"-" }}DB</strong>
-                    </span>
-                  {% endif %}
-                </td> {% endcomment %}
               </tr>
               {% endfor %}
             </tbody>
