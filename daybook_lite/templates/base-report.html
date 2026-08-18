@@ -7,8 +7,13 @@
   <title>{% block title %}Daybook neo | Reporting{% endblock %}</title>
   <link href="{% static 'css/bootstrap.css' %}" rel="stylesheet">
   <link href="{% static 'css/all.min.css' %}" rel="stylesheet">
-  <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
-  <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
+
+  <link rel="icon" href="{% static 'img/daybook-logo-dark.png' %}" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="{% static 'img/daybook-logo-white.png' %}" media="(prefers-color-scheme: dark)"> 
+  <link rel="apple-touch-icon" media="(prefers-color-scheme: light)" href="{% static 'img/daybook-logo-dark.png' %}">
+  <link rel="apple-touch-icon" media="(prefers-color-scheme: dark)" href="{% static 'img/daybook-logo-white.png' %}">
+  <link rel="mask-icon" href="{% static 'img/daybook-logo-mono.svg' %}" color="#4A7766">
+  
   <link rel="stylesheet" href="{% static 'css/daybook-theme.css' %}?v=20260218001">
   <style>
     /* ── Report-specific overrides ── */

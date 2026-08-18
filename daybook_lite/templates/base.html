@@ -26,8 +26,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Daybook">
-    <link rel="apple-touch-icon" href="{% static 'img/daybook-logo.png' %}">
-    <link rel="icon" type="image/png" href="{% static 'img/daybook-logo.png' %}">
+    
+    <link rel="icon" href="{% static 'img/daybook-logo-dark.png' %}" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="{% static 'img/daybook-logo-white.png' %}" media="(prefers-color-scheme: dark)"> 
+    <link rel="apple-touch-icon" media="(prefers-color-scheme: light)" href="{% static 'img/daybook-logo-dark.png' %}">
+    <link rel="apple-touch-icon" media="(prefers-color-scheme: dark)" href="{% static 'img/daybook-logo-white.png' %}">
+    <link rel="mask-icon" href="{% static 'img/daybook-logo-mono.svg' %}" color="#4A7766">
 
     <!-- Theme color for Android -->
     <meta name="theme-color" content="#4A7766">
@@ -80,6 +84,16 @@
       .htmx-request.htmx-indicator {
         display: table-row !important;
       }
+      .page-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(255,255,255,0.6);
+  align-items: center;
+  justify-content: center;
+}
+.page-loader.active { display: flex; }
     </style>
   </head>
   <body>
@@ -118,6 +132,10 @@
         {% endif %}
       </div>
     </nav>
+    <!-- base.html, once -->
+    <div id="global-loader" class="page-loader">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
         <main>
             {% block content %}{% endblock %}
         </main>
@@ -288,6 +306,38 @@
           return cookieValue;
         }
       });
+
+      document.addEventListener('click', function (e) {
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+
+  // skip: new tab, download, hash-only, hx-* links, mailto/tel, modifier keys
+  if (
+    link.target === '_blank' ||
+    link.hasAttribute('download') ||
+    link.hasAttribute('hx-get') || link.hasAttribute('hx-post') ||
+    link.href.startsWith('mailto:') || link.href.startsWith('tel:') ||
+    link.href.includes('#') && link.pathname === window.location.pathname ||
+    e.metaKey || e.ctrlKey || e.shiftKey
+  ) return;
+
+  // same-origin check so external links aren't blocked oddly
+  if (link.origin !== window.location.origin) return;
+
+  if (link.dataset.loading) {
+    e.preventDefault(); // already clicked once, ignore repeat clicks
+    return;
+  }
+  link.dataset.loading = 'true';
+  document.getElementById('global-loader').classList.add('active');
+  // no need to remove — page is navigating away; browser unload handles cleanup
+});
+
+// safety net: if navigation gets cancelled (e.g. back button, bfcache restore)
+window.addEventListener('pageshow', function () {
+  document.getElementById('global-loader').classList.remove('active');
+  document.querySelectorAll('a[data-loading]').forEach(a => delete a.dataset.loading);
+});
     </script>
   </body>
 </html>
