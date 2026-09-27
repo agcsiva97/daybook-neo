@@ -12,7 +12,7 @@
       </a>
     </div>
   </div>
-  <br>
+  <br class="no-print">
   <div class="card no-print">
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -60,28 +60,26 @@
         <table class="table table-sm">
           <thead>
             <tr>
-              <th>Shop</th>
-              <th class="text-end">Opening Balance</th>
-              <th class="text-end">Day's Debit</th>
-              <th class="text-end">Day's Credit</th>
-              <th class="text-end">Expected Balance</th>
-              <th style="text-align:center;">
+              <th class="text-center">Opening Balance</th>
+              <th class="text-center">Day's Debit</th>
+              <th class="text-center">Day's Credit</th>
+              <th class="text-center">Expected Balance</th>
+              <th class="text-center">
                 Actual Balance 
                 <br><small>(From Denomination)</smaall>
               </th>
-              <th class="text-end">Balance</th>
+              <th class="text-center">Difference</th>
             </tr>
           </thead>
           <tbody>
             {% for summary in shop_summaries %}
             <tr>
-              <td><strong>{{ summary.shop.name }}</strong></td>
-              <td class="text-end">{{ summary.opening_balance|indian_format }}</td>
-              <td class="text-danger text-end">{{ summary.debit_total|indian_format }}</td>
-              <td class="text-success text-end">{{ summary.credit_total|indian_format }}</td>
-              <td class="text-end"><strong>{{ summary.closing_balance|indian_format }}</strong></td>
-              <td class="text-end"><strong>{{ summary.denomination_total|indian_format }}</strong></td>
-              <td class="text-end {% if summary.balance > 0 %} text-danger {% else %} text-success {% endif %}"><strong>{{ summary.balance|indian_format }}</strong></td>
+              <td class="amount text-center"><strong>{{ summary.opening_balance|indian_format }}</strong></td>
+              <td class="amount text-center text-danger"><strong>{{ summary.debit_total|indian_format }}</strong></td>
+              <td class="amount text-center text-success"><strong>{{ summary.credit_total|indian_format }}</strong></td>
+              <td class="amount text-center"><strong>{{ summary.closing_balance|indian_format }}</strong></td>
+              <td class="amount text-center"><strong>{{ summary.denomination_total|indian_format }}</strong></td>
+              <td class="amount text-center{% if summary.balance > 0 %} text-danger {% else %} text-success {% endif %}"><strong>{% if summary.balance > 0 %} - {%  endif %}{{ summary.balance|indian_format }}</strong></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -91,6 +89,7 @@
   </div>
   {% endif %}
 
+  {% if denomination_periods %}
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center print-header">
         <div>
@@ -99,7 +98,6 @@
         </div>
     </div>
     <div class="card-body">
-        {% if denomination_periods %}
         <div class="row g-3 mt-1">
             {% for period, data in denomination_periods %}
             <div class="col-12 col-md-6">
@@ -108,7 +106,7 @@
                     <table class="table table-sm denom-table mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th colspan="3">{{ data.time_period|title }}{% if data.shop_name %} — {{ data.shop_name }}{% endif %}</th>
+                                <th colspan="3">{{ data.time_period|title }}{% if data.shop_name %} — {{ data.shop_name }}{% endif %}{% if data.user %} - {{ data.user }}{% endif %}</th>
                             </tr>
                             <tr>
                                 <th>Denomination</th>
@@ -138,13 +136,9 @@
             </div>
             {% endfor %}
         </div>
-        {% else %}
-        <div class="text-center">
-            <span class="text-muted">No denominations for selected shops or date.</span>
-        </div>
-        {% endif %}
     </div>
 </div>
+{% endif %}
 
   <!-- Transactions Table -->
   <div class="card mt-3">
@@ -165,7 +159,6 @@
               <thead class="table-light">
                 <tr>
                   <th>Pawn No</th>
-                  <th>Shop</th>
                   <th class="text-end">Principal</th>
                   <th class="text-end">Interest</th>
                 </tr>
@@ -174,20 +167,19 @@
                 {% for loan in loan_entries %}
                 <tr>
                   <td>{{ loan.pawn_no }}</td>
-                  <td>{{ loan.shop.short_name|default:"-" }}</td>
                   <td class="text-end">{{ loan.principal|indian_format }}</td>
                   <td class="text-end">{{ loan.interest|indian_format }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="4" class="text-center text-muted">No loan entries for this date</td>
+                  <td colspan="3" class="text-center text-muted">No loan entries for this date</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if loan_entries %}
               <tfoot class="table-secondary">
                 <tr>
-                  <th colspan="2">Total:</th>
+                  <th>Total:</th>
                   <th class="text-end">{{ loan_totals.total_principal|indian_format }}</th>
                   <th class="text-end">{{ loan_totals.total_interest|indian_format }}</th>
                 </tr>
@@ -205,7 +197,6 @@
               <thead class="table-light">
                 <tr>
                   <th>Pawn No</th>
-                  <th>Shop</th>
                   <th class="text-end">Principal</th>
                   <th class="text-end">Interest</th>
                 </tr>
@@ -214,20 +205,19 @@
                 {% for release in release_entries %}
                 <tr>
                   <td>{{ release.pawn_no }}</td>
-                  <td>{{ release.shop.short_name|default:"-" }}</td>
                   <td class="text-end">{{ release.principal|indian_format }}</td>
                   <td class="text-end">{{ release.interest|indian_format }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="4" class="text-center text-muted">No release entries for this date</td>
+                  <td colspan="3" class="text-center text-muted">No release entries for this date</td>
                 </tr>
                 {% endfor %}
               </tbody>
               {% if release_entries %}
               <tfoot class="table-secondary">
                 <tr>
-                  <th colspan="2">Total:</th>
+                  <th>Total:</th>
                   <th class="text-end">{{ release_totals.total_principal|indian_format }}</th>
                   <th class="text-end">{{ release_totals.total_interest|indian_format }}</th>
                 </tr>
@@ -241,49 +231,45 @@
       <!-- Transactions Table -->
       <h6 class="mb-3">Other Transactions</h6>
       <div class="table-responsive">
-        <table class="table table-hover">
+        <table class="table table-hover txn-table">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Shop</th>
-              <th>Created By</th>
-              <th>Account Name</th>
-              <th>Remarks</th>
-              <th class="text-end">DEBIT</th>
-              <th class="text-end">CREDIT</th>
-              
+              <th class="no-print">Time</th>
+              <th class="no-print">Created By</th>
+              <th class="col-acc">Account Name</th>
+              <th class="col-rem">Remarks</th>
+              <th class="col-amt text-end">DEBIT</th>
+              <th class="col-amt text-end">CREDIT</th>
             </tr>
           </thead>
           <tbody>
             {% for transaction in transactions %}
             <tr>
-              <td>{{ transaction.created_at|time:"H:i:s" }}</td>
-              <td>{{ transaction.shop.short_name|default:"-" }}</td>
-              <td>{{ transaction.created_by.username }}</td>
-              <td>{{ transaction.acc.t_name|default:"-" }}</td>
-              <td>{{ transaction.remarks|default:"-" }}</td>
+              <td class="no-print">{{ transaction.created_at|time:"H:i:s" }}</td>
+              <td class="no-print">{{ transaction.created_by.username }}</td>
+              <td class="col-acc">{{ transaction.acc.t_name|default:"-" }}</td>
+              <td class="col-rem">{{ transaction.remarks|default:"-" }}</td>
               {% if transaction.tr_type == 'DEBIT' %}
-                <td class="text-danger text-end">{{ transaction.amount|indian_format }}</td>
-                <td class="text-end"></td>
+                <td class="col-amt text-danger text-end">{{ transaction.amount|indian_format }}</td>
+                <td class="col-amt text-end"></td>
               {% else %}
-                <td class="text-end"></td>
-                <td class="text-success text-end">{{ transaction.amount|indian_format }}</td>
+                <td class="col-amt text-end"></td>
+                <td class="col-amt text-success text-end">{{ transaction.amount|indian_format }}</td>
               {% endif %}
-              
             </tr>
             {% empty %}
             <tr>
-              <td colspan="7" class="text-center text-muted">No transactions found for this date</td>
+              <td colspan="6" class="text-center text-muted">No transactions found for this date</td>
             </tr>
             {% endfor %}
           </tbody>
           {% if transactions %}
           <tfoot class="table-secondary">
             <tr>
-              <th colspan="5" class="text-end">Total:</th>
-              <th class="text-danger text-end">{{ debit_total|indian_format }}</th>
-              <th class="text-success text-end">{{ credit_total|indian_format }}</th>
-              <th class="no-print"></th>
+              <th colspan="4" class="text-end d-print-none">Total:</th>
+              <th colspan="2" class="text-end d-none d-print-table-cell">Total:</th>
+              <th class="col-amt text-danger text-end">{{ debit_total|indian_format }}</th>
+              <th class="col-amt text-success text-end">{{ credit_total|indian_format }}</th>
             </tr>
           </tfoot>
           {% endif %}
@@ -302,19 +288,29 @@
   display: none;
 }
 
+{% autoescape off %}
 @page {
   size: {{ configs.D_REP_PAPER|default:"A5" }} {{ configs.D_REP_ORIENTATION|default:"portrait" }};
-  margin: 8mm;
-  zoom: 50%;
+  margin: 8mm 8mm 4mm 4mm;   /* extra top margin makes room for the header */
+
+  @top-left {
+    content: "{% for s in shop_summaries %}{{ s.shop.name|addslashes }}{% if not forloop.last %}, {% endif %}{% endfor %}  |  {{ report_date|date:'d M Y' }}";
+    font-size: 10px;
+    font-weight: bold;
+    vertical-align: bottom;
+    font-family: 'Google Sans';
+  font-style: normal;
+  }
 }
+{% endautoescape %}
 
 @media print {
   
    /* Scale down content to fit A5 */
     body {
-        zoom: 1;                    /* reduce to 75% */
+        zoom: .75;                    /* reduce to 75% */
         -webkit-text-size-adjust: none;
-        {% comment %} font-size: 10px !important; {% endcomment %}
+        font-size: 10px !important; 
     }
 
   * {
@@ -336,12 +332,21 @@
   .card {
     border: none !important;
     box-shadow: none !important;
-    page-break-inside: avoid;
+    /* page-break-inside: avoid; */
     margin-bottom: 5px !important;
   }
-  
-  .card:first-child {
-    page-break-after: avoid !important;
+
+  /* Consistent header-to-content gap on every page: the very first visible
+     card (whichever section that turns out to be) gets no top margin, since
+     the @page top margin already reserves room for the running header.
+     Any hidden .no-print card (e.g. the filter form) is excluded so it never
+     counts as "the card before" when deciding spacing. */
+  .card:not(.no-print) {
+    margin-top: 0 !important;
+  }
+
+  .card:not(.no-print) + .card:not(.no-print) {
+    margin-top: 8px !important;
   }
   
   .print-header {
@@ -350,7 +355,7 @@
   }
   
   .table {
-    font-size: 12px !important;
+    font-size: 11px !important;
     margin-bottom: 5px !important;
   }
   
@@ -413,7 +418,6 @@
   .row {
     display: flex !important;
     flex-wrap: nowrap !important;
-    page-break-inside: avoid !important;
     margin: 0 !important;
   }
   
@@ -456,7 +460,7 @@
     .denom-table {
         width: 100% !important;
         table-layout: fixed !important;
-        font-size: 10px !important;    /* smaller font for print */
+        font-size: 11px !important;    /* matches all other report tables */
         word-break: break-word !important;
     }
 
@@ -470,6 +474,48 @@
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
+
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    thead {
+      display: table-header-group; /* repeat header on each page */
+    }
+
+    tfoot {
+      display: table-row-group;    /* totals appear only once, at the end */
+    }
+
+    .table-responsive {
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+.txn-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 11px !important;
+}
+
+.txn-table th,
+.txn-table td {
+  padding: 2px 4px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  vertical-align: top;
+}
+
+/* Widths sum to 100% (Time and Created By are hidden) */
+.txn-table .col-acc { width: 32% !important; }
+.txn-table .col-rem { width: 38% !important; }
+.txn-table .col-amt {
+  width: 15% !important;
+  white-space: nowrap !important;   /* amounts never wrap or get squeezed */
+}
 }
 </style>
 {% endblock %}

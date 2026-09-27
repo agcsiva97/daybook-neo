@@ -1,6 +1,43 @@
 {% extends "base.html" %}
 {% load static %}
 {% block content %}
+<style>
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    margin-right: 5px;
+  }
+  .form-actions .btn,
+  .form-actions .cust-button {
+    flex: 0 0 auto !important;
+    width: 110px !important;
+    height: 38px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+  .row-total {
+    padding: 0.375rem 0;
+    text-align: right;
+  }
+  .totals-row {
+    border-top: 1px solid #dee2e6;
+    padding-top: 8px;
+    margin-top: 4px;
+  }
+  .totals-row .col-auto {
+    min-width: 46px;
+  }
+</style>
 <div class="container">
   <div class="row" id="loanRow">
     <div class="col-md-9">
@@ -63,6 +100,10 @@
             <label class="form-label">Interest</label>
             <input type="number" name="interest[]" class="form-control" step="0.01" placeholder="0.00" required>
           </div>
+          <div class="col">
+            <label class="form-label">Total</label>
+            <div class="row-total fw-bold">₹ 0.00</div>
+          </div>
           <div class="col-auto">
               <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn" onclick="removeRow(this)" disabled>
                 <i class="fa-solid fa-times"></i>
@@ -71,18 +112,23 @@
         </div>
       </div>
 
-<div class="row mt-2 mb-2">
-  <div class="col">
-    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLoanRow()">
-      <i class="fa-solid fa-plus"></i> Add
-    </button>
-  </div>
-  <div class="col-auto" style="margin-right: 5px;">
-    <button type="button" class="cust-button" onclick="submitBulkLoan('LOAN')">
-      <i class="fa-solid fa-save"></i> Save
-    </button>
-  </div>
-</div>
+      <div class="row totals-row align-items-center">
+        <div class="col"></div>
+        <div class="col"><span class="fw-bold">Total</span></div>
+        <div class="col text-end"><span id="loan_total_principal" class="fw-bold">₹ 0.00</span></div>
+        <div class="col text-end"><span id="loan_total_interest" class="fw-bold">₹ 0.00</span></div>
+        <div class="col text-end"><span id="loan_total_amount" class="fw-bold text-primary">₹ 0.00</span></div>
+        <div class="col-auto"></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline-primary" onclick="addLoanRow('loan')">
+          <i class="fa-solid fa-plus"></i> Add
+        </button>
+        <button type="button" class="cust-button" onclick="submitBulkLoan('LOAN')">
+          <i class="fa-solid fa-save"></i> Save
+        </button>
+      </div>
         {% if loan_form.non_field_errors %}
           <div class="text-danger small mb-2">{{ loan_form.non_field_errors|striptags }}</div>
         {% endif %}
@@ -162,6 +208,10 @@
               <label class="form-label">Interest</label>
               <input type="number" name="interest[]" class="form-control" step="0.01" placeholder="0.00" required>
             </div>
+            <div class="col">
+              <label class="form-label">Total</label>
+              <div class="row-total fw-bold">₹ 0.00</div>
+            </div>
             <div class="col-auto">
                 <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn" onclick="removeRow(this)" disabled>
                   <i class="fa-solid fa-times"></i>
@@ -170,17 +220,22 @@
           </div>
         </div>
 
-        <div class="row mt-2 mb-2">
-          <div class="col">
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLoanRow('release')">
-              <i class="fa-solid fa-plus"></i> Add
-            </button>
-          </div>
-          <div class="col-auto" style="margin-right: 5px;">
-            <button type="button" class="cust-button" onclick="submitBulkLoan('RELEASE')">
-              <i class="fa-solid fa-save"></i> Save
-            </button>
-          </div>
+        <div class="row totals-row align-items-center">
+          <div class="col"></div>
+          <div class="col"><span class="fw-bold">Total</span></div>
+          <div class="col text-end"><span id="release_total_principal" class="fw-bold">₹ 0.00</span></div>
+          <div class="col text-end"><span id="release_total_interest" class="fw-bold">₹ 0.00</span></div>
+          <div class="col text-end"><span id="release_total_amount" class="fw-bold text-primary">₹ 0.00</span></div>
+          <div class="col-auto"></div>
+        </div>
+
+        <div class="form-actions mb-2">
+          <button type="button" class="btn btn-outline-primary" onclick="addReleaseRow('release')">
+            <i class="fa-solid fa-plus"></i> Add
+          </button>
+          <button type="button" class="cust-button" onclick="submitBulkLoan('RELEASE')">
+            <i class="fa-solid fa-save"></i> Save
+          </button>
         </div>
         {% if release_form.non_field_errors %}
           <div class="text-danger small mb-2">{{ release_form.non_field_errors|striptags }}</div>
@@ -244,6 +299,83 @@ function applyHeights() {
     matchListHeightToCard('releaseCard', 'releaseList');
 }
 
+// ---- Indian number formatting (matches denomination page) ----
+function indianFormat(value) {
+    let isNegative = value < 0;
+    value = Math.abs(value);
+
+    let [intPart, decPart] = value.toFixed(2).split('.');
+
+    if (intPart.length > 3) {
+        let last3 = intPart.slice(-3);
+        let remaining = intPart.slice(0, -3);
+        let pairs = [];
+        while (remaining.length > 2) {
+            pairs.unshift(remaining.slice(-2));
+            remaining = remaining.slice(0, -2);
+        }
+        if (remaining) pairs.unshift(remaining);
+        intPart = pairs.join(',') + ',' + last3;
+    }
+
+    return (isNegative ? '-' : '') + intPart + '.' + decPart;
+}
+
+// ---- Row / grand total calculations ----
+function updateRowTotal(row) {
+    const principal = parseFloat(row.querySelector('input[name="principal[]"]').value) || 0;
+    const interest  = parseFloat(row.querySelector('input[name="interest[]"]').value) || 0;
+    const totalEl   = row.querySelector('.row-total');
+    if (totalEl) {
+        totalEl.textContent = '₹ ' + indianFormat(principal + interest);
+    }
+}
+
+function updateContainerTotals(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const rows = container.querySelectorAll('.loan-row');
+
+    let sumPrincipal = 0;
+    let sumInterest  = 0;
+    rows.forEach(row => {
+        sumPrincipal += parseFloat(row.querySelector('input[name="principal[]"]').value) || 0;
+        sumInterest  += parseFloat(row.querySelector('input[name="interest[]"]').value) || 0;
+    });
+
+    const prefix = containerId === 'loan_rows' ? 'loan' : 'release';
+    const pEl = document.getElementById(`${prefix}_total_principal`);
+    const iEl = document.getElementById(`${prefix}_total_interest`);
+    const tEl = document.getElementById(`${prefix}_total_amount`);
+
+    if (pEl) pEl.textContent = '₹ ' + indianFormat(sumPrincipal);
+    if (iEl) iEl.textContent = '₹ ' + indianFormat(sumInterest);
+    if (tEl) tEl.textContent = '₹ ' + indianFormat(sumPrincipal + sumInterest);
+}
+
+function attachRowCalcListeners(row, containerId) {
+    const principalInput = row.querySelector('input[name="principal[]"]');
+    const interestInput  = row.querySelector('input[name="interest[]"]');
+    const handler = function() {
+        updateRowTotal(row);
+        updateContainerTotals(containerId);
+    };
+    ['input', 'change', 'keyup'].forEach(evt => {
+        principalInput.addEventListener(evt, handler);
+        interestInput.addEventListener(evt, handler);
+    });
+}
+
+function initContainerCalc(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.loan-row').forEach(row => {
+        attachRowCalcListeners(row, containerId);
+        updateRowTotal(row);
+    });
+    updateContainerTotals(containerId);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     applyHeights();
     window.addEventListener('resize', applyHeights);
@@ -279,6 +411,10 @@ document.addEventListener('DOMContentLoaded', function() {
             loadLedgers(this.value, releaseLedger);
         });
     }
+
+    // Wire up row totals for both forms
+    initContainerCalc('loan_rows');
+    initContainerCalc('release_rows');
 });
 
 function loadLedgers(shopId, ledgerSelect) {
@@ -379,7 +515,71 @@ function submitLoan(loanType) {
     form.submit();
 }
 
+// C541 -> C542, C9999 -> C10000, C10000 -> D1. Returns '' if it can't increment.
+function incrementPawnNo(value) {
+    const m = /^(.*?)(\d+)$/.exec((value || '').trim());
+    if (!m) return '';
+
+    let prefix = m[1];
+    const next = parseInt(m[2], 10) + 1;
+
+    // Same letter, up to 10000
+    if (next <= 10000) {
+        const result = prefix + next;
+        return result.length > 10 ? '' : result;
+    }
+
+    // Past 10000: bump the last letter of the prefix and restart at 1
+    const last = prefix.slice(-1);
+    if (!/[A-Ya-y]/.test(last)) return '';   // Z, no prefix, or non-letter: leave blank
+    prefix = prefix.slice(0, -1) + String.fromCharCode(last.charCodeAt(0) + 1);
+    return prefix + '1';
+}
+
 function addLoanRow(formType = 'loan') {
+    const containerId = formType === 'loan' ? 'loan_rows' : 'release_rows';
+    const container   = document.getElementById(containerId);
+    const rows        = container.querySelectorAll('.loan-row');
+    const firstRow    = rows[0];
+    const lastRow     = rows[rows.length - 1];
+    const newRow      = firstRow.cloneNode(true);
+
+    // Last row's pawn no (read before appending)
+    const lastPawnNo = lastRow.querySelector('input[name="pawn_no[]"]').value;
+
+    // Clear values in cloned row
+    newRow.querySelectorAll('input').forEach(i => i.value = '');
+    newRow.querySelector('select').innerHTML = '<option value="">Select Ledger</option>';
+
+    // Auto-increment pawn no for loans only
+    const pawnInput = newRow.querySelector('input[name="pawn_no[]"]');
+    if (formType === 'loan') {
+        pawnInput.value = incrementPawnNo(lastPawnNo);
+    }
+
+    newRow.querySelector('.remove-row-btn').style.display = '';
+
+    // Reset the cloned row's total display
+    const rowTotalEl = newRow.querySelector('.row-total');
+    if (rowTotalEl) rowTotalEl.textContent = '₹ 0.00';
+
+    // Load ledgers into cloned row's select
+    const shopId = document.getElementById(formType === 'loan' ? 'loan_shop' : 'release_shop').value;
+    if (shopId) {
+        const ledgerSelect = newRow.querySelector('select[name="ledger[]"]');
+        loadLedgersIntoSelect(shopId, ledgerSelect, null);
+    }
+
+    container.appendChild(newRow);
+    updateRemoveButtons(containerId);
+    attachRowCalcListeners(newRow, containerId);
+    updateContainerTotals(containerId);
+
+    // Focus principal when pawn no is prefilled, otherwise pawn no
+    (pawnInput.value ? newRow.querySelector('input[name="principal[]"]') : pawnInput).focus();
+}
+
+function addReleaseRow(formType = 'loan') {
     const containerId = formType === 'loan' ? 'loan_rows' : 'release_rows';
     const container   = document.getElementById(containerId);
     const firstRow    = container.querySelector('.loan-row');
@@ -392,6 +592,10 @@ function addLoanRow(formType = 'loan') {
     // Show remove button on all rows except first
     newRow.querySelector('.remove-row-btn').style.display = '';
 
+    // Reset the cloned row's total display
+    const rowTotalEl = newRow.querySelector('.row-total');
+    if (rowTotalEl) rowTotalEl.textContent = '₹ 0.00';
+
     // Load ledgers into cloned row's select
     const shopId = document.getElementById(formType === 'loan' ? 'loan_shop' : 'release_shop').value;
     if (shopId) {
@@ -401,6 +605,8 @@ function addLoanRow(formType = 'loan') {
 
     container.appendChild(newRow);
     updateRemoveButtons(containerId);
+    attachRowCalcListeners(newRow, containerId);
+    updateContainerTotals(containerId);
 }
 
 function removeRow(btn) {
@@ -410,6 +616,7 @@ function removeRow(btn) {
         row.remove();
     }
     updateRemoveButtons(container.id);
+    updateContainerTotals(container.id);
 }
 
 function updateRemoveButtons(containerId) {

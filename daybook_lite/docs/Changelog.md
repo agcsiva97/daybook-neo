@@ -1,6 +1,11 @@
 # Version History
 Version History keeps a record of every update made to Daybook — new features, bug fixes, and improvements — along with the date they were released. It helps you see what's changed since you last used the app, understand what a new update adds or fixes, and confirm you're running the latest version.
 
+## [2.3.5] - 2026-09-28
+- Fixed Report Print
+- Added auto loan number generate
+- Add total principal and interest summaies
+  
 ## [2.3.4] - 2026-08-18
 - Added loader screen
 - Fixed PWA

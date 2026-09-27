@@ -245,17 +245,17 @@
                 </div>
               </div>
 
-              <div class="col-md-4 {% if '20' in hidden_fields_list %}hidden{% endif %}" id="field-20-container">
+              <div class="col-md-4 {% if '50-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-50-bundle-container">
                 <div class="row">
                   <div class="col-md">
-                    <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
-                    {{ form.note_20 }}
-                    {% if form.note_20.errors %}
-                      <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
+                    <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
+                    {{ form.bundle_50 }}
+                    {% if form.bundle_50.errors %}
+                      <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
                     {% endif %}
                   </div>
                   <div class="col-md text-end">
-                    <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                    <span id="bundle_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
                   </div>
                 </div>
               </div>
@@ -275,20 +275,22 @@
                 </div>
               </div>
 
-              <div class="col-md-4 {% if '50-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-50-bundle-container">
+              <div class="col-md-4 {% if '20' in hidden_fields_list %}hidden{% endif %}" id="field-20-container">
                 <div class="row">
                   <div class="col-md">
-                    <label class="form-label mb-0" for="{{ form.bundle_50.id_for_label }}">{{ form.bundle_50.label }}</label>
-                    {{ form.bundle_50 }}
-                    {% if form.bundle_50.errors %}
-                      <div class="text-danger small">{{ form.bundle_50.errors|striptags }}</div>
+                    <label class="form-label mb-0" for="{{ form.note_20.id_for_label }}">{{ form.note_20.label }}</label>
+                    {{ form.note_20 }}
+                    {% if form.note_20.errors %}
+                      <div class="text-danger small">{{ form.note_20.errors|striptags }}</div>
                     {% endif %}
                   </div>
                   <div class="col-md text-end">
-                    <span id="bundle_50" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
+                    <span id="calc_20" class="text-muted" style="display: inline-block; min-width: 120px;">₹ 0.00</span>
                   </div>
                 </div>
               </div>
+
+              
 
               <div class="col-md-4 {% if '20-bundle' in hidden_fields_list %}hidden{% endif %}" id="field-20-bundle-container">
                 <div class="row">
