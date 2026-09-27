@@ -5,6 +5,7 @@ Version History keeps a record of every update made to Daybook — new features,
 - Fixed Report Print
 - Added auto loan number generate
 - Add total principal and interest summaies
+- Added print config
   
 ## [2.3.4] - 2026-08-18
 - Added loader screen
