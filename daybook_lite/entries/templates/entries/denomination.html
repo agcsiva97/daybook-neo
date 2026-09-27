@@ -707,7 +707,7 @@ function savePreferences() {
     });
     
     // Save the array as a JSON string in a single cookie valid for 30 days
-    document.cookie = `hidden_fields=${JSON.stringify(hiddenFields)}; max-age=${3600 * 24 * 30}; path=/`;
+    document.cookie = `hidden_fields=${JSON.stringify(hiddenFields)}; max-age=${3600 * 24 * 400}; path=/`;
     
     // Close the modal
     const modalElement = document.getElementById('fieldsVisibilityModal');
