@@ -88,6 +88,12 @@
   display: inline;
 }
 
+.amount{
+  font-family: "Google Sans Code", monospace;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
 .text-end, .text-start{
   font-family: "Google Sans Code", monospace;
   font-optical-sizing: auto;
