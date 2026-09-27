@@ -62,7 +62,10 @@
             <tr>
               <th class="text-center">Opening Balance</th>
               <th class="text-center">Day's Debit</th>
-              <th class="text-center">Day's Credit</th>
+              <th class="text-center">
+                Day's Credit
+                <br><small>(Compounded with Opening Balance)</smaall>
+              </th>
               <th class="text-center">Expected Balance</th>
               <th class="text-center">
                 Actual Balance 
@@ -76,7 +79,7 @@
             <tr>
               <td class="amount text-center"><strong>{{ summary.opening_balance|indian_format }}</strong></td>
               <td class="amount text-center text-danger"><strong>{{ summary.debit_total|indian_format }}</strong></td>
-              <td class="amount text-center text-success"><strong>{{ summary.credit_total|indian_format }}</strong></td>
+              <td class="amount text-center text-success"><strong>{{ summary.credit_total|add:summary.opening_balance|indian_format }}</strong></td>
               <td class="amount text-center"><strong>{{ summary.closing_balance|indian_format }}</strong></td>
               <td class="amount text-center"><strong>{{ summary.denomination_total|indian_format }}</strong></td>
               <td class="amount text-center{% if summary.balance > 0 %} text-danger {% else %} text-success {% endif %}"><strong>{% if summary.balance > 0 %} - {%  endif %}{{ summary.balance|indian_format }}</strong></td>
